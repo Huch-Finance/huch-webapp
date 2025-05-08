@@ -5,10 +5,23 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Bell, ChevronDown, Filter, RotateCcw, Search, Settings, ArrowRight, Clock } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Navbar } from "@/components/navbar"
+import { Footer } from "@/components/footer"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("borrow")
   const [currency, setCurrency] = useState("USDC")
+  
+  // Authentification avec Privy
+  const { isAuthenticated, isLoading, login, logout, profile } = useAuth()
+  
+  // Mock CS2 skins for example display
+  const mockSkins = [
+    { id: 1, name: "AWP | Dragon Lore", price: "$1,500", rarity: "Covert", image: "/awp.webp" },
+    { id: 2, name: "Butterfly Knife | Fade", price: "$800", rarity: "★", image: "/karambit.webp" },
+    { id: 3, name: "AK-47 | Fire Serpent", price: "$550", rarity: "Covert", image: "/ak47.webp" }
+  ]
 
   const liveTransactions = [
     { username: "alex_cs", amount: "$250", skin: "AWP | Dragon Lore" },
@@ -29,8 +42,10 @@ export default function Home() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-[#0a0c14] text-white relative overflow-hidden">
-      {/* Background with floating elements */}
+    <>
+      <Navbar />
+      <main className="min-h-screen bg-[#0a0c14] text-white relative overflow-hidden pt-16">
+      {/* Background with floating elements */} 
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-purple-500/10 blur-3xl"></div>
         <div className="absolute bottom-1/3 right-1/4 w-40 h-40 rounded-full bg-teal-500/10 blur-3xl"></div>
@@ -112,15 +127,48 @@ export default function Home() {
           <div className="bg-[#111827]/50 backdrop-blur-sm rounded-xl p-4 border border-gray-800 mb-3">
             <h3 className="text-sm text-gray-400 mb-3">You collateralize</h3>
 
-            <div className="flex flex-col items-center justify-center py-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm">No CS2 skins found</span>
-                <span className="text-lg">😢</span>
+            {isAuthenticated ? (
+              <div className="flex flex-col items-center justify-center py-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm">No CS2 skins found</span>
+                  <span className="text-lg">😢</span>
+                </div>
               </div>
-              <Button className="bg-[#6366f1] hover:bg-[#6366f1]/90 rounded-full text-sm py-1.5">
-                Browse CS2 Skins
-              </Button>
-            </div>
+            ) : (
+              <div className="flex flex-col w-full">
+                <div className="text-xs text-gray-400 mb-3 italic">Example skins (not connected)</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {mockSkins.map((skin) => (
+                    <div key={skin.id} className="bg-[#1f2937]/70 rounded-lg p-2 border border-gray-700 hover:border-[#6366f1]/50 transition-all cursor-pointer">
+                      <div className="relative h-24 mb-2 overflow-hidden rounded-md">
+                        <Image
+                          src={skin.image}
+                          alt={skin.name}
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute bottom-0 right-0 bg-[#111827]/80 text-xs px-1.5 py-0.5 rounded-tl-md">
+                          {skin.price}
+                        </div>
+                      </div>
+                      <div className="text-sm truncate">{skin.name}</div>
+                      <div className="text-xs text-gray-400">{skin.rarity}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 text-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-700 rounded-full flex items-center gap-2 text-sm py-1.5"
+                    onClick={login}
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    <span>Connect Wallet</span>
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Divider with arrow */}
@@ -151,21 +199,22 @@ export default function Home() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#1f2937] border-gray-700">
                   <DropdownMenuItem onClick={() => setCurrency("USDC")}>USDC</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setCurrency("ETH")}>ETH</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setCurrency("BTC")}>BTC</DropdownMenuItem>
+                  {/*<DropdownMenuItem onClick={() => setCurrency("ETH")}>ETH</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setCurrency("BTC")}>BTC</DropdownMenuItem>*/}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
 
             <div className="flex flex-col items-center justify-center py-3">
-              <p className="text-gray-400 mb-3 text-sm">Connect your wallet and deposit CS2 skins to borrow</p>
+              <p className="text-gray-400 mb-3 text-sm">{isAuthenticated ? "Select a skin above to borrow against" : "Connect your wallet and deposit CS2 skins to borrow"}</p>
               <Button
                 variant="outline"
                 size="sm"
                 className="border-gray-700 rounded-full flex items-center gap-2 text-sm py-1.5"
+                onClick={isAuthenticated ? logout : login}
               >
                 <RotateCcw className="h-3 w-3" />
-                <span>Connect Wallet</span>
+                <span>{isAuthenticated ? "Disconnect Wallet" : "Connect Wallet"}</span>
               </Button>
             </div>
           </div>
@@ -181,6 +230,9 @@ export default function Home() {
           </div>
         </div>
       </div>  
+                
     </main>
+    <Footer />
+    </>
   )
 }
