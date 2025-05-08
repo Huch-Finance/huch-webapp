@@ -114,7 +114,7 @@ export default function Home() {
 
             <div className="flex flex-col items-center justify-center py-4">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm">No CS2 skins found</span>
+                <span className="text-sm">No CS2 skin founde</span>
                 <span className="text-lg">😢</span>
               </div>
               <Button className="bg-[#6366f1] hover:bg-[#6366f1]/90 rounded-full text-sm py-1.5">
