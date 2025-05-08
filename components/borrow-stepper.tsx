@@ -8,8 +8,8 @@ export function BorrowStepper({ currentStep }: BorrowStepperProps) {
   return (
     <div className="flex items-center justify-between mb-8">
       {[1, 2, 3].map((n, idx, arr) => (
-        <>
-          <div key={n} className="flex flex-col items-center flex-1">
+        <div key={n} className="flex items-center flex-1">
+          <div className="flex flex-col items-center flex-1">
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-2 ${
                 currentStep === n
@@ -27,12 +27,11 @@ export function BorrowStepper({ currentStep }: BorrowStepperProps) {
           </div>
           {idx < arr.length - 1 && (
             <div
-              key={`bar-${n}`}
               className={`h-1 flex-1 mx-2 rounded ${currentStep > n ? "bg-[#7480ff]" : "bg-gray-300"}`}
               style={{ minWidth: 32 }}
             />
           )}
-        </>
+        </div>
       ))}
     </div>
   )
