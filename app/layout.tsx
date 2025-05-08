@@ -5,6 +5,7 @@ import "./globals.css"
 import "./privy-overrides.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { PrivyProvider } from "@/components/privy-provider"
+import { Toaster } from "sonner"
 
 const poppins = Poppins({
   weight: ["400", "500", "600", "700"],
@@ -29,6 +30,7 @@ export default function RootLayout({
         <PrivyProvider>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
             {children}
+            <Toaster richColors position="top-right" />
           </ThemeProvider>
         </PrivyProvider>
       </body>

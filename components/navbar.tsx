@@ -26,9 +26,6 @@ export function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center space-x-6">
-            <Link href="/" className="text-gray-300 hover:text-[#5D5FEF] transition-colors">
-              Home
-            </Link>
             <Link href="/borrow" className="text-gray-300 hover:text-[#5D5FEF] transition-colors">
               Borrow
             </Link>
@@ -51,14 +48,6 @@ export function Navbar() {
       {isOpen && (
         <div className="md:hidden bg-[#0f0f13] border-b border-[#2A2A2A] animate-in fade-in slide-in-from-top-5 duration-300">
           <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-gray-300 hover:text-[#5D5FEF] py-2 transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              <Home size={18} />
-              Home
-            </Link>
             <Link
               href="/borrow"
               className="flex items-center gap-2 text-gray-300 hover:text-[#5D5FEF] py-2 transition-colors"

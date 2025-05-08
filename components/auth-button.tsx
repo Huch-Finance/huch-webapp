@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSolanaWallets } from '@privy-io/react-auth/solana';
 import { usePrivy, useWallets } from "@privy-io/react-auth"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,11 +16,15 @@ import { LogOut, User, Wallet, Settings, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { isPrivyConfigured } from "@/lib/privy"
 
+interface UserMetadata {
+  username?: string;
+}
+
 export function AuthButton() {
   // If Privy is not configured, display a dummy connect button
   const [privyReady, setPrivyReady] = useState(false)
   const { login, logout, authenticated, user, ready } = usePrivy()
-  const { wallets } = useWallets()
+  const { wallets } = useSolanaWallets()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   useEffect(() => {
@@ -58,8 +63,8 @@ export function AuthButton() {
   }
 
   // Get user information
-  const username = user?.metadata?.username as string | undefined
-  const displayName = username || user?.email?.address || "User"
+  const username = user?.email?.address?.split('@')[0] || "User"
+  const displayName = username
   const shortAddress = wallets?.[0]?.address
     ? `${wallets[0].address.substring(0, 6)}...${wallets[0].address.substring(
         wallets[0].address.length - 4,
@@ -99,12 +104,6 @@ export function AuthButton() {
           <DropdownMenuItem className="cursor-pointer hover:bg-[#2A2A2A]">
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
-          </DropdownMenuItem>
-        </Link>
-        <Link href="/wallet">
-          <DropdownMenuItem className="cursor-pointer hover:bg-[#2A2A2A]">
-            <Wallet className="mr-2 h-4 w-4" />
-            <span>Wallet</span>
           </DropdownMenuItem>
         </Link>
         <Link href="/settings">
