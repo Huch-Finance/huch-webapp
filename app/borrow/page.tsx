@@ -126,8 +126,12 @@ export default function Home() {
           {/* Collateralize section */}
           <div className="bg-[#111827]/50 backdrop-blur-sm rounded-xl p-4 border border-gray-800 mb-3">
             <h3 className="text-sm text-gray-400 mb-3">You collateralize</h3>
-
-            {isAuthenticated ? (
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-4">
+                <div className="w-12 h-12 border-4 border-t-[#5D5FEF] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-400">Loading your skins...</p>
+              </div>
+            ) : isAuthenticated ? (
               <div className="flex flex-col items-center justify-center py-4">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-sm">No CS2 skins found</span>
@@ -205,11 +209,11 @@ export default function Home() {
               </DropdownMenu>
             </div>
 
-            <div className="flex flex-col items-center justify-center py-3">
+            <div className="flex flex-col items-center justify-center py-3 ">
               <p className="text-gray-400 mb-3 text-sm">{isAuthenticated ? "Select a skin above to borrow against" : "Connect your wallet and deposit CS2 skins to borrow"}</p>
               <Button
                 variant="outline"
-                size="sm"
+                size="sm"  
                 className="border-gray-700 rounded-full flex items-center gap-2 text-sm py-1.5"
                 onClick={isAuthenticated ? logout : login}
               >

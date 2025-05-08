@@ -89,6 +89,7 @@ export function useAuth() {
       isLoading: status === "loading",
       isAuthenticated: false,
     }
+    
   }
 
   return {

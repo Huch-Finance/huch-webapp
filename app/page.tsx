@@ -58,7 +58,7 @@ export default function Home() {
               transition={{ duration: 0.5 }}
               className="p-6 bg-white rounded-lg shadow-md"
             >
-              <h3 className="text-xl font-semibold mb-4">Step 3: Start Trading</h3>
+              <h3 className="text-xl font-semibold mb-4 pt-4 overflow-hidden">Step 3: Start Trading</h3>
               <p className="text-gray-600">
                 Begin trading with your chosen asset.
               </p>
