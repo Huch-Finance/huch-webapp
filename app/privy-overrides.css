@@ -1,0 +1,113 @@
+/* Custom CSS overrides for Privy modal */
+/* These styles will forcefully override Privy's default styles */
+
+/* Target Privy's modal container */
+div[data-privy-dialog-root] {
+  --privy-color-background: #0f0f13 !important;
+  --privy-color-foreground: #1e1e1e !important;
+  --privy-color-accent: #5d5fef !important;
+  --privy-font-family: Inter, sans-serif !important;
+}
+
+/* Modal backdrop */
+div[data-privy-dialog-backdrop] {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Modal container */
+div[data-privy-dialog-content] {
+  background-color: #0f0f13 !important;
+  border: 1px solid rgba(93, 95, 239, 0.3) !important;
+  box-shadow: 0 0 20px rgba(93, 95, 239, 0.3) !important;
+  border-radius: 12px !important;
+  color: white !important;
+}
+
+/* Headers and text */
+div[data-privy-dialog-content] h1,
+div[data-privy-dialog-content] h2,
+div[data-privy-dialog-content] h3,
+div[data-privy-dialog-content] p,
+div[data-privy-dialog-content] span,
+div[data-privy-dialog-content] label {
+  color: white !important;
+}
+
+/* Secondary text */
+div[data-privy-dialog-content] p[data-privy-typography="body-md"],
+div[data-privy-dialog-content] span[data-privy-typography="body-sm"] {
+  color: #a0a0a0 !important;
+}
+
+/* Primary buttons */
+div[data-privy-dialog-content] button[data-variant="primary"] {
+  background-color: #5d5fef !important;
+  color: white !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+div[data-privy-dialog-content] button[data-variant="primary"]:hover {
+  background-color: #4a4cdf !important;
+}
+
+/* Secondary buttons */
+div[data-privy-dialog-content] button[data-variant="secondary"] {
+  background-color: #2a2a2a !important;
+  color: white !important;
+  border: 1px solid #3a3a3a !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+div[data-privy-dialog-content] button[data-variant="secondary"]:hover {
+  background-color: #3a3a3a !important;
+}
+
+/* Input fields */
+div[data-privy-dialog-content] input {
+  background-color: #1e1e1e !important;
+  border: 1px solid #2a2a2a !important;
+  border-radius: 8px !important;
+  color: white !important;
+}
+
+div[data-privy-dialog-content] input:focus {
+  border-color: #5d5fef !important;
+  box-shadow: 0 0 0 2px rgba(93, 95, 239, 0.2) !important;
+}
+
+/* Social login buttons */
+div[data-privy-dialog-content] [data-privy-method] {
+  background-color: #1e1e1e !important;
+  border: 1px solid #2a2a2a !important;
+  color: white !important;
+}
+
+div[data-privy-dialog-content] [data-privy-method]:hover {
+  background-color: #2a2a2a !important;
+}
+
+/* Dividers */
+div[data-privy-dialog-content] hr {
+  border-color: #2a2a2a !important;
+}
+
+/* Add a subtle neon glow to the modal */
+@keyframes neonPulse {
+  0% {
+    box-shadow: 0 0 10px rgba(93, 95, 239, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(93, 95, 239, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(93, 95, 239, 0.2);
+  }
+}
+
+div[data-privy-dialog-content] {
+  animation: neonPulse 3s infinite;
+}
