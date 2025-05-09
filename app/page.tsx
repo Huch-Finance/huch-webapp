@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation"
 import Image from "next/image"
 import { motion } from "framer-motion"
+import { SolanaTransfer } from "@/components/SolanaTransfer"
 import { Footer } from "@/components/footer"
 
 export default function Home() {
@@ -62,6 +63,7 @@ export default function Home() {
               <p className="text-gray-600">
                 Begin trading with your chosen asset.
               </p>
+              <SolanaTransfer />
             </motion.div>
           </div>
         </div>
