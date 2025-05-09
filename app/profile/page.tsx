@@ -80,34 +80,44 @@ export default function Profile() {
   // Withdraw handler
   const handleWithdraw = async () => {
     if (!wallets?.[0]?.address || !withdrawAddress || !withdrawAmount) {
-      toast.error("Please fill in all fields.")
-      return
+      toast.error("Please fill in all fields.");
+      return;
     }
-    setIsWithdrawing(true)
+    setIsWithdrawing(true);
     try {
-      const connection = new Connection("https://api.devnet.solana.com", "confirmed")
-      const fromPubkey = new PublicKey(wallets[0].address)
-      const toPubkey = new PublicKey(withdrawAddress)
-      const lamports = Math.floor(Number(withdrawAmount) * LAMPORTS_PER_SOL)
+      const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+      const fromPubkey = new PublicKey(wallets[0].address);
+      const toPubkey = new PublicKey(withdrawAddress);
+      const lamports = Math.floor(Number(withdrawAmount) * LAMPORTS_PER_SOL);
+
+      // Create the transaction
       const tx = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey,
           toPubkey,
           lamports,
         })
-      )
-      const receipt = await sendTransaction({ transaction: tx, connection })
-      await connection.confirmTransaction(receipt.signature, "confirmed")
-      toast.success("Withdrawal successful!")
-      setIsWithdrawOpen(false)
-      setWithdrawAddress("")
-      setWithdrawAmount("")
+      );
+
+      // Fetch the recent blockhash and set it in the transaction
+      const { blockhash } = await connection.getLatestBlockhash("confirmed");
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = fromPubkey;
+
+      // Send the transaction
+      const receipt = await sendTransaction({ transaction: tx, connection });
+      await connection.confirmTransaction(receipt.signature, "confirmed");
+
+      toast.success("Withdrawal successful!");
+      setIsWithdrawOpen(false);
+      setWithdrawAddress("");
+      setWithdrawAmount("");
     } catch (e) {
-      toast.error("Withdrawal failed: " + (e instanceof Error ? e.message : e))
+      toast.error("Withdrawal failed: " + (e instanceof Error ? e.message : e));
     } finally {
-      setIsWithdrawing(false)
+      setIsWithdrawing(false);
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -178,10 +188,7 @@ export default function Profile() {
                     </div>
                   </div>
 
-                  <Button variant="outline" className="w-full border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20">
-                    <ExternalLink size={16} className="mr-2" />
-                    View on Explorer
-                  </Button>
+
                   <div className="mt-4 flex flex-col gap-2">
                     <Link href="/settings">
                       <Button variant="outline" className="w-full border-[#2A2A2A] text-gray-300 hover:text-white">
@@ -308,10 +315,8 @@ export default function Profile() {
                   </TabsContent>
 
                   <TabsContent value="badges" className="mt-0 animate-appear">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="text-center py-8">
-                        <p className="text-gray-400">No badges earned</p>
-                      </div>
+                    <div className="flex items-center justify-center py-8">
+                      <p className="text-gray-400">No badges earned</p>
                     </div>
                   </TabsContent>
                 </CardContent>
