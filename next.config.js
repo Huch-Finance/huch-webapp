@@ -20,6 +20,23 @@ const nextConfig = {
 
     return config
   },
+  // Configuration pour les images externes
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'steamcommunity-a.akamaihd.net',
+        port: '',
+        pathname: '/economy/image/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.steamstatic.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
 }
 
 module.exports = nextConfig 

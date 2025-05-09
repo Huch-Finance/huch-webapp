@@ -9,6 +9,7 @@ export type UserProfile = {
   steamId?: string
   username?: string
   avatar?: string
+  tradeLink?: string
 }
 
 export type AuthStatus = "authenticated" | "unauthenticated" | "loading"
