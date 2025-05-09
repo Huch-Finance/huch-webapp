@@ -33,7 +33,8 @@ export function useAuth() {
         },
         body: JSON.stringify({
           id: userId,
-          wallet: walletAddress || null
+          wallet: walletAddress,
+          email: user?.email?.address || null,
         }),
       });
 
