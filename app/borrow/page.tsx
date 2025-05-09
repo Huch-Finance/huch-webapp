@@ -16,7 +16,7 @@ export default function Home() {
   const [skinSelectorOpen, setSkinSelectorOpen] = useState(false)
   
   // Authentification avec Privy
-  const { isAuthenticated, isLoading, login, logout, profile, connectWallet, createWallet, hasWallet } = useAuth()
+  const { isAuthenticated, isLoading, login, logout, profile, connectWallet } = useAuth()
   
   // Mock CS2 skins for example display
   const mockSkins = [
@@ -365,11 +365,10 @@ export default function Home() {
           <div className="flex justify-center my-3 max-w-md mx-auto">
             <Button
               className="bg-[#6366f1] hover:bg-[#5355d1] rounded-full flex items-center gap-1 text-xs py-1.5 px-3 shadow-sm transition-all w-full max-w-[200px]"
-              onClick={()=>{if(!isAuthenticated){login()}else if(!hasWallet){connectWallet()}else{logout()}}}
-
+              onClick={()=>{if(!isAuthenticated){login()}else{logout()}}}
             >
               <RotateCcw className="h-3 w-3" />
-              <span>{!isAuthenticated ? "Connect Wallet" : !hasWallet ? "Connect Wallet" : "Disconnect Wallet"}</span>
+              <span>{!isAuthenticated ? "Connect Account" : "Disconnect Account"}</span>
             </Button>
           </div>
         </div>

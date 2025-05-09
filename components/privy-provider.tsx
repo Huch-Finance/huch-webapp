@@ -17,6 +17,11 @@ export function PrivyProvider({ children }: PrivyProviderProps) {
   const config = {
     appId: PRIVY_APP_ID,
     loginMethods: ["email", "wallet", "google"],
+    embedded: {
+      solana: {
+          createOnLogin: 'users-without-wallets',
+      },
+    },
     appearance: {
       theme: "dark",
       accentColor: "#5D5FEF",

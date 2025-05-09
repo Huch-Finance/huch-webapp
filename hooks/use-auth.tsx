@@ -23,6 +23,28 @@ export function useAuth() {
     }
   }, [isConfigured])
 
+  // Fonction pour enregistrer l'utilisateur dans la base de données via l'API
+  const registerUserInDatabase = async (userId: string, walletAddress?: string) => {
+    try {
+      const response = await fetch('http://localhost:3333/api/auth/privy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: userId,
+          wallet: walletAddress || null
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Error register user in database:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error call API register user in database:', error);
+    }
+  };
+
   useEffect(() => {
     if (!ready) {
       setStatus("loading")
@@ -47,6 +69,11 @@ export function useAuth() {
 
     setProfile(userProfile)
     setStatus("authenticated")
+
+    // Enregistrer l'utilisateur dans la base de données seulement si un portefeuille est disponible
+    if (user?.id && wallets && wallets.length > 0 && wallets[0]?.address) {
+      registerUserInDatabase(user.id, wallets[0].address);
+    }
 
     // If user has a steamID in Privy metadata, save it locally
     if (user?.metadata?.steamId && !localStorage.getItem("steamID")) {
@@ -85,12 +112,12 @@ export function useAuth() {
       login: () =>
         alert("Authentication is not configured. Please add NEXT_PUBLIC_PRIVY_APP_ID to your environment variables."),
       logout: () => {},
-      createWallet: () => {},
+      //createWallet: () => {},
       connectWallet: () => {},
       updateProfile: () => Promise.resolve(false),
       isLoading: status === "loading",
       isAuthenticated: false,
-      hasWallet: false,
+      //hasWallet: false,
     }
     
   }
@@ -100,11 +127,11 @@ export function useAuth() {
     profile,
     login,
     logout,
-    createWallet,
+    //createWallet,
     connectWallet,
     updateProfile,
     isLoading: status === "loading",
     isAuthenticated: status === "authenticated",
-    hasWallet: !!profile?.wallet,
+    //hasWallet: !!profile?.wallet,
   }
 }
