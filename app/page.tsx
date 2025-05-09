@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation"
 import Image from "next/image"
 import { motion } from "framer-motion"
+import { SolanaTransfer } from "@/components/SolanaTransfer"
 import { Footer } from "@/components/footer"
 
 export default function Home() {
@@ -58,10 +59,8 @@ export default function Home() {
               transition={{ duration: 0.5 }}
               className="p-6 bg-white rounded-lg shadow-md"
             >
-              <h3 className="text-xl font-semibold mb-4 pt-4 overflow-hidden">Step 3: Start Trading</h3>
-              <p className="text-gray-600">
-                Begin trading with your chosen asset.
-              </p>
+              <h3 className="text-xl font-semibold mb-4">Step 3: Start Trading</h3>
+              <SolanaTransfer />
             </motion.div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSolanaWallets } from '@privy-io/react-auth/solana';
 import { usePrivy, useWallets } from "@privy-io/react-auth"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,11 +16,15 @@ import { LogOut, User, Wallet, Settings, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { isPrivyConfigured } from "@/lib/privy"
 
+interface UserMetadata {
+  username?: string;
+}
+
 export function AuthButton() {
   // If Privy is not configured, display a dummy connect button
   const [privyReady, setPrivyReady] = useState(false)
   const { login, logout, authenticated, user, ready } = usePrivy()
-  const { wallets } = useWallets()
+  const { wallets } = useSolanaWallets()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   useEffect(() => {
@@ -58,14 +63,9 @@ export function AuthButton() {
   }
 
   // Get user information
-  const username = user?.metadata?.username as string | undefined
-  const displayName = username || user?.email?.address || "User"
-  const shortAddress = wallets?.[0]?.address
-    ? `${wallets[0].address.substring(0, 6)}...${wallets[0].address.substring(
-        wallets[0].address.length - 4,
-        wallets[0].address.length,
-      )}`
-    : null
+  const username = user?.email?.address?.split('@')[0] || "User"
+  const displayName = username
+  const profilePicture = user?.picture || "/default-avatar.png" // Default avatar if no profile picture
 
   // Handle logout
   const handleLogout = async () => {
@@ -86,10 +86,14 @@ export function AuthButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="border-[#5D5FEF] text-white hover:bg-[#5D5FEF]/20">
-          <span className="mr-2">{displayName}</span>
-          {shortAddress && <span className="text-xs text-gray-400 mr-2">{shortAddress}</span>}
-          <ChevronDown size={16} />
+        <Button variant="outline" className="border-[#5D5FEF] text-white hover:bg-[#5D5FEF]/20 flex items-center">
+          <img
+            src={profilePicture}
+            alt="Profile"
+            className="w-6 h-6 rounded-full mr-2"
+          />
+          <span>{displayName}</span>
+          <ChevronDown size={16} className="ml-2" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 bg-[#1a1a1f] border-[#2A2A2A]">
@@ -99,12 +103,6 @@ export function AuthButton() {
           <DropdownMenuItem className="cursor-pointer hover:bg-[#2A2A2A]">
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
-          </DropdownMenuItem>
-        </Link>
-        <Link href="/wallet">
-          <DropdownMenuItem className="cursor-pointer hover:bg-[#2A2A2A]">
-            <Wallet className="mr-2 h-4 w-4" />
-            <span>Wallet</span>
           </DropdownMenuItem>
         </Link>
         <Link href="/settings">
