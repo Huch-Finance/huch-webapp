@@ -10,7 +10,7 @@ export function useAuth() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isConfigured, setIsConfigured] = useState(isPrivyConfigured)
 
-  const { ready, authenticated, user, login, logout } = usePrivy()
+  const { ready, authenticated, user, login, logout, createWallet, connectWallet } = usePrivy()
   const { wallets } = useWallets()
 
   useEffect(() => {
@@ -85,9 +85,12 @@ export function useAuth() {
       login: () =>
         alert("Authentication is not configured. Please add NEXT_PUBLIC_PRIVY_APP_ID to your environment variables."),
       logout: () => {},
+      createWallet: () => {},
+      connectWallet: () => {},
       updateProfile: () => Promise.resolve(false),
       isLoading: status === "loading",
       isAuthenticated: false,
+      hasWallet: false,
     }
     
   }
@@ -97,8 +100,11 @@ export function useAuth() {
     profile,
     login,
     logout,
+    createWallet,
+    connectWallet,
     updateProfile,
     isLoading: status === "loading",
     isAuthenticated: status === "authenticated",
+    hasWallet: !!profile?.wallet,
   }
 }
