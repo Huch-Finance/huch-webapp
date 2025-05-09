@@ -1,6 +1,7 @@
 "use client"
 
-import { usePrivy, useWallets } from "@privy-io/react-auth"
+import { usePrivy } from "@privy-io/react-auth"
+import { useSolanaWallets } from "@privy-io/react-auth/solana"
 import { useEffect, useState } from "react"
 import type { UserProfile, AuthStatus } from "@/lib/privy"
 import { isPrivyConfigured } from "@/lib/privy"
@@ -11,7 +12,7 @@ export function useAuth() {
   const [isConfigured, setIsConfigured] = useState(isPrivyConfigured)
 
   const { ready, authenticated, user, login, logout, createWallet, connectWallet } = usePrivy()
-  const { wallets } = useWallets()
+  const { wallets } = useSolanaWallets()
 
   useEffect(() => {
     if (!isConfigured) {
