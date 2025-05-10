@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Bell, ChevronDown, Filter, RotateCcw, Search, Settings, ArrowRight, Clock, AlertCircle } from "lucide-react"
+import { Bell, ChevronDown, Filter, RotateCcw, Search, Settings, ArrowRight, Clock, AlertCircle, Check, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { BorrowConfirmationModal } from "@/components/borrow-confirmation-modal"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { useAuth } from "@/hooks/use-auth"
@@ -21,6 +22,9 @@ export default function Home() {
   const [loanDuration, setLoanDuration] = useState(7) // Durée du prêt en jours
   const loanDurationOptions = [3, 7, 14, 30] // Options de durée en jours
   const [howItWorksOpen, setHowItWorksOpen] = useState(false) // État pour le menu déroulant "How it works"
+  
+  // État pour le modal de confirmation d'emprunt
+  const [borrowModalOpen, setBorrowModalOpen] = useState(false)
   
   // Authentification avec Privy
   const { isAuthenticated, isLoading, login, logout, profile, connectWallet } = useAuth()
@@ -71,6 +75,8 @@ export default function Home() {
       setLoanAmount(0);
     }
   }, [selectedSkin, loanPercentage, displaySkins])
+  
+  // Pas besoin de fonction handleBorrow car elle est désormais dans le composant BorrowConfirmationModal
 
   const liveTransactions = [
     { username: "alex_cs", amount: "$250", skin: "AWP | Dragon Lore" },
@@ -434,8 +440,8 @@ export default function Home() {
                     if (!isAuthenticated) {
                       login();
                     } else if (selectedSkin !== null) {
-                      // Logique pour emprunter
-                      alert('Borrow functionality will be implemented here');
+                      // Ouvrir le modal de confirmation d'emprunt
+                      setBorrowModalOpen(true);
                     } else {
                       setSkinSelectorOpen(true);
                     }
@@ -531,6 +537,20 @@ export default function Home() {
         )}
       </main>
       <Footer />
+      
+      {/* Modal de confirmation d'emprunt */}
+      <BorrowConfirmationModal 
+        open={borrowModalOpen} 
+        onOpenChange={setBorrowModalOpen}
+        selectedSkin={selectedSkin}
+        displaySkins={displaySkins}
+        loanAmount={loanAmount}
+        loanDuration={loanDuration}
+        extractSkinInfo={extractSkinInfo}
+        onConfirm={() => {
+          console.log("Loan confirmed for", loanAmount, "USDC")
+        }}
+      />
     </>
   )
 }
