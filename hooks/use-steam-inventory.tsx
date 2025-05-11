@@ -43,7 +43,7 @@ export function useSteamInventory() {
     setError(null)
 
     try {
-      const response = await fetch('http://localhost:3333/api/user/inventory', {
+      const response = await fetch('http://localhost:3333/api/inventory', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

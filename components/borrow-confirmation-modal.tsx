@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Check, Loader2, AlertCircle } from "lucide-react"
+import { Check, Loader2, AlertCircle, ExternalLink } from "lucide-react"
 import { SteamItem } from "@/hooks/use-steam-inventory"
+import { useTradeApi } from "@/hooks/use-trade-api"
 
 interface BorrowConfirmationModalProps {
   open: boolean
@@ -37,39 +38,114 @@ export function BorrowConfirmationModal({
   // Function to simulate delay (for animations)
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+  // Utiliser le hook pour les appels API de trading
+  const { createTrade, checkTradeStatus, cancelTrade, isLoading: isApiLoading, error: apiError, currentTradeId } = useTradeApi();
+  
+  // État pour stocker les détails de l'offre de trade
+  const [tradeOffer, setTradeOffer] = useState<{
+    tradeId: string;
+    tradeOfferId: string;
+    tradeOfferUrl: string;
+  } | null>(null);
+  
+  // Vérifier périodiquement le statut du trade
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (tradeOffer && isProcessing && processingStep === 2) {
+      interval = setInterval(async () => {
+        const status = await checkTradeStatus(tradeOffer.tradeId);
+        
+        if (status) {
+          // Vérifier si le trade est accepté ou en escrow (les deux indiquent que le trade a été accepté)
+          if (status.trade.status === "accepted" || 
+              status.offerDetails.state === "Accepted" ||
+              status.trade.status === "InEscrow" || 
+              status.offerDetails.state === "InEscrow") {
+            // Trade accepté, passer à l'étape suivante
+            setProcessingStep(3);
+            clearInterval(interval);
+            
+            // Simuler le transfert USDC et la finalisation
+            setTimeout(() => {
+              setProcessingStep(4);
+              setTimeout(() => {
+                setTransactionComplete(true);
+                setIsProcessing(false);
+                onConfirm(); // Informer le composant parent que le prêt est confirmé
+              }, 1500);
+            }, 2000);
+          } else if (status.trade.status === "Canceled" || status.offerDetails.state === "Canceled" || 
+                     status.trade.status === "Declined" || status.offerDetails.state === "Declined") {
+            // Trade annulé ou refusé
+            setTransactionError("The trade offer was canceled or declined.");
+            setIsProcessing(false);
+            clearInterval(interval);
+          }
+          // Sinon, continuer à vérifier (statut "sent" ou "pending")
+        }
+      }, 5000); // Vérifier toutes les 5 secondes
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [tradeOffer, isProcessing, processingStep]);
+  
   // Fonction pour gérer le processus d'emprunt
   const handleBorrow = async () => {
+    if (!selectedSkin) {
+      setTransactionError("No skin selected");
+      return;
+    }
+    
     try {
       setIsProcessing(true);
       setTransactionError(null);
       
-      // Étape 1: Vérification du skin
+      // Étape 1: Vérification du skin et création de l'offre de trade
       setProcessingStep(1);
-      await delay(1500);
       
-      // Étape 2: Préparation du prêt
+      const selectedSkinData = displaySkins.find(skin => skin.id === selectedSkin);
+      if (!selectedSkinData) {
+        throw new Error("Selected skin not found");
+      }
+      
+      // Créer l'offre de trade
+      const tradeResponse = await createTrade(
+        selectedSkinData.id,
+        `Loan collateral for ${loanAmount.toFixed(2)} USDC`
+      );
+      
+      if (!tradeResponse) {
+        throw new Error("Failed to create trade offer");
+      }
+      
+      // Stocker les détails de l'offre
+      setTradeOffer({
+        tradeId: tradeResponse.tradeId,
+        tradeOfferId: tradeResponse.tradeOffer.offerId,
+        tradeOfferUrl: tradeResponse.tradeOffer.url
+      });
+      
+      // Étape 2: Attente de l'acceptation du trade
       setProcessingStep(2);
-      await delay(2000);
       
-      // Étape 3: Transfert des USDC (utilisation de Privy pour la transaction Solana)
-      setProcessingStep(3);
+      // La vérification périodique est gérée par l'useEffect ci-dessus
       
-      // Ici, nous simulons l'appel à l'API, mais dans une implémentation réelle,
-      // vous utiliseriez Privy pour gérer la transaction Solana
-      await delay(2500);
-      
-      // Étape 4: Confirmation
-      setProcessingStep(4);
-      await delay(1500);
-      
-      // Transaction terminée avec succès
-      setTransactionComplete(true);
-      
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erreur lors du processus d'emprunt:", error);
-      setTransactionError("Une erreur est survenue. Veuillez réessayer.");
-    } finally {
+      setTransactionError(error.message || "An error occurred. Please try again.");
       setIsProcessing(false);
+    }
+  };
+  
+  // Fonction pour annuler le trade
+  const handleCancelTrade = async () => {
+    if (tradeOffer) {
+      await cancelTrade(tradeOffer.tradeId);
+      setIsProcessing(false);
+      onOpenChange(false);
     }
   };
 
@@ -141,11 +217,23 @@ export function BorrowConfirmationModal({
             <div className="flex flex-col items-center justify-center gap-2">
               <Loader2 className="h-8 w-8 animate-spin text-[#6366f1]" />
               <p className="text-sm font-medium">
-                {processingStep === 1 && "Verifying the skin..."}
-                {processingStep === 2 && "Preparing the loan..."}
+                {processingStep === 1 && "Creating trade offer..."}
+                {processingStep === 2 && "Waiting for trade confirmation..."}
                 {processingStep === 3 && "Transferring USDC..."}
-                {processingStep === 4 && "Finalizing..."}
+                {processingStep === 4 && "Finalizing loan..."}
               </p>
+              
+              {/* Afficher le lien vers l'offre de trade si disponible et à l'étape 2 */}
+              {processingStep === 2 && tradeOffer && (
+                <a 
+                  href={tradeOffer.tradeOfferUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-[#6366f1] hover:underline mt-1"
+                >
+                  Open trade offer <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
             </div>
             
             <div className="w-full bg-[#1f2937] h-1 rounded-full overflow-hidden">
@@ -197,48 +285,81 @@ export function BorrowConfirmationModal({
         )}
         
         <DialogFooter className="flex-col sm:flex-row sm:justify-between gap-2">
-          {!transactionComplete && !isProcessing && (
-            <>
-              <Button 
-                variant="outline" 
-                className="w-full sm:w-auto bg-transparent border-[#2a3548] text-white hover:bg-[#2a3548] hover:text-white"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button 
-                className="w-full sm:w-auto bg-[#6366f1] hover:bg-[#5355d1] text-white"
-                onClick={handleBorrow}
-              >
-                Confirm the loan
-              </Button>
-            </>
-          )}
-          
-          {transactionComplete && (
-            <Button 
-              className="w-full sm:w-auto bg-[#6366f1] hover:bg-[#5355d1] text-white"
-              onClick={() => {
-                onOpenChange(false);
-                setTransactionComplete(false);
-                setProcessingStep(0);
-              }}
-            >
-              Back to home
-            </Button>
-          )}
-          
-          {transactionError && (
-            <Button 
-              className="w-full sm:w-auto bg-[#6366f1] hover:bg-[#5355d1] text-white"
-              onClick={() => {
-                setTransactionError(null);
-                setProcessingStep(0);
-              }}
-            >
-              Try again
-            </Button>
-          )}
+          {/* Utiliser une approche conditionnelle pour n'afficher qu'un seul ensemble de boutons */}
+          {(() => {
+            // État d'erreur (priorité la plus haute)
+            if (transactionError) {
+              return (
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => onOpenChange(false)} 
+                    className="border-[#2a3548] text-gray-400 hover:bg-[#1f2937] hover:text-white"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setTransactionError(null);
+                      handleBorrow();
+                    }} 
+                    className="bg-gradient-to-r from-[#6366f1] to-[#22d3ee] hover:from-[#4f46e5] hover:to-[#0ea5e9]"
+                  >
+                    Try Again
+                  </Button>
+                </>
+              );
+            }
+            
+            // État de succès
+            if (transactionComplete) {
+              return (
+                <Button 
+                  onClick={() => onOpenChange(false)} 
+                  className="bg-gradient-to-r from-[#6366f1] to-[#22d3ee] hover:from-[#4f46e5] hover:to-[#0ea5e9]"
+                >
+                  Close
+                </Button>
+              );
+            }
+            
+            // État de traitement - Attente de confirmation du trade
+            if (isProcessing && processingStep === 2) {
+              return (
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelTrade} 
+                  className="border-[#2a3548] text-gray-400 hover:bg-[#1f2937] hover:text-white"
+                >
+                  Cancel Trade
+                </Button>
+              );
+            }
+            
+            // État de traitement - Autres étapes
+            if (isProcessing) {
+              return <div className="h-10"></div>; // Espace réservé pour maintenir la hauteur du footer
+            }
+            
+            // État initial - Confirmation du prêt (par défaut)
+            return (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={() => onOpenChange(false)} 
+                  className="border-[#2a3548] text-gray-400 hover:bg-[#1f2937] hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleBorrow} 
+                  className="bg-gradient-to-r from-[#6366f1] to-[#22d3ee] hover:from-[#4f46e5] hover:to-[#0ea5e9]"
+                >
+                  Confirm Loan
+                </Button>
+              </>
+            );
+          })()}
         </DialogFooter>
       </DialogContent>
     </Dialog>

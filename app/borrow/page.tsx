@@ -144,9 +144,9 @@ export default function Home() {
         <div className="container mx-auto px-4 py-8">
           {/* Live borrows ticker */}
           <div className="flex justify-center mb-6 overflow-hidden">
-            <div className="bg-[#111827]/50 backdrop-blur-sm rounded-full px-4 py-1.5 flex items-center gap-2">
+            <div className="bg-[#111827]/50 backdrop-blur-sm rounded-full px-6 py-1.5 flex items-center gap-2 max-w-full">
               <div className="w-3 h-3 rounded-full bg-gradient-to-r from-[#6366f1] to-[#22d3ee] animate-pulse"></div>
-              <div className="overflow-hidden relative w-64 h-5">
+              <div className="overflow-hidden relative w-72 sm:w-80 md:w-96 h-5">
                 <div
                   className="absolute transition-all duration-500 ease-in-out"
                   style={{ transform: `translateY(-${currentTransaction * 20}px)` }}
@@ -162,10 +162,38 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Main interface */}
+          {/* Main interface - Simple and elegant header */}
           <div className="max-w-2xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-medium">CS2 Skins</h2>
+            <div className="mb-6 text-center">
+              <h2 className="text-2xl font-medium text-white mb-3">CS2 Skin Loans</h2>
+              <p className="text-gray-400 text-sm mb-4 max-w-md mx-auto">
+                Get instant USDC loans using your CS2 skins as collateral
+              </p>
+              
+              <div className="inline-flex items-center gap-6 text-sm">
+                <div className="text-center">
+                  <p className="text-white font-medium">65%</p>
+                  <p className="text-gray-500 text-xs">Loan-to-Value</p>
+                </div>
+                
+                <div className="h-8 w-px bg-gray-800"></div>
+                
+                <div className="text-center">
+                  <p className="text-white font-medium">2.5%</p>
+                  <p className="text-gray-500 text-xs">Interest Rate</p>
+                </div>
+                
+                <div className="h-8 w-px bg-gray-800"></div>
+                
+                <div className="text-center">
+                  <p className="text-white font-medium">Instant</p>
+                  <p className="text-gray-500 text-xs">Processing</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Commented buttons - not needed for now
+            <div className="flex items-center justify-end mb-6">
               <div className="flex items-center gap-3">
                 <Button variant="secondary" size="sm" className="rounded-full bg-[#1f2937] hover:bg-[#1f2937]/80 px-5">
                   Lend
@@ -180,6 +208,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
+            */}
 
             {/* Main borrow interface - rain.fi style */}
             <div className="bg-[#0f1420] backdrop-blur-sm rounded-xl overflow-hidden border border-[#1f2937] mb-4 shadow-md max-w-md mx-auto">
@@ -549,6 +578,10 @@ export default function Home() {
         extractSkinInfo={extractSkinInfo}
         onConfirm={() => {
           console.log("Loan confirmed for", loanAmount, "USDC")
+          // Dans une implémentation réelle, ici on pourrait:
+          // 1. Mettre à jour l'état de l'utilisateur
+          // 2. Rediriger vers une page de confirmation
+          // 3. Mettre à jour le solde USDC de l'utilisateur
         }}
       />
     </>

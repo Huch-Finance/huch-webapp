@@ -163,7 +163,7 @@ export default function Profile() {
               <CardContent className="p-6">
                 <div className="flex flex-col items-center">
                   <div className="w-24 h-24 rounded-full bg-muted overflow-hidden mb-4">
-                    <img src="/avatars/logo-black.svg" alt="Profile" className="w-full h-full object-cover bg-black" />
+                    <img src={profile?.avatar || "/avatars/logo-black.svg"} alt="Profile" className="w-full h-full object-cover bg-black" />
                   </div>
 
                   <h2 className="text-xl font-bold mb-1">{profile?.username || "Anonymous"}</h2>

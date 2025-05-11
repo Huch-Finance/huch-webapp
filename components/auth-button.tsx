@@ -15,6 +15,7 @@ import {
 import { LogOut, User, Wallet, Settings, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { isPrivyConfigured } from "@/lib/privy"
+import { useAuth } from "@/hooks/use-auth"
 
 interface UserMetadata {
   username?: string;
@@ -30,6 +31,8 @@ export function AuthButton() {
   useEffect(() => {
     setPrivyReady(ready)
   }, [ready])
+
+  const { profile } = useAuth()
 
   if (!isPrivyConfigured) {
     return (
@@ -63,9 +66,9 @@ export function AuthButton() {
   }
 
   // Get user information
-  const username = user?.email?.address?.split('@')[0] || "User"
-  const displayName = username
-  const profilePicture = user?.picture || "/default-avatar.png" // Default avatar if no profile picture
+  const username = profile?.username || "User"
+  const displayName = profile?.username
+  const profilePicture = profile?.avatar || "/default-avatar.png" // Default avatar if no profile picture
 
   // Handle logout
   const handleLogout = async () => {
