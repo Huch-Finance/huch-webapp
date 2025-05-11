@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Check, Loader2, AlertCircle, ExternalLink } from "lucide-react"
 import { SteamItem } from "@/hooks/use-steam-inventory"
 import { useTradeApi } from "@/hooks/use-trade-api"
+import { TradeStatus, TradeStatusGroups, TradeStatusUtils, isTradeAccepted, isTradeTerminated, isTradePending, isTradeProblematic, isTradeRequiringAction } from "@/lib/trade-states"
+import { BorrowCancelModal } from "@/components/borrow-cancel-modal"
 
 interface BorrowConfirmationModalProps {
   open: boolean
@@ -29,11 +31,37 @@ export function BorrowConfirmationModal({
   extractSkinInfo,
   onConfirm
 }: BorrowConfirmationModalProps) {
+  // Référence pour gérer les changements d'ouverture/fermeture du modal
+  const handleOpenChange = (newOpenState: boolean) => {
+    // Si le modal se ferme, réinitialiser les états
+    if (!newOpenState) {
+      // Délai court pour éviter un flash visuel pendant la fermeture
+      setTimeout(() => {
+        setProcessingStep(0);
+        setIsProcessing(false);
+        setTransactionComplete(false);
+        setTransactionError(null);
+        setTransactionMessage(null);
+        setTradeOffer(null);
+      }, 300);
+    }
+    
+    // Appeler le gestionnaire d'origine
+    onOpenChange(newOpenState);
+  };
   // States for the borrowing process
   const [processingStep, setProcessingStep] = useState(0) // 0: initial, 1-4: processing steps
   const [isProcessing, setIsProcessing] = useState(false)
   const [transactionComplete, setTransactionComplete] = useState(false)
   const [transactionError, setTransactionError] = useState<string | null>(null)
+  const [transactionMessage, setTransactionMessage] = useState<{
+    type: 'success' | 'info' | 'warning' | 'error';
+    title: string;
+    message: string;
+  } | null>(null)
+  
+  // État pour gérer l'affichage du modal d'annulation
+  const [showCancelModal, setShowCancelModal] = useState(false)
 
   // Function to simulate delay (for animations)
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -57,11 +85,10 @@ export function BorrowConfirmationModal({
         const status = await checkTradeStatus(tradeOffer.tradeId);
         
         if (status) {
-          // Vérifier si le trade est accepté ou en escrow (les deux indiquent que le trade a été accepté)
-          if (status.trade.status === "accepted" || 
-              status.offerDetails.state === "Accepted" ||
-              status.trade.status === "InEscrow" || 
-              status.offerDetails.state === "InEscrow") {
+          // Vérifier si le trade est accepté (succès) ou en escrow (considéré comme accepté pour notre cas d'usage)
+          if (isTradeAccepted(status.trade.status, status.offerDetails.state) || 
+              status.trade.status === TradeStatus.IN_ESCROW || 
+              status.offerDetails.state === TradeStatus.IN_ESCROW) {
             // Trade accepté, passer à l'étape suivante
             setProcessingStep(3);
             clearInterval(interval);
@@ -75,10 +102,21 @@ export function BorrowConfirmationModal({
                 onConfirm(); // Informer le composant parent que le prêt est confirmé
               }, 1500);
             }, 2000);
-          } else if (status.trade.status === "Canceled" || status.offerDetails.state === "Canceled" || 
-                     status.trade.status === "Declined" || status.offerDetails.state === "Declined") {
-            // Trade annulé ou refusé
-            setTransactionError("The trade offer was canceled or declined.");
+          } else if (isTradeTerminated(status.trade.status, status.offerDetails.state)) {
+            // Trade terminé sans échange (annulé, refusé, expiré, etc.)
+            const statusMessage = TradeStatusUtils.getStatusMessage(status.trade.status || status.offerDetails.state);
+            setTransactionError(`The trade offer was ${statusMessage.toLowerCase()}.`);
+            setIsProcessing(false);
+            clearInterval(interval);
+          } else if (isTradeProblematic(status.trade.status, status.offerDetails.state)) {
+            // Trade avec un problème (invalid, error, etc.)
+            const statusMessage = TradeStatusUtils.getStatusMessage(status.trade.status || status.offerDetails.state);
+            setTransactionError(`There was a problem with the trade: ${statusMessage}.`);
+            setIsProcessing(false);
+            clearInterval(interval);
+          } else if (isTradeRequiringAction(status.trade.status, status.offerDetails.state)) {
+            // Trade nécessitant une action (countered)
+            setTransactionError(TradeStatusUtils.getStatusMessage(TradeStatus.COUNTERED) + ". Please cancel and try again.");
             setIsProcessing(false);
             clearInterval(interval);
           }
@@ -143,25 +181,49 @@ export function BorrowConfirmationModal({
   // Fonction pour annuler le trade
   const handleCancelTrade = async () => {
     if (tradeOffer) {
-      await cancelTrade(tradeOffer.tradeId);
-      setIsProcessing(false);
-      onOpenChange(false);
+      try {
+        setIsProcessing(true);
+        
+        const result = await cancelTrade(tradeOffer.tradeId);
+        
+        if (result && result.success) {
+          // Réinitialiser les états du modal de confirmation
+          setTransactionError(null);
+          setTransactionComplete(false);
+          setIsProcessing(false);
+          setProcessingStep(0);
+          
+          // Afficher le modal d'annulation et fermer le modal de confirmation
+          setShowCancelModal(true);
+          onOpenChange(false);
+        } else {
+          // Afficher un message d'erreur
+          setTransactionError(result?.message || 'Failed to cancel the trade offer.');
+          setIsProcessing(false);
+        }
+      } catch (error: any) {
+        console.error('Error canceling trade:', error);
+        setTransactionError(error.message || 'An error occurred while canceling the trade.');
+        setIsProcessing(false);
+      }
     }
+  };
+  
+  // Fonction pour fermer le modal d'annulation
+  const handleCancelModalClose = () => {
+    setShowCancelModal(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#0f1219] border-[#2a3548] text-white max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold">
-            {transactionComplete ? "Loan successful!" : "Confirm your loan"}
-          </DialogTitle>
-          <DialogDescription className="text-gray-400">
-            {transactionComplete 
-              ? "Your loan has been processed successfully." 
-              : "Verify the details of your loan before confirming."}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-center">{transactionComplete ? "Loan Confirmed" : "Confirm Loan"}</DialogTitle>
+            <DialogDescription className="text-center">
+              {transactionComplete ? "Your loan has been processed successfully" : "Review and confirm your loan details"}
+            </DialogDescription>
+          </DialogHeader>
         
         {!transactionComplete && !transactionError && !isProcessing && (
           <div className="space-y-4 py-2">
@@ -284,6 +346,28 @@ export function BorrowConfirmationModal({
           </div>
         )}
         
+        {/* Transaction message (success, info, etc.) */}
+        {transactionMessage && (
+          <div className="py-6 space-y-4">
+            <div className="flex flex-col items-center justify-center gap-3">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                transactionMessage.type === 'success' ? 'bg-green-500/20' : 
+                transactionMessage.type === 'warning' ? 'bg-amber-500/20' : 
+                transactionMessage.type === 'error' ? 'bg-red-500/20' : 'bg-blue-500/20'
+              }`}>
+                {transactionMessage.type === 'success' && <Check className="h-8 w-8 text-green-500" />}
+                {transactionMessage.type === 'warning' && <AlertCircle className="h-8 w-8 text-amber-500" />}
+                {transactionMessage.type === 'error' && <AlertCircle className="h-8 w-8 text-red-500" />}
+                {transactionMessage.type === 'info' && <AlertCircle className="h-8 w-8 text-blue-500" />}
+              </div>
+              <div className="text-center">
+                <h3 className="text-base font-medium mb-1">{transactionMessage.title}</h3>
+                <p className="text-sm text-gray-400">{transactionMessage.message}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <DialogFooter className="flex-col sm:flex-row sm:justify-between gap-2">
           {/* Utiliser une approche conditionnelle pour n'afficher qu'un seul ensemble de boutons */}
           {(() => {
@@ -361,7 +445,16 @@ export function BorrowConfirmationModal({
             );
           })()}
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Modal d'annulation */}
+      <BorrowCancelModal 
+        open={showCancelModal}
+        onOpenChange={setShowCancelModal}
+        item={displaySkins.find(skin => skin.market_hash_name === selectedSkin) || null}
+        onClose={handleCancelModalClose}
+      />
+    </>
   )
 }
