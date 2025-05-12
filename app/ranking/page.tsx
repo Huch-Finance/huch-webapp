@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Trophy, Medal, Award, ChevronUp } from "lucide-react"
 import { Footer } from "@/components/footer"
+import { useAuth } from "@/hooks/use-auth"
 
 // Mocked leaderboard data
 const LEADERBOARD = [
@@ -50,7 +51,7 @@ const LEADERBOARD = [
 
 // Current user data (mocked)
 const CURRENT_USER = {
-  username: "HuchFan.",
+  username: "username",
   points: 320,
   rank: 14,
   badge: "Bronze",
@@ -60,6 +61,7 @@ const CURRENT_USER = {
 
 export default function Classement() {
   const [activeTab, setActiveTab] = useState("top10")
+  const { profile } = useAuth();
 
   const getBadgeColor = (badge: string) => {
     switch (badge) {
@@ -134,13 +136,13 @@ export default function Classement() {
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0">
                       <img
-                        src="/avatars/logo-black.svg"
-                        alt={CURRENT_USER.username}
+                        src={profile?.avatar}
+                        alt={profile?.username}
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div>
-                      <h3 className="font-bold">{CURRENT_USER.username}</h3>
+                      <h3 className="font-bold">{profile?.username}</h3>
                       <div className="flex items-center gap-1">
                         {getBadgeIcon(CURRENT_USER.badge)}
                         <span className={`text-sm ${getBadgeColor(CURRENT_USER.badge)}`}>{CURRENT_USER.badge}</span>
