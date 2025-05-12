@@ -79,8 +79,20 @@ export default function Home() {
     }
   }
   
+  // Déboguer l'inventaire
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log("Statut d'authentification:", isAuthenticated);
+      console.log("Profil:", profile);
+      console.log("Inventaire:", inventory);
+      console.log("Erreur d'inventaire:", inventoryError);
+      console.log("Chargement d'inventaire:", inventoryLoading);
+    }
+  }, [isAuthenticated, profile, inventory, inventoryError, inventoryLoading]);
+  
   // Utiliser l'inventaire réel si l'utilisateur est connecté, sinon utiliser les mocks
-  const displaySkins = isAuthenticated && inventory.length > 0 ? inventory : mockSkins
+  // Afficher un message si l'inventaire est vide mais que l'utilisateur est connecté
+  const displaySkins = isAuthenticated && inventory && inventory.length > 0 ? inventory : mockSkins
   
   // Calcul du montant du prêt en fonction du pourcentage choisi
   useEffect(() => {
@@ -190,7 +202,7 @@ export default function Home() {
           {/* Main interface - Simple and elegant header */}
           <div className="max-w-2xl mx-auto">
             <div className="mb-6 text-center">
-              <h2 className="text-2xl font-medium text-white mb-3">CS2 Skin Loans</h2>
+              <h2 className="text-2xl font-medium text-white mb-3">Loan Now</h2>
               <p className="text-gray-400 text-sm mb-4 max-w-md mx-auto">
                 Get instant USDC loans using your CS2 skins as collateral
               </p>
@@ -199,13 +211,6 @@ export default function Home() {
                 <div className="text-center">
                   <p className="text-white font-medium">65%</p>
                   <p className="text-gray-500 text-xs">Loan-to-Value</p>
-                </div>
-                
-                <div className="h-8 w-px bg-gray-800"></div>
-                
-                <div className="text-center">
-                  <p className="text-white font-medium">2.5%</p>
-                  <p className="text-gray-500 text-xs">Interest Rate</p>
                 </div>
                 
                 <div className="h-8 w-px bg-gray-800"></div>
@@ -424,10 +429,6 @@ export default function Home() {
                     
                     {/* Informations sur le prêt */}
                     <div className="bg-[#1f2937] rounded-lg p-2 mt-3">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-gray-400">Interest rate</span>
-                        <span className="text-xs text-white">2.5% / {loanDuration} days</span>
-                      </div>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-xs text-gray-400">Total to repay</span>
                         <span className="text-xs text-white">${(loanAmount * (1 + 0.025 * loanDuration / 7)).toFixed(2)}</span>
