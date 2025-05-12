@@ -47,10 +47,21 @@ export default function Home() {
   const { isAuthenticated, isLoading: privyLoading, login, logout, profile, connectWallet } = useAuth()
   
   // Récupérer l'inventaire Steam de l'utilisateur
-  const { inventory, isLoading: inventoryLoading, error: inventoryError, lastUpdated, refreshInventory } = useSteamInventory()
+  const { inventory, isLoading: inventoryLoading, error: inventoryError, lastUpdated, refreshInventory, inventoryFetched } = useSteamInventory()
   
   // État de chargement global (Privy + données utilisateur)
-  const isLoading = privyLoading || inventoryLoading
+  const isLoading = privyLoading || inventoryLoading;
+  
+  // Afficher des logs pour déboguer
+  useEffect(() => {
+    console.log("Page borrow - États:", {
+      privyLoading,
+      inventoryLoading,
+      isAuthenticated,
+      inventoryFetched,
+      inventoryLength: inventory?.length || 0
+    });
+  }, [privyLoading, inventoryLoading, isAuthenticated, inventoryFetched, inventory]);
   
   // Mock CS2 skins pour l'affichage d'exemple quand l'utilisateur n'est pas connecté
   const mockSkins: SteamItem[] = [
@@ -79,20 +90,31 @@ export default function Home() {
     }
   }
   
-  // Déboguer l'inventaire
-  useEffect(() => {
-    if (isAuthenticated) {
-      console.log("Statut d'authentification:", isAuthenticated);
-      console.log("Profil:", profile);
-      console.log("Inventaire:", inventory);
-      console.log("Erreur d'inventaire:", inventoryError);
-      console.log("Chargement d'inventaire:", inventoryLoading);
-    }
-  }, [isAuthenticated, profile, inventory, inventoryError, inventoryLoading]);
+  // Déterminer les skins à afficher
+  // Utiliser directement l'inventaire réel si disponible, sinon utiliser les mocks
+  const [displaySkins, setDisplaySkins] = useState<SteamItem[]>(mockSkins);
   
-  // Utiliser l'inventaire réel si l'utilisateur est connecté, sinon utiliser les mocks
-  // Afficher un message si l'inventaire est vide mais que l'utilisateur est connecté
-  const displaySkins = isAuthenticated && inventory && inventory.length > 0 ? inventory : mockSkins
+  // Mettre à jour les skins à afficher lorsque l'inventaire change
+  useEffect(() => {
+    console.log("Effect de mise à jour des displaySkins - États:", {
+      isAuthenticated,
+      inventoryFetched,
+      inventoryLength: inventory?.length || 0,
+      currentDisplaySkins: displaySkins === mockSkins ? "mockSkins" : "realInventory"
+    });
+    
+    if (isAuthenticated && inventory && Array.isArray(inventory) && inventory.length > 0) {
+      console.log("Utilisation de l'inventaire réel avec", inventory.length, "skins");
+      console.log("Premier item de l'inventaire:", inventory[0]);
+      setDisplaySkins(inventory);
+    } else if (isAuthenticated && inventoryFetched) {
+      console.log("Inventaire récupéré mais vide ou invalide, utilisation des mocks");
+      setDisplaySkins(mockSkins);
+    } else if (!isAuthenticated) {
+      console.log("Utilisateur non authentifié, utilisation des mocks");
+      setDisplaySkins(mockSkins);
+    }
+  }, [isAuthenticated, inventory, inventoryFetched, mockSkins]);
   
   // Calcul du montant du prêt en fonction du pourcentage choisi
   useEffect(() => {
@@ -120,9 +142,19 @@ export default function Home() {
 
   const [currentTransaction, setCurrentTransaction] = useState(0)
 
-  if (!isLoading && isAuthenticated) {
-    console.log(profile)
-  }
+  // Rafraîchir l'inventaire manuellement si nécessaire
+  const handleRefreshInventory = () => {
+    console.log("Rafraîchissement manuel de l'inventaire");
+    refreshInventory();
+  };
+  
+  // Tenter de récupérer l'inventaire si l'utilisateur est authentifié mais que l'inventaire n'a pas été récupéré
+  useEffect(() => {
+    if (!privyLoading && isAuthenticated && !inventoryFetched && !inventoryLoading) {
+      console.log("Authentifié mais inventaire non récupéré, tentative de récupération...");
+      refreshInventory();
+    }
+  }, [isAuthenticated, inventoryFetched, privyLoading, inventoryLoading, refreshInventory]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -257,15 +289,26 @@ export default function Home() {
                     {/* Vérifier si l'utilisateur est connecté et a un Steam ID et un lien d'échange */}
                     {isAuthenticated && profile?.steamId && profile?.tradeLink ? (
                       /* L'utilisateur a un Steam ID et un lien d'échange, afficher le sélecteur de skins */
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-[#1f2937] border-[#2a3548] hover:bg-[#2a3548] rounded-full flex items-center gap-1 h-6 px-2 text-xs"
-                        onClick={() => setSkinSelectorOpen(true)}
-                      >
-                        <span>Select skin</span>
-                        <ChevronDown className="h-3 w-3" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-[#1f2937] border-[#2a3548] hover:bg-[#2a3548] rounded-full flex items-center gap-1 h-6 px-2 text-xs"
+                          onClick={() => setSkinSelectorOpen(true)}
+                        >
+                          {selectedSkin ? "Change skin" : "Select skin"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 rounded-full hover:bg-[#2a3548] flex items-center justify-center"
+                          onClick={handleRefreshInventory}
+                          disabled={inventoryLoading}
+                          title="Refresh inventory"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                        </Button>
+                      </div>
                     ) : isAuthenticated ? (
                       /* L'utilisateur est connecté mais n'a pas de Steam ID ou de lien d'échange */
                       <SteamAuthButton />

@@ -29,6 +29,11 @@ export function Navbar() {
             <Link href="/borrow" className="text-gray-300 hover:text-[#5D5FEF] transition-colors">
               Borrow
             </Link>
+            {isAuthenticated && (
+              <Link href="/dashboard" className="text-gray-300 hover:text-[#5D5FEF] transition-colors">
+                Dashboard
+              </Link>
+            )}
             <Link href="/ranking" className="text-gray-300 hover:text-[#5D5FEF] transition-colors">
               Ranking
             </Link>
@@ -56,6 +61,16 @@ export function Navbar() {
               <Trophy size={18} />
               Borrow
             </Link>
+            {isAuthenticated && (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 text-gray-300 hover:text-[#5D5FEF] py-2 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <Home size={18} />
+                Dashboard
+              </Link>
+            )}
             <Link
               href="/ranking"
               className="flex items-center gap-2 text-gray-300 hover:text-[#5D5FEF] py-2 transition-colors"
