@@ -31,7 +31,7 @@ export function BorrowCancelModal({
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] bg-[#0f1420] border border-[#1f2937]">
         <DialogHeader>
           <DialogTitle className="text-center">Trade Canceled</DialogTitle>
           <DialogDescription className="text-center">
@@ -81,7 +81,7 @@ export function BorrowCancelModal({
           <Button
             variant="outline"
             onClick={handleClose}
-            className="w-full sm:w-auto border-[#2a3548] text-gray-400 hover:bg-[#1f2937] hover:text-white"
+            className="w-full sm:w-auto border-[#1f2937] bg-[#1f2937] text-gray-400 hover:bg-[#2a3548] hover:text-white"
             disabled={isLoading}
           >
             {isLoading ? (

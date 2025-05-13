@@ -172,6 +172,54 @@ export default function Home() {
   }, [liveTransactions.length])
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterRarity, setFilterRarity] = useState<string>('all');
+  const [filterWear, setFilterWear] = useState<string>('all');
+  const [filterPriceMin, setFilterPriceMin] = useState<number>(50);
+  const [filterPriceMax, setFilterPriceMax] = useState<number>(10000);
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  
+  // Fonction de filtrage réutilisable pour les deux vues
+  const filterSkins = (skin: any) => {
+    // Filtrer par nom
+    const nameMatch = skin.market_hash_name.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Filtrer par rareté
+    const rarityMatch = filterRarity === 'all' ? true : 
+      skin.market_hash_name.includes(filterRarity);
+    
+    // Filtrer par usure
+    const { wear } = extractSkinInfo(skin.market_hash_name);
+    const wearMap = { 'Factory New': 'FN', 'Minimal Wear': 'MW', 'Field-Tested': 'FT', 'Well-Worn': 'WW', 'Battle-Scarred': 'BS' };
+    const wearMatch = filterWear === 'all' ? true : 
+      wear === wearMap[filterWear as keyof typeof wearMap];
+    
+    // Filtrer par prix
+    const priceMatch = skin.basePrice >= filterPriceMin && skin.basePrice <= filterPriceMax;
+    
+    return nameMatch && rarityMatch && wearMatch && priceMatch;
+  };
+  
+  // Options de rareté pour le filtre
+  const rarityOptions = [
+    { value: 'all', label: 'All Rarities' },
+    { value: 'Consumer', label: 'Consumer', color: 'rgb(176, 195, 217)' },
+    { value: 'Industrial', label: 'Industrial', color: 'rgb(94, 152, 217)' },
+    { value: 'Mil-Spec', label: 'Mil-Spec', color: 'rgb(75, 105, 255)' },
+    { value: 'Restricted', label: 'Restricted', color: 'rgb(136, 71, 255)' },
+    { value: 'Classified', label: 'Classified', color: 'rgb(211, 44, 230)' },
+    { value: 'Covert', label: 'Covert', color: 'rgb(235, 75, 75)' },
+    { value: 'Contraband', label: 'Contraband', color: 'rgb(228, 174, 57)' },
+  ];
+  
+  // Options d'usure pour le filtre
+  const wearOptions = [
+    { value: 'all', label: 'All Wear' },
+    { value: 'Factory New', label: 'Factory New' },
+    { value: 'Minimal Wear', label: 'Minimal Wear' },
+    { value: 'Field-Tested', label: 'Field-Tested' },
+    { value: 'Well-Worn', label: 'Well-Worn' },
+    { value: 'Battle-Scarred', label: 'Battle-Scarred' },
+  ];
 
   return (
     <>
@@ -372,7 +420,6 @@ export default function Home() {
                   <h3 className="text-xs font-medium text-gray-400">You borrow</h3>
                   <div className="flex items-center gap-1 bg-[#1f2937] px-2 py-1 rounded-full">
                     <span className="text-xs">USDC</span>
-                    <ChevronDown className="h-3 w-3" />
                   </div>
                 </div>
                 
@@ -578,23 +625,115 @@ export default function Home() {
                 </div>
               </div>
               <div className="p-2 border-b border-[#2a3548]">
-                <div className="relative">
-                  <Search className="h-3 w-3 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Search skins..."
-                    className="w-full bg-[#161e2e] border border-[#2a3548] rounded-md py-1 pl-7 pr-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
-                    autoFocus
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+                <div className="flex gap-2 items-center">
+                  <div className="relative flex-grow">
+                    <Search className="h-3 w-3 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Search skins..."
+                      className="w-full bg-[#161e2e] border border-[#2a3548] rounded-md py-1 pl-7 pr-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
+                      autoFocus
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="bg-[#1f2937] border-[#2a3548] hover:bg-[#2a3548] h-6 px-2 text-xs flex items-center gap-1"
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
+                    <Filter className="h-3 w-3" />
+                    <span>Filters</span>
+                  </Button>
                 </div>
+                
+                {/* Filter panel */}
+                {showFilters && (
+                  <div className="mt-2 p-3 bg-[#161e2e] border border-[#2a3548] rounded-md space-y-3 animate-fadeIn">
+                    {/* Rarity filter */}
+                    <div className="space-y-1">
+                      <label className="text-xs text-gray-400">Rarity</label>
+                      <select
+                        className="w-full bg-[#1f2937] border border-[#2a3548] rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
+                        value={filterRarity}
+                        onChange={(e) => setFilterRarity(e.target.value)}
+                      >
+                        {rarityOptions.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Wear filter */}
+                    <div className="space-y-1">
+                      <label className="text-xs text-gray-400">Wear</label>
+                      <select
+                        className="w-full bg-[#1f2937] border border-[#2a3548] rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
+                        value={filterWear}
+                        onChange={(e) => setFilterWear(e.target.value)}
+                      >
+                        {wearOptions.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Price filter */}
+                    <div className="space-y-1">
+                      <label className="text-xs text-gray-400">Price Range ($50 - $10,000)</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="50"
+                          max="10000"
+                          value={filterPriceMin}
+                          onChange={(e) => setFilterPriceMin(Math.max(50, Math.min(filterPriceMax, parseInt(e.target.value) || 50)))}
+                          className="w-full bg-[#1f2937] border border-[#2a3548] rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
+                        />
+                        <span className="text-xs text-gray-400">to</span>
+                        <input
+                          type="number"
+                          min="50"
+                          max="10000"
+                          value={filterPriceMax}
+                          onChange={(e) => setFilterPriceMax(Math.max(filterPriceMin, Math.min(10000, parseInt(e.target.value) || 10000)))}
+                          className="w-full bg-[#1f2937] border border-[#2a3548] rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Apply filters button */}
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        className="bg-[#6366f1] hover:bg-[#5355d1] text-xs py-1 px-3"
+                        onClick={() => setShowFilters(false)}
+                      >
+                        Apply Filters
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="p-2 max-h-[500px] overflow-y-auto">
+                {/* Message si aucun skin ne correspond aux critères */}
+                {displaySkins.filter(filterSkins).length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                    <div className="text-3xl mb-3">😢</div>
+                    <h3 className="text-sm font-medium mb-1">No matching skins found</h3>
+                    <p className="text-xs text-gray-400">We couldn't find any skins matching your criteria. Try adjusting your filters or price range ($50-$10,000).</p>
+                  </div>
+                )}
+                
                 {/* Vue en liste */}
-                {!gridViewActive && (
-                  <div className="space-y-1 max-w-md mx-auto">
+                {!gridViewActive && displaySkins.filter(filterSkins).length > 0 && (
+                  <div className="space-y-1 w-full">
                     {displaySkins
-                      .filter(skin => skin.market_hash_name.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .filter(filterSkins)
                       .sort((a, b) => a.basePrice - b.basePrice)
                       .map((skin) => {
                         // Extraire le nom et l'usure du skin
@@ -609,31 +748,38 @@ export default function Home() {
                         return (
                           <div 
                             key={skin.id} 
-                            className={`flex items-center gap-3 p-2 hover:bg-[#2a3548] transition-colors rounded-md cursor-pointer ${selectedSkin === skin.id ? 'bg-[#2a3548]' : ''}`}
+                            className={`flex items-center gap-4 p-3 hover:bg-[#2a3548] transition-colors rounded-md cursor-pointer ${selectedSkin === skin.id ? 'bg-[#2a3548] border border-[#3a4558]' : 'border border-transparent'}`}
                             onClick={() => {
                               setSelectedSkin(skin.id);
                               setSkinSelectorOpen(false);
                             }}
                           >
-                            <div className="relative w-10 h-10 overflow-hidden rounded-md flex-shrink-0">
+                            <div className="relative w-16 h-16 overflow-hidden rounded-md flex-shrink-0 bg-[#161e2e]">
                               <Image
                                 src={skin.imageUrl}
                                 alt={name}
                                 fill
-                                className="object-cover"
+                                className="object-contain p-1 hover:scale-105 transition-transform"
                               />
                             </div>
                             <div className="flex-grow min-w-0">
                               <div className="flex justify-between items-start">
-                                <h4 className="text-xs font-medium truncate">{name}</h4>
-                                <span className="text-xs font-medium">${skin.basePrice.toFixed(2)}</span>
+                                <h4 className="text-sm font-medium truncate">{name}</h4>
+                                <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(2)}</span>
                               </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className={`text-[10px] ${
-                                  rarity === "Covert" ? "text-red-400" : 
-                                  rarity === "Contraband" ? "text-amber-400" : 
-                                  rarity === "★" ? "text-yellow-400" : "text-gray-400"
-                                }`}>{rarity || 'Normal'}</span>
+                              <div className="flex items-center gap-1 mt-1.5">
+                                <span style={{
+                                  fontSize: '10px',
+                                  color: 
+                                    rarity === 'Covert' ? 'rgb(235, 75, 75)' :
+                                    rarity === 'Contraband' ? 'rgb(228, 174, 57)' :
+                                    rarity === 'Consumer' ? 'rgb(176, 195, 217)' :
+                                    rarity === 'Industrial' ? 'rgb(94, 152, 217)' :
+                                    rarity === 'Mil-Spec' ? 'rgb(75, 105, 255)' :
+                                    rarity === 'Restricted' ? 'rgb(136, 71, 255)' :
+                                    rarity === 'Classified' ? 'rgb(211, 44, 230)' :
+                                    rarity === '★' ? 'rgb(228, 174, 57)' : 'rgb(176, 195, 217)'
+                                }}>{rarity || 'Normal'}</span>
                                 <span className="text-[10px] text-gray-400">•</span>
                                 <span className="text-[10px] text-gray-400">{wear}</span>
                               </div>
@@ -645,10 +791,10 @@ export default function Home() {
                 )}
                 
                 {/* Vue en grille */}
-                {gridViewActive && (
+                {gridViewActive && displaySkins.filter(filterSkins).length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {displaySkins
-                      .filter(skin => skin.market_hash_name.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .filter(filterSkins)
                       .sort((a, b) => a.basePrice - b.basePrice)
                       .map((skin) => {
                         // Extraire le nom et l'usure du skin
@@ -681,11 +827,18 @@ export default function Home() {
                               <h4 className="text-xs font-medium truncate">{name}</h4>
                               <div className="flex justify-between items-center mt-1">
                                 <div className="flex items-center gap-1">
-                                  <span className={`text-[10px] ${
-                                    rarity === "Covert" ? "text-red-400" : 
-                                    rarity === "Contraband" ? "text-amber-400" : 
-                                    rarity === "★" ? "text-yellow-400" : "text-gray-400"
-                                  }`}>{rarity || 'Normal'}</span>
+                                  <span style={{
+                                    fontSize: '10px',
+                                    color: 
+                                      rarity === 'Covert' ? 'rgb(235, 75, 75)' :
+                                      rarity === 'Contraband' ? 'rgb(228, 174, 57)' :
+                                      rarity === 'Consumer' ? 'rgb(176, 195, 217)' :
+                                      rarity === 'Industrial' ? 'rgb(94, 152, 217)' :
+                                      rarity === 'Mil-Spec' ? 'rgb(75, 105, 255)' :
+                                      rarity === 'Restricted' ? 'rgb(136, 71, 255)' :
+                                      rarity === 'Classified' ? 'rgb(211, 44, 230)' :
+                                      rarity === '★' ? 'rgb(228, 174, 57)' : 'rgb(176, 195, 217)'
+                                  }}>{rarity || 'Normal'}</span>
                                   <span className="text-[10px] text-gray-400">•</span>
                                   <span className="text-[10px] text-gray-400">{wear}</span>
                                 </div>

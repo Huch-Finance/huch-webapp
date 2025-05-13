@@ -217,7 +217,7 @@ export function BorrowConfirmationModal({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] bg-[#0f1420] border border-[#1f2937]">
           <DialogHeader>
             <DialogTitle className="text-center">{transactionComplete ? "Loan Confirmed" : "Confirm Loan"}</DialogTitle>
             <DialogDescription className="text-center">
@@ -226,9 +226,9 @@ export function BorrowConfirmationModal({
           </DialogHeader>
         
         {!transactionComplete && !transactionError && !isProcessing && (
-          <div className="space-y-4 py-2">
+          <div className="space-y-4">
             {/* Détails du skin */}
-            <div className="bg-[#1f2937] rounded-lg p-3 flex items-center gap-3">
+            <div className="bg-[#1f2937] border border-[#1f2937] rounded-lg p-3 flex items-center gap-3">
               <div className="w-12 h-12 rounded-md overflow-hidden relative">
                 <Image 
                   src={displaySkins.find(skin => skin.id === selectedSkin)?.imageUrl || ''}
@@ -248,7 +248,7 @@ export function BorrowConfirmationModal({
             </div>
             
             {/* Détails du prêt */}
-            <div className="bg-[#1f2937] rounded-lg p-3 space-y-2">
+            <div className="bg-[#1f2937] border border-[#1f2937] rounded-lg p-3 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Loan amount</span>
                 <span className="text-sm font-medium">${loanAmount.toFixed(2)} USDC</span>
@@ -259,7 +259,7 @@ export function BorrowConfirmationModal({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Interest</span>
-                <span className="text-sm font-medium">8%</span>
+                <span className="text-sm font-medium">2.5%</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Due date</span>
@@ -298,7 +298,7 @@ export function BorrowConfirmationModal({
               )}
             </div>
             
-            <div className="w-full bg-[#1f2937] h-1 rounded-full overflow-hidden">
+            <div className="w-full bg-[#1f2937] border border-[#1f2937] h-1 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-[#6366f1] to-[#22d3ee] transition-all duration-300" 
                 style={{ width: `${(processingStep / 4) * 100}%` }}
@@ -431,7 +431,7 @@ export function BorrowConfirmationModal({
                 <Button 
                   variant="outline" 
                   onClick={() => onOpenChange(false)} 
-                  className="border-[#2a3548] text-gray-400 hover:bg-[#1f2937] hover:text-white"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-border-[#2a3548] text-gray-400 hover:bg-[#1f2937] hover:text-white"
                 >
                   Cancel
                 </Button>
@@ -447,6 +447,8 @@ export function BorrowConfirmationModal({
         </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      
       
       {/* Modal d'annulation */}
       <BorrowCancelModal 
