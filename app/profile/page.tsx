@@ -234,11 +234,11 @@ export default function Profile() {
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
                                 <CreditCard className="text-[#5D5FEF]" />
-                                <span className="font-medium">SOL</span>
+                                <span className="font-medium">USD</span>
                               </div>
-                              <div className="text-xs text-gray-400">Solana</div>
+                              <div className="text-xs text-gray-400">USDC</div>
                             </div>
-                            <div className="text-2xl font-bold">{solBalance.toFixed(4)} SOL</div>
+                            <div className="text-2xl font-bold">{solBalance.toFixed(4)} USDC</div>
                           </CardContent>
                         </Card>
 

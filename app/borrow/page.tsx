@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Bell, ChevronDown, Filter, RotateCcw, Search, Settings, ArrowRight, Clock, AlertCircle, Check, Loader2 } from "lucide-react"
+import { Bell, ChevronDown, Filter, RotateCcw, Search, Settings, ArrowRight, Clock, AlertCircle, Check, Loader2, LayoutGrid, List } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { BorrowConfirmationModal } from "@/components/borrow-confirmation-modal"
 import { LoadingOverlay } from "@/components/loading-overlay"
@@ -18,27 +18,34 @@ export default function Home() {
   const [currency, setCurrency] = useState("USDC")
   const [selectedSkin, setSelectedSkin] = useState<string | null>(null)
   const [skinSelectorOpen, setSkinSelectorOpen] = useState(false)
+  const [gridViewActive, setGridViewActive] = useState(false)
   const [loanPercentage, setLoanPercentage] = useState(100)
   const [loanAmount, setLoanAmount] = useState(0)
   const [loanDuration, setLoanDuration] = useState(7) // Durée du prêt en jours
-  const loanDurationOptions = [3, 7, 14, 30] // Options de durée en jours
+  const loanDurationOptions = [14, 25, 30, 35] // Options de durée en jours
   const [howItWorksOpen, setHowItWorksOpen] = useState(false) // État pour le menu déroulant "How it works"
   
   // État pour le modal de confirmation d'emprunt
   const [borrowModalOpen, setBorrowModalOpen] = useState(false)
+  // État pour suivre si un emprunt a été confirmé avec succès
+  const [borrowSuccessful, setBorrowSuccessful] = useState(false)
   
   // Gestionnaire pour la fermeture du modal de confirmation
   const handleConfirmationOpenChange = (open: boolean) => {
     setBorrowModalOpen(open);
     
-    // Si le modal se ferme, réinitialiser l'état de sélection pour permettre un nouveau prêt
+    // Si le modal se ferme, réinitialiser uniquement si l'emprunt a été confirmé avec succès
     if (!open) {
       // Délai court pour éviter des changements visuels pendant la fermeture
       setTimeout(() => {
-        // Ne pas réinitialiser selectedSkin ici pour permettre à l'utilisateur de voir son choix précédent
-        // mais réinitialiser d'autres états si nécessaire
-        setLoanAmount(0);
-        setLoanDuration(7);
+        if (borrowSuccessful) {
+          // Ne pas réinitialiser selectedSkin ici pour permettre à l'utilisateur de voir son choix précédent
+          // mais réinitialiser d'autres états si nécessaire
+          setLoanAmount(0);
+          setLoanDuration(7);
+          // Réinitialiser l'état de succès pour le prochain emprunt
+          setBorrowSuccessful(false);
+        }
       }, 300);
     }
   }
@@ -164,6 +171,8 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [liveTransactions.length])
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   return (
     <>
       <Navbar />
@@ -215,9 +224,9 @@ export default function Home() {
           <div className="flex justify-center mb-6 overflow-hidden">
             <div className="bg-[#111827]/50 backdrop-blur-sm rounded-full px-6 py-1.5 flex items-center gap-2 max-w-full">
               <div className="w-3 h-3 rounded-full bg-gradient-to-r from-[#6366f1] to-[#22d3ee] animate-pulse"></div>
-              <div className="overflow-hidden relative w-72 sm:w-80 md:w-96 h-5">
+              <div className="overflow-hidden w-auto h-5">
                 <div
-                  className="absolute transition-all duration-500 ease-in-out"
+                  className="transition-all duration-500 ease-in-out"
                   style={{ transform: `translateY(-${currentTransaction * 20}px)` }}
                 >
                   {liveTransactions.map((tx, index) => (
@@ -235,23 +244,6 @@ export default function Home() {
           <div className="max-w-2xl mx-auto">
             <div className="mb-6 text-center">
               <h2 className="text-2xl font-medium text-white mb-3">Loan Now</h2>
-              <p className="text-gray-400 text-sm mb-4 max-w-md mx-auto">
-                Get instant USDC loans using your CS2 skins as collateral
-              </p>
-              
-              <div className="inline-flex items-center gap-6 text-sm">
-                <div className="text-center">
-                  <p className="text-white font-medium">65%</p>
-                  <p className="text-gray-500 text-xs">Loan-to-Value</p>
-                </div>
-                
-                <div className="h-8 w-px bg-gray-800"></div>
-                
-                <div className="text-center">
-                  <p className="text-white font-medium">Instant</p>
-                  <p className="text-gray-500 text-xs">Processing</p>
-                </div>
-              </div>
             </div>
             
             {/* Commented buttons - not needed for now
@@ -273,7 +265,7 @@ export default function Home() {
             */}
 
             {/* Main borrow interface - rain.fi style */}
-            <div className="bg-[#0f1420] backdrop-blur-sm rounded-xl overflow-hidden border border-[#1f2937] mb-4 shadow-md max-w-md mx-auto">
+            <div className="bg-[#0f1420] backdrop-blur-sm rounded-xl overflow-hidden border border-[#1f2937] mb-4 shadow-md w-full max-w-[95vw] sm:max-w-[80vw] md:max-w-[500px] lg:max-w-md mx-auto">
               {/* Top section with title */}
               <div className="text-center border-b border-[#1f2937] py-2">
                 <h2 className="text-sm font-medium text-white">Borrow</h2>
@@ -288,7 +280,7 @@ export default function Home() {
                   <div className="relative">
                     {/* Vérifier si l'utilisateur est connecté et a un Steam ID et un lien d'échange */}
                     {isAuthenticated && profile?.steamId && profile?.tradeLink ? (
-                      /* L'utilisateur a un Steam ID et un lien d'échange, afficher le sélecteur de skins */
+                      /* L'utilisaeur a un Steam ID et un lien d'échange, afficher le sélecteur de skins */
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
@@ -297,16 +289,6 @@ export default function Home() {
                           onClick={() => setSkinSelectorOpen(true)}
                         >
                           {selectedSkin ? "Change skin" : "Select skin"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 rounded-full hover:bg-[#2a3548] flex items-center justify-center"
-                          onClick={handleRefreshInventory}
-                          disabled={inventoryLoading}
-                          title="Refresh inventory"
-                        >
-                          <RotateCcw className="h-3 w-3" />
                         </Button>
                       </div>
                     ) : isAuthenticated ? (
@@ -556,21 +538,44 @@ export default function Home() {
         {/* Skin selector modal */}
         {skinSelectorOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSkinSelectorOpen(false)}>
-            <div className="bg-[#1f2937] border border-[#2a3548] rounded-lg shadow-lg overflow-hidden w-[300px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+            <div className={`bg-[#1f2937] border border-[#2a3548] rounded-lg shadow-lg overflow-hidden w-full max-w-[95vw] ${gridViewActive ? 'md:max-w-[800px]' : 'md:max-w-[500px]'}`} onClick={(e) => e.stopPropagation()}>
               <div className="flex justify-between items-center p-2 border-b border-[#2a3548]">
                 <h3 className="text-xs font-medium">Select a skin</h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0 rounded-full hover:bg-[#2a3548]" 
-                  onClick={() => setSkinSelectorOpen(false)}
-                >
-                  <span className="sr-only">Close</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 rounded-full hover:bg-[#2a3548] flex items-center justify-center"
+                    onClick={() => setGridViewActive(!gridViewActive)}
+                    title={gridViewActive ? "List view" : "Grid view"}
+                  >
+                    {gridViewActive ? 
+                      <List className="h-3 w-3" /> : 
+                      <LayoutGrid className="h-3 w-3" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 rounded-full hover:bg-[#2a3548] flex items-center justify-center"
+                    onClick={handleRefreshInventory}
+                    disabled={inventoryLoading}
+                    title="Refresh inventory"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 w-6 p-0 rounded-full hover:bg-[#2a3548]" 
+                    onClick={() => setSkinSelectorOpen(false)}
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </Button>
+                </div>
               </div>
               <div className="p-2 border-b border-[#2a3548]">
                 <div className="relative">
@@ -580,55 +585,118 @@ export default function Home() {
                     placeholder="Search skins..."
                     className="w-full bg-[#161e2e] border border-[#2a3548] rounded-md py-1 pl-7 pr-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
                     autoFocus
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
               </div>
-              <div className="p-2 max-h-[300px] overflow-y-auto">
-                {displaySkins.map((skin) => {
-                  // Extraire le nom et l'usure du skin
-                  const { name, wear } = extractSkinInfo(skin.market_hash_name)
-                  
-                  // Déterminer la rareté (pour la couleur)
-                  const rarity = skin.rarity || 
-                    (skin.market_hash_name.includes('★') ? '★' : 
-                    skin.market_hash_name.includes('Covert') ? 'Covert' : 
-                    skin.market_hash_name.includes('Contraband') ? 'Contraband' : '')
-                  
-                  return (
-                    <div 
-                      key={skin.id} 
-                      className={`flex items-center gap-3 p-2 hover:bg-[#2a3548] transition-colors rounded-md cursor-pointer ${selectedSkin === skin.id ? 'bg-[#2a3548]' : ''}`}
-                      onClick={() => {
-                        setSelectedSkin(skin.id);
-                        setSkinSelectorOpen(false);
-                      }}
-                    >
-                      <div className="relative w-10 h-10 overflow-hidden rounded-md flex-shrink-0">
-                        <Image
-                          src={skin.imageUrl}
-                          alt={name}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="flex-grow min-w-0">
-                        <div className="flex justify-between items-start">
-                          <h4 className="text-xs font-medium truncate">{name}</h4>
-                          <span className="text-xs font-medium">${skin.basePrice.toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span className={`text-[10px] ${
-                            rarity === "Covert" ? "text-red-400" : 
-                            rarity === "Contraband" ? "text-amber-400" : 
-                            rarity === "★" ? "text-yellow-400" : "text-gray-400"
-                          }`}>{rarity || 'Normal'}</span>
-                          <span className="text-[10px] text-gray-400">•</span>
-                          <span className="text-[10px] text-gray-400">{wear}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="p-2 max-h-[500px] overflow-y-auto">
+                {/* Vue en liste */}
+                {!gridViewActive && (
+                  <div className="space-y-1 max-w-md mx-auto">
+                    {displaySkins
+                      .filter(skin => skin.market_hash_name.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .sort((a, b) => a.basePrice - b.basePrice)
+                      .map((skin) => {
+                        // Extraire le nom et l'usure du skin
+                        const { name, wear } = extractSkinInfo(skin.market_hash_name)
+                        
+                        // Déterminer la rareté (pour la couleur)
+                        const rarity = skin.rarity || 
+                          (skin.market_hash_name.includes('★') ? '★' : 
+                          skin.market_hash_name.includes('Covert') ? 'Covert' : 
+                          skin.market_hash_name.includes('Contraband') ? 'Contraband' : '')
+                        
+                        return (
+                          <div 
+                            key={skin.id} 
+                            className={`flex items-center gap-3 p-2 hover:bg-[#2a3548] transition-colors rounded-md cursor-pointer ${selectedSkin === skin.id ? 'bg-[#2a3548]' : ''}`}
+                            onClick={() => {
+                              setSelectedSkin(skin.id);
+                              setSkinSelectorOpen(false);
+                            }}
+                          >
+                            <div className="relative w-10 h-10 overflow-hidden rounded-md flex-shrink-0">
+                              <Image
+                                src={skin.imageUrl}
+                                alt={name}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <div className="flex-grow min-w-0">
+                              <div className="flex justify-between items-start">
+                                <h4 className="text-xs font-medium truncate">{name}</h4>
+                                <span className="text-xs font-medium">${skin.basePrice.toFixed(2)}</span>
+                              </div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className={`text-[10px] ${
+                                  rarity === "Covert" ? "text-red-400" : 
+                                  rarity === "Contraband" ? "text-amber-400" : 
+                                  rarity === "★" ? "text-yellow-400" : "text-gray-400"
+                                }`}>{rarity || 'Normal'}</span>
+                                <span className="text-[10px] text-gray-400">•</span>
+                                <span className="text-[10px] text-gray-400">{wear}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+                
+                {/* Vue en grille */}
+                {gridViewActive && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {displaySkins
+                      .filter(skin => skin.market_hash_name.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .sort((a, b) => a.basePrice - b.basePrice)
+                      .map((skin) => {
+                        // Extraire le nom et l'usure du skin
+                        const { name, wear } = extractSkinInfo(skin.market_hash_name)
+                        
+                        // Déterminer la rareté (pour la couleur)
+                        const rarity = skin.rarity || 
+                          (skin.market_hash_name.includes('★') ? '★' : 
+                          skin.market_hash_name.includes('Covert') ? 'Covert' : 
+                          skin.market_hash_name.includes('Contraband') ? 'Contraband' : '')
+                        
+                        return (
+                          <div 
+                            key={skin.id} 
+                            className={`flex flex-col p-3 hover:bg-[#2a3548] transition-colors rounded-md cursor-pointer border border-transparent ${selectedSkin === skin.id ? 'bg-[#2a3548] border-[#3a4558]' : ''}`}
+                            onClick={() => {
+                              setSelectedSkin(skin.id);
+                              setSkinSelectorOpen(false);
+                            }}
+                          >
+                            <div className="relative w-full h-32 overflow-hidden rounded-md flex-shrink-0 mb-2 bg-[#161e2e] group-hover:scale-105 transition-transform">
+                              <Image
+                                src={skin.imageUrl}
+                                alt={name}
+                                fill
+                                className="object-contain p-2 hover:scale-110 transition-transform"
+                              />
+                            </div>
+                            <div className="w-full">
+                              <h4 className="text-xs font-medium truncate">{name}</h4>
+                              <div className="flex justify-between items-center mt-1">
+                                <div className="flex items-center gap-1">
+                                  <span className={`text-[10px] ${
+                                    rarity === "Covert" ? "text-red-400" : 
+                                    rarity === "Contraband" ? "text-amber-400" : 
+                                    rarity === "★" ? "text-yellow-400" : "text-gray-400"
+                                  }`}>{rarity || 'Normal'}</span>
+                                  <span className="text-[10px] text-gray-400">•</span>
+                                  <span className="text-[10px] text-gray-400">{wear}</span>
+                                </div>
+                                <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -647,6 +715,9 @@ export default function Home() {
         extractSkinInfo={extractSkinInfo}
         onConfirm={() => {
           console.log("Loan confirmed for", loanAmount, "USDC")
+          // Indiquer que l'emprunt a été confirmé avec succès pour permettre la réinitialisation
+          setBorrowSuccessful(true);
+          
           // Dans une implémentation réelle, ici on pourrait:
           // 1. Mettre à jour l'état de l'utilisateur
           // 2. Rediriger vers une page de confirmation

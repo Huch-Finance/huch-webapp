@@ -259,7 +259,7 @@ export function BorrowConfirmationModal({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Interest</span>
-                <span className="text-sm font-medium">2.5%</span>
+                <span className="text-sm font-medium">8%</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Due date</span>
