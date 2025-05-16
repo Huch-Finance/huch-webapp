@@ -207,6 +207,8 @@ export default function Settings() {
 
             {/* Profile Tab */}
             <TabsContent value="profile" className="space-y-6 relative">
+
+            <CyberpunkContainer>
               {!profile?.steamId && (
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg">
                   <AlertTriangle size={40} className="text-yellow-500 mb-2" />
@@ -240,15 +242,7 @@ export default function Settings() {
                       <div className="text-sm text-gray-400">{profile?.username || "Anonymous"}</div>
                     </div>
                     
-                    {!profile?.steamId && (
-                      <div className="flex-1 flex items-center gap-3 p-3 rounded-lg bg-yellow-600/10 border border-yellow-600/30">
-                        <AlertTriangle size={18} className="text-yellow-500 flex-shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-xs text-yellow-400">Connect your Steam account to complete your profile</p>
-                        </div>
-                        <SteamAuthButton />
-                      </div>
-                    )}
+                    
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -277,19 +271,9 @@ export default function Settings() {
                   </div>
                 </CardContent>
               </Card>
+              </CyberpunkContainer>
 
               <CyberpunkContainer>
-                {!profile?.steamId && (
-                <div className="rounded-lg border border-yellow-600/30 bg-yellow-600/10 px-4 py-3 mb-4 flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-medium text-yellow-500">Steam account required</h3>
-                    <p className="text-sm text-yellow-200/70 mt-1">
-                      You need to connect your Steam account to use our lending services. This allows us to access your CS2 inventory for collateral.
-                    </p>
-                  </div>
-                </div>
-              )}
                 <CardHeader className="px-0 pt-0">
                   <CardTitle className="flex items-center">
                     <Steam className="mr-2 text-[#5D5FEF]" />
@@ -350,20 +334,6 @@ export default function Settings() {
                           {profile?.tradeLink ? (
                             <div className="flex-1 flex justify-between items-center bg-[#2A2A2A] border border-[#2A2A2A] rounded-md px-3 py-2">
                               <span className="text-sm text-gray-400 truncate max-w-xs">{profile.tradeLink}</span>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                className="border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20 ml-2 h-8"
-                                onClick={() => {
-                                  // Permettre à l'utilisateur de modifier son trade link
-                                  const steamAuthButton = document.querySelector('button[data-steam-auth]');
-                                  if (steamAuthButton) {
-                                    (steamAuthButton as HTMLButtonElement).click();
-                                  }
-                                }}
-                              >
-                                Edit
-                              </Button>
                             </div>
                           ) : (
                             <div className="flex-1">
@@ -372,14 +342,14 @@ export default function Settings() {
                           )}
                         </div>
                         <p className="text-xs text-gray-400">
-                          Your trade link is required to receive and return CS2 items. 
+                          Your trade link is required to receive and return CS2 items.  
                           <a 
                             href="https://steamcommunity.com/my/tradeoffers/privacy" 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-[#5D5FEF] hover:underline"
                           >
-                            Find your trade link here
+                             Find your trade link here
                           </a>
                         </p>
                       </div>

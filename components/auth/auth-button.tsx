@@ -68,7 +68,7 @@ export function AuthButton() {
   // Get user information
   const username = profile?.username || "User"
   const displayName = profile?.username
-  const profilePicture = profile?.avatar || "/default-avatar.png" // Default avatar if no profile picture
+  const profilePicture = profile?.avatar || "/avatars/logo-black.svg" // Default avatar if no profile picture
 
   // Handle logout
   const handleLogout = async () => {

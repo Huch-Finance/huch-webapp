@@ -171,7 +171,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRarity, setFilterRarity] = useState<string>('all');
   const [filterWear, setFilterWear] = useState<string>('all');
-  const [filterPriceMin, setFilterPriceMin] = useState<number>(50);
+  const [filterPriceMin, setFilterPriceMin] = useState<number>(0);
   const [filterPriceMax, setFilterPriceMax] = useState<number>(10000);
   const [showFilters, setShowFilters] = useState<boolean>(false);
   
@@ -666,16 +666,16 @@ export default function Home() {
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
-                          min="50"
+                          min="0"
                           max="10000"
                           value={filterPriceMin}
-                          onChange={(e) => setFilterPriceMin(Math.max(50, Math.min(filterPriceMax, parseInt(e.target.value) || 50)))}
+                          onChange={(e) => setFilterPriceMin(Math.max(50, Math.min(filterPriceMax, parseInt(e.target.value) || 0)))}
                           className="w-full bg-[#1f2937] border border-[#2a3548] rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
                         />
                         <span className="text-xs text-gray-400">to</span>
                         <input
                           type="number"
-                          min="50"
+                          min="0"
                           max="10000"
                           value={filterPriceMax}
                           onChange={(e) => setFilterPriceMax(Math.max(filterPriceMin, Math.min(10000, parseInt(e.target.value) || 10000)))}

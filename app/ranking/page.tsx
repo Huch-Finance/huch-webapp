@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Navbar } from "@/components/organism/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Trophy, Medal, Award, ChevronUp } from "lucide-react"
+import { Trophy, Medal, Award, ChevronUp, AlertTriangle, Wallet } from "lucide-react"
 import { Footer } from "@/components/organism/footer"
 import { useAuth } from "@/hooks/use-auth"
+import { SteamAuthButton } from "@/components/auth/steam-auth-button"
+import { LoadingOverlay } from "@/components/loading/loading-overlay"
 
 // Mocked leaderboard data
 const LEADERBOARD = [
@@ -49,19 +51,86 @@ const LEADERBOARD = [
   },
 ]
 
-// Current user data (mocked)
-const CURRENT_USER = {
-  username: "username",
-  points: 320,
-  rank: 14,
-  badge: "Bronze",
-  nextBadge: "Silver",
-  pointsToNextBadge: 200,
+interface LeaderboardUser {
+  id: string;
+  steamId: string | null;
+  steamUser: string | null;
+  steamAvatar: string | null;
+  points: number;
+  rank: number;
+  badges: string[];
+}
+
+interface LeaderboardResponse {
+  leaderboard: LeaderboardUser[];
+  user: LeaderboardUser & { steamLinked: boolean };
+  userStatus: string;
 }
 
 export default function Classement() {
   const [activeTab, setActiveTab] = useState("top10")
-  const { profile } = useAuth();
+  const [apiData, setApiData] = useState<LeaderboardResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const { profile, isAuthenticated, isLoading: authLoading, login } = useAuth();
+  
+  // Fetch leaderboard data from API
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('http://localhost:3333/api/leaderboard', {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Privy-Id': localStorage.getItem('privy:id') || ''
+          }
+        });
+        
+        if (response.ok) {
+          const data: LeaderboardResponse = await response.json();
+          console.log('Leaderboard data:', data);
+          setApiData(data);
+        } else {
+          console.error('Failed to fetch leaderboard data:', response.statusText);
+          // Pas de fallback pour le moment, on garde null
+          setApiData(null);
+        }
+      } catch (error) {
+        console.error('Error fetching leaderboard data:', error);
+        setApiData(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchLeaderboard();
+  }, []);
+  
+  // Détermine si l'utilisateur a un compte Steam lié
+  const hasSteamLinked = apiData?.user?.steamLinked || profile?.steamId !== null;
+  
+  // Détermine si l'utilisateur est connecté (utilise à la fois l'API et l'état local)
+  const isUserConnected = isAuthenticated || apiData?.userStatus === "connected";
+  
+  // Détermine le badge de l'utilisateur en fonction de ses points
+  const getUserBadge = (points: number) => {
+    if (points >= 1000) return "Gold";
+    if (points >= 500) return "Silver";
+    return "Bronze";
+  };
+  
+  // Détermine le prochain badge de l'utilisateur
+  const getNextBadge = (currentBadge: string) => {
+    if (currentBadge === "Bronze") return "Silver";
+    if (currentBadge === "Silver") return "Gold";
+    return "Gold"; // Déjà au niveau maximum
+  };
+  
+  // Calcule les points nécessaires pour le prochain badge
+  const getPointsToNextBadge = (points: number) => {
+    if (points >= 1000) return 0; // Déjà au niveau maximum
+    if (points >= 500) return 1000 - points; // Pour atteindre Gold
+    return 500 - points; // Pour atteindre Silver
+  };
 
   const getBadgeColor = (badge: string) => {
     switch (badge) {
@@ -125,55 +194,105 @@ export default function Classement() {
           {activeTab === "top10" && (
             <div className="animate-appear">
               {/* User Progress Card */}
-              <Card className="mb-8 border-muted bg-[#1E1E1E] overflow-hidden">
+              <Card className="mb-8 border-muted bg-[#1E1E1E] overflow-hidden relative">
+                {/* Masque pour utilisateur non connecté */}
+                {!isUserConnected && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
+                    <AlertTriangle size={32} className="text-yellow-500 mb-2" />
+                    <h3 className="text-lg font-medium text-white mb-1 text-center">Authentication Required</h3>
+                    <p className="text-sm text-gray-300 text-center mb-4">Connect your wallet to view your ranking and earn points.</p>
+                    <Button 
+                      className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white" 
+                      onClick={() => login()}
+                    >
+                      <Wallet size={16} className="mr-2" />
+                      Connect Wallet
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Masque pour utilisateur sans Steam */}
+                {isUserConnected && !hasSteamLinked && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
+                    <AlertTriangle size={32} className="text-yellow-500 mb-2" />
+                    <h3 className="text-lg font-medium text-white mb-1 text-center">Steam Account Required</h3>
+                    <p className="text-sm text-gray-300 text-center mb-4">Connect your Steam account to participate in the ranking system.</p>
+                    <div className="scale-110">
+                      <SteamAuthButton />
+                    </div>
+                  </div>
+                )}
+                
                 <CardHeader className="bg-muted py-4">
                   <CardTitle className="text-lg flex items-center justify-between">
                     <span>Your Ranking</span>
-                    <span className="text-[#5D5FEF] font-bold">#{CURRENT_USER.rank}</span>
+                    {isUserConnected && hasSteamLinked && (
+                      <span className="text-[#5D5FEF] font-bold">#{apiData?.user?.rank || 0}</span>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0">
-                      <img
-                        src={profile?.avatar}
-                        alt={profile?.username}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div>
-                      <h3 className="font-bold">{profile?.username}</h3>
-                      <div className="flex items-center gap-1">
-                        {getBadgeIcon(CURRENT_USER.badge)}
-                        <span className={`text-sm ${getBadgeColor(CURRENT_USER.badge)}`}>{CURRENT_USER.badge}</span>
+                  {isUserConnected && hasSteamLinked && apiData?.user && (
+                    <>
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                          <img
+                            src={apiData.user.steamAvatar || profile?.avatar || "/avatars/logo-black.svg"}
+                            alt={apiData.user.steamUser || profile?.username || "User"}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <h3 className="font-bold">{apiData.user.steamUser || profile?.username || "User"}</h3>
+                          <div className="flex items-center gap-1">
+                            {getBadgeIcon(getUserBadge(apiData.user.points))}
+                            <span className={`text-sm ${getBadgeColor(getUserBadge(apiData.user.points))}`}>
+                              {getUserBadge(apiData.user.points)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="ml-auto text-right">
+                          <div className="text-2xl font-bold text-[#5D5FEF]">{apiData.user.points}</div>
+                          <div className="text-sm text-gray-400">points</div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="ml-auto text-right">
-                      <div className="text-2xl font-bold text-[#5D5FEF]">{CURRENT_USER.points}</div>
-                      <div className="text-sm text-gray-400">points</div>
-                    </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Progress to {CURRENT_USER.nextBadge}</span>
-                      <span className="text-[#5D5FEF]">
-                        {CURRENT_USER.points}/{CURRENT_USER.points + CURRENT_USER.pointsToNextBadge}
-                      </span>
-                    </div>
-                    <div className="relative h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="absolute top-0 left-0 h-full bg-[#5D5FEF]"
-                        style={{
-                          width: `${(CURRENT_USER.points / (CURRENT_USER.points + CURRENT_USER.pointsToNextBadge)) * 100}%`,
-                        }}
-                      ></div>
-                    </div>
-                    <p className="text-sm text-center">
-                      You need <span className="text-[#5D5FEF] font-bold">{CURRENT_USER.pointsToNextBadge} pts</span> to
-                      reach the {CURRENT_USER.nextBadge} League
-                    </p>
-                  </div>
+                      {/* Progress bar */}
+                      {getPointsToNextBadge(apiData.user.points) > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">
+                              Progress to {getNextBadge(getUserBadge(apiData.user.points))}
+                            </span>
+                            <span className="text-[#5D5FEF]">
+                              {apiData.user.points}/{apiData.user.points + getPointsToNextBadge(apiData.user.points)}
+                            </span>
+                          </div>
+                          <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="absolute top-0 left-0 h-full bg-[#5D5FEF]"
+                              style={{
+                                width: `${(apiData.user.points / (apiData.user.points + getPointsToNextBadge(apiData.user.points))) * 100}%`,
+                              }}
+                            ></div>
+                          </div>
+                          <p className="text-sm text-center">
+                            You need <span className="text-[#5D5FEF] font-bold">{getPointsToNextBadge(apiData.user.points)} pts</span> to
+                            reach the {getNextBadge(getUserBadge(apiData.user.points))} League
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Max level message */}
+                      {getPointsToNextBadge(apiData.user.points) === 0 && (
+                        <div className="p-3 bg-[#5D5FEF]/10 border border-[#5D5FEF]/30 rounded-lg text-center">
+                          <p className="text-sm">
+                            Congratulations! You've reached the highest league level.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -194,40 +313,59 @@ export default function Classement() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-muted">
-                        {LEADERBOARD.map((player, index) => (
-                          <tr key={player.id} className="hover:bg-muted/50 transition-colors">
-                            <td className="py-4 px-6 font-bold">
-                              {index === 0 ? (
-                                <span className="text-yellow-400">1</span>
-                              ) : index === 1 ? (
-                                <span className="text-gray-300">2</span>
-                              ) : index === 2 ? (
-                                <span className="text-amber-600">3</span>
-                              ) : (
-                                index + 1
-                              )}
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-muted overflow-hidden">
-                                  <img
-                                    src={player.avatar || "/placeholder.svg"}
-                                    alt={player.username}
-                                    className="w-full h-full object-cover"
-                                  />
+                        {/* Afficher les données de l'API si disponibles, sinon utiliser les données mockées */}
+                        {(apiData?.leaderboard || LEADERBOARD).map((player, index) => {
+                          // Déterminer le badge en fonction des points pour les données de l'API
+                          const badge = 'badge' in player ? player.badge : getUserBadge(player.points);
+                          // Déterminer le nom d'utilisateur
+                          const username = 'username' in player ? player.username : (player.steamUser || `User ${index + 1}`);
+                          // Déterminer l'avatar
+                          const avatar = 'avatar' in player ? player.avatar : (player.steamAvatar || "/avatars/logo-black.svg");
+                          
+                          return (
+                            <tr key={player.id} className="hover:bg-muted/50 transition-colors">
+                              <td className="py-4 px-6 font-bold">
+                                {index === 0 ? (
+                                  <span className="text-yellow-400">1</span>
+                                ) : index === 1 ? (
+                                  <span className="text-gray-300">2</span>
+                                ) : index === 2 ? (
+                                  <span className="text-amber-600">3</span>
+                                ) : (
+                                  index + 1
+                                )}
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-muted overflow-hidden">
+                                    <img
+                                      src={avatar}
+                                      alt={username}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  <span>{username}</span>
                                 </div>
-                                <span>{player.username}</span>
-                              </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="flex items-center gap-1">
+                                  {getBadgeIcon(badge)}
+                                  <span className={`${getBadgeColor(badge)}`}>{badge}</span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6 text-right font-bold">{player.points}</td>
+                            </tr>
+                          );
+                        })}
+                        
+                        {/* Message si aucune donnée n'est disponible */}
+                        {(!apiData?.leaderboard && LEADERBOARD.length === 0) && (
+                          <tr>
+                            <td colSpan={4} className="py-8 text-center text-gray-400">
+                              No leaderboard data available
                             </td>
-                            <td className="py-4 px-6">
-                              <div className="flex items-center gap-1">
-                                {getBadgeIcon(player.badge)}
-                                <span className={`${getBadgeColor(player.badge)}`}>{player.badge}</span>
-                              </div>
-                            </td>
-                            <td className="py-4 px-6 text-right font-bold">{player.points}</td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -270,7 +408,7 @@ export default function Classement() {
                         </div>
                       </div>
 
-                      {CURRENT_USER.badge === "Bronze" && (
+                      {apiData?.user && getUserBadge(apiData.user.points) === "Bronze" && (
                         <div className="py-2 px-3 bg-amber-600/20 rounded-md text-center text-sm">
                           Your current level
                         </div>
@@ -309,7 +447,7 @@ export default function Classement() {
                         </div>
                       </div>
 
-                      {CURRENT_USER.badge === "Silver" && (
+                      {apiData?.user && getUserBadge(apiData.user.points) === "Silver" && (
                         <div className="py-2 px-3 bg-gray-300/20 rounded-md text-center text-sm">
                           Your current level
                         </div>
@@ -348,7 +486,7 @@ export default function Classement() {
                         </div>
                       </div>
 
-                      {CURRENT_USER.badge === "Gold" && (
+                      {apiData?.user && getUserBadge(apiData.user.points) === "Gold" && (
                         <div className="py-2 px-3 bg-yellow-400/20 rounded-md text-center text-sm">
                           Your current level
                         </div>
