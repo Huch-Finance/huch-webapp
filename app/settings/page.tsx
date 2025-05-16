@@ -21,10 +21,11 @@ import {
   Check,
   Info,
   Mail,
+  AlertTriangle,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/use-auth"
-import { usePrivy } from "@privy-io/react-auth"
+import { usePrivy, useLinkAccount } from "@privy-io/react-auth"
 import { Footer } from "@/components/organism/footer"
 
 export default function Settings() {
@@ -36,8 +37,50 @@ export default function Settings() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const { profile, updateProfile, isAuthenticated, isLoading } = useAuth()
-  const { linkEmail, linkWallet, unlinkEmail, unlinkWallet } = usePrivy()
+  const { profile, updateProfile, isAuthenticated, isLoading, reloadUserData } = useAuth()
+  const { linkEmail, linkWallet, unlinkEmail, unlinkWallet, user } = usePrivy()
+  const { linkEmail: linkAccountEmail } = useLinkAccount()
+  
+  const handleAddEmail = async () => {
+    try {
+      if (linkAccountEmail) {
+        await linkAccountEmail()
+      
+        setTimeout(async () => {
+          if (user && user.id) {
+            try {
+              const currentEmail = user.email?.address
+              
+              if (currentEmail) {
+                const response = await fetch('http://localhost:3333/api/user/', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-Privy-Id': user.id
+                  },
+                  body: JSON.stringify({
+                    profile: {
+                        email: currentEmail
+                      }
+                  }),
+                })
+                
+                if (!response.ok) {
+                  console.error('Error update email')
+                }
+              }
+            } catch (apiError) {
+              console.error('Error API')
+            }
+          }
+          
+          reloadUserData()
+        }, 2000)
+      }
+    } catch (error) {
+      console.error('Error add email:')
+    }
+  }
 
   useEffect(() => {
     if (profile) {
@@ -142,9 +185,21 @@ export default function Settings() {
                     <User className="mr-2 text-[#5D5FEF]" />
                     Personal Information
                   </CardTitle>
+                  
                   <CardDescription>Update your personal details and how we can reach you</CardDescription>
                 </CardHeader>
+                
                 <CardContent className="space-y-4">
+                <div className="flex items-center gap-4 mt-2 mb-1">
+                    <div className="w-16 h-16 rounded-full bg-[#2A2A2A] overflow-hidden">
+                      <img
+                        src={profile?.avatar || "/avatars/logo-black.svg?height=100&width=100"}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="text-sm text-gray-400">{profile?.username || "Anonymous"}</div>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="username">Username</Label>
@@ -154,6 +209,7 @@ export default function Settings() {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="bg-[#2A2A2A] border-[#2A2A2A]"
+                        disabled={true}
                       />
                     </div>
                     <div className="space-y-2">
@@ -167,32 +223,6 @@ export default function Settings() {
                         className="bg-[#2A2A2A] border-[#2A2A2A]"
                         disabled={true}
                       />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <textarea
-                      id="bio"
-                      placeholder="Tell us about yourself"
-                      className="w-full h-24 px-3 py-2 rounded-md bg-[#2A2A2A] border border-[#2A2A2A] text-white resize-none focus:outline-none focus:ring-2 focus:ring-[#5D5FEF]"
-                      defaultValue="CS2 enthusiast and skin collector since 2015."
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm text-gray-400">Profile Picture</Label>
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-full bg-[#2A2A2A] overflow-hidden">
-                        <img
-                          src={profile?.avatar || "/avatars/logo-black.svg?height=100&width=100"}
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <Button variant="outline" className="border-[#2A2A2A] text-gray-300 hover:text-white">
-                        Change Avatar
-                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -214,12 +244,20 @@ export default function Settings() {
                         id="steamid"
                         placeholder="Your current Steam ID : 76561198858784909 (Dornag0x)"
                         value={steamID}
-                        onChange={(e) => setSteamID(e.target.value)}
+                        disabled={true}
                         className="bg-[#2A2A2A] border-[#2A2A2A]"
                       />
-                      <Button variant="outline" className="border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20">
+                      <Button 
+                        variant="outline" 
+                        className="border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20"
+                        onClick={() => {
+                          if (profile?.steamId) {
+                            window.open(`https://steamcommunity.com/profiles/${profile.steamId}`, '_blank');
+                          }
+                        }}
+                      >
                         <ExternalLink size={16} className="mr-2" />
-                        Verify
+                        View Profile
                       </Button>
                     </div>
                   </div>
@@ -232,28 +270,7 @@ export default function Settings() {
                     </p>
                   </div>
                 </CardContent>
-              </CyberpunkContainer>
-
-              <div className="flex justify-end">
-                <Button onClick={handleSave} className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white" disabled={isSaving}>
-                  {saveSuccess ? (
-                    <>
-                      <Check size={16} className="mr-2" />
-                      Saved!
-                    </>
-                  ) : isSaving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-t-white border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mr-2"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save size={16} className="mr-2" />
-                      Save Changes
-                    </>
-                  )}
-                </Button>
-              </div>
+              </CyberpunkContainer> 
             </TabsContent>
 
             {/* Security Tab */}
@@ -267,23 +284,40 @@ export default function Settings() {
                   <CardDescription>Manage your email authentication methods</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {!email && walletAddress && (
+                    <div className="p-4 mb-4 bg-yellow-600/10 border border-yellow-600/30 rounded-lg flex items-start gap-3">
+                      <AlertTriangle className="text-yellow-500 flex-shrink-0 mt-1" size={20} />
+                      <div>
+                        <h4 className="font-medium text-yellow-500">Email recommended</h4>
+                        <p className="text-sm text-gray-400">
+                          We recommend adding an email to your account for better security and recovery options.
+                        </p>
+                        <Button 
+                          className="mt-2 bg-yellow-600 hover:bg-yellow-700 text-white" 
+                          size="sm"
+                          onClick={handleAddEmail}
+                        >
+                          Add Email Now
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">{email || "No email connected"}</h4>
                       <p className="text-sm text-gray-400">Your primary email address</p>
                     </div>
-                    {email ? (
-                      <Button
-                        variant="outline"
-                        className="border-red-500 text-red-500 hover:bg-red-500/20"
-                        onClick={() => unlinkEmail()}
+                    {!email ? (
+                      <Button 
+                        className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white" 
+                        onClick={handleAddEmail}
                       >
-                        Disconnect
-                      </Button>
-                    ) : (
-                      <Button className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white" onClick={() => linkEmail()}>
                         Connect Email
                       </Button>
+                    ) : (
+                      <Badge className="bg-green-600/20 text-green-400 border-green-600">
+                        Verified
+                      </Badge>
                     )}
                   </div>
                 </CardContent>
@@ -448,17 +482,21 @@ export default function Settings() {
                         className="bg-[#1E1E1E] border-[#2A2A2A] font-mono text-sm"
                         readOnly
                       />
-                      {walletAddress ? (
-                        <Button
-                          variant="outline"
-                          className="border-red-500 text-red-500 hover:bg-red-500/20"
-                          onClick={() => unlinkWallet(walletAddress)}
+                      {!walletAddress && (
+                        <Button 
+                          className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white" 
+                          onClick={() => linkWallet()}
                         >
-                          Disconnect
-                        </Button>
-                      ) : (
-                        <Button className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white" onClick={() => linkWallet()}>
                           Connect
+                        </Button>
+                      )}
+                      {walletAddress && (
+                        <Button 
+                          variant="outline" 
+                          className="border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20"
+                          onClick={() => window.open(`https://explorer.solana.com/address/${walletAddress}`, '_blank')}
+                        >
+                          View
                         </Button>
                       )}
                     </div>
