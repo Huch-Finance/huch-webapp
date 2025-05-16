@@ -105,11 +105,16 @@ export default function Classement() {
     fetchLeaderboard();
   }, []);
   
-  // Détermine si l'utilisateur a un compte Steam lié
-  const hasSteamLinked = apiData?.user?.steamLinked || profile?.steamId !== null;
+  // Détermine si l'utilisateur est connecté (utilise uniquement l'état local de Privy car l'API peut être incorrecte)
+  const isUserConnected = isAuthenticated;
   
-  // Détermine si l'utilisateur est connecté (utilise à la fois l'API et l'état local)
-  const isUserConnected = isAuthenticated || apiData?.userStatus === "connected";
+  // Détermine si l'utilisateur a un compte Steam lié (vérifie uniquement le profil local)
+  const hasSteamLinked = profile?.steamId !== null;
+  
+  // Recherche l'utilisateur dans le leaderboard si l'API n'a pas renvoyé les données utilisateur
+  const currentUser = apiData?.user || 
+    (apiData?.leaderboard && profile?.id ? 
+      apiData.leaderboard.find(user => user.id === profile.id) : null);
   
   // Détermine le badge de l'utilisateur en fonction de ses points
   const getUserBadge = (points: number) => {
@@ -226,65 +231,65 @@ export default function Classement() {
                 <CardHeader className="bg-muted py-4">
                   <CardTitle className="text-lg flex items-center justify-between">
                     <span>Your Ranking</span>
-                    {isUserConnected && hasSteamLinked && (
-                      <span className="text-[#5D5FEF] font-bold">#{apiData?.user?.rank || 0}</span>
+                    {isUserConnected && hasSteamLinked && currentUser && (
+                      <span className="text-[#5D5FEF] font-bold">#{currentUser.rank || 1}</span>
                     )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
-                  {isUserConnected && hasSteamLinked && apiData?.user && (
+                  {isUserConnected && hasSteamLinked && currentUser && (
                     <>
                       <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0">
                           <img
-                            src={apiData.user.steamAvatar || profile?.avatar || "/avatars/logo-black.svg"}
-                            alt={apiData.user.steamUser || profile?.username || "User"}
+                            src={currentUser.steamAvatar || profile?.avatar || "/avatars/logo-black.svg"}
+                            alt={currentUser.steamUser || profile?.username || "User"}
                             className="w-full h-full object-cover"
                           />
                         </div>
                         <div>
-                          <h3 className="font-bold">{apiData.user.steamUser || profile?.username || "User"}</h3>
+                          <h3 className="font-bold">{currentUser.steamUser || profile?.username || "User"}</h3>
                           <div className="flex items-center gap-1">
-                            {getBadgeIcon(getUserBadge(apiData.user.points))}
-                            <span className={`text-sm ${getBadgeColor(getUserBadge(apiData.user.points))}`}>
-                              {getUserBadge(apiData.user.points)}
+                            {getBadgeIcon(getUserBadge(currentUser.points))}
+                            <span className={`text-sm ${getBadgeColor(getUserBadge(currentUser.points))}`}>
+                              {getUserBadge(currentUser.points)}
                             </span>
                           </div>
                         </div>
                         <div className="ml-auto text-right">
-                          <div className="text-2xl font-bold text-[#5D5FEF]">{apiData.user.points}</div>
+                          <div className="text-2xl font-bold text-[#5D5FEF]">{currentUser.points}</div>
                           <div className="text-sm text-gray-400">points</div>
                         </div>
                       </div>
 
                       {/* Progress bar */}
-                      {getPointsToNextBadge(apiData.user.points) > 0 && (
+                      {getPointsToNextBadge(currentUser.points) > 0 && (
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-400">
-                              Progress to {getNextBadge(getUserBadge(apiData.user.points))}
+                              Progress to {getNextBadge(getUserBadge(currentUser.points))}
                             </span>
                             <span className="text-[#5D5FEF]">
-                              {apiData.user.points}/{apiData.user.points + getPointsToNextBadge(apiData.user.points)}
+                              {currentUser.points}/{currentUser.points + getPointsToNextBadge(currentUser.points)}
                             </span>
                           </div>
                           <div className="relative h-2 bg-muted rounded-full overflow-hidden">
                             <div
                               className="absolute top-0 left-0 h-full bg-[#5D5FEF]"
                               style={{
-                                width: `${(apiData.user.points / (apiData.user.points + getPointsToNextBadge(apiData.user.points))) * 100}%`,
+                                width: `${(currentUser.points / (currentUser.points + getPointsToNextBadge(currentUser.points))) * 100}%`,
                               }}
                             ></div>
                           </div>
                           <p className="text-sm text-center">
-                            You need <span className="text-[#5D5FEF] font-bold">{getPointsToNextBadge(apiData.user.points)} pts</span> to
-                            reach the {getNextBadge(getUserBadge(apiData.user.points))} League
+                            You need <span className="text-[#5D5FEF] font-bold">{getPointsToNextBadge(currentUser.points)} pts</span> to
+                            reach the {getNextBadge(getUserBadge(currentUser.points))} League
                           </p>
                         </div>
                       )}
                       
                       {/* Max level message */}
-                      {getPointsToNextBadge(apiData.user.points) === 0 && (
+                      {getPointsToNextBadge(currentUser.points) === 0 && (
                         <div className="p-3 bg-[#5D5FEF]/10 border border-[#5D5FEF]/30 rounded-lg text-center">
                           <p className="text-sm">
                             Congratulations! You've reached the highest league level.
@@ -318,9 +323,13 @@ export default function Classement() {
                           // Déterminer le badge en fonction des points pour les données de l'API
                           const badge = 'badge' in player ? player.badge : getUserBadge(player.points);
                           // Déterminer le nom d'utilisateur
-                          const username = 'username' in player ? player.username : (player.steamUser || `User ${index + 1}`);
+                          const username = 'username' in player ? 
+                            player.username : 
+                            (player.steamUser || `User ${index + 1}`);
                           // Déterminer l'avatar
-                          const avatar = 'avatar' in player ? player.avatar : (player.steamAvatar || "/avatars/logo-black.svg");
+                          const avatar = 'avatar' in player ? 
+                            player.avatar : 
+                            (player.steamAvatar || "/avatars/logo-black.svg");
                           
                           return (
                             <tr key={player.id} className="hover:bg-muted/50 transition-colors">
