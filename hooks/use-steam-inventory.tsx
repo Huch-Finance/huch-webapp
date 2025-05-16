@@ -13,7 +13,6 @@ export type SteamItem = {
   imageUrl: string
   steamId: string
   stickers: any[]
-  // Propriétés supplémentaires pour la compatibilité avec l'interface existante
   wear?: string
   rarity?: string
 }
@@ -29,32 +28,32 @@ export interface SteamInventoryResponse {
 export function useSteamInventory() {
   const { profile, isAuthenticated } = useAuth()
   const [inventory, setInventory] = useState<SteamItem[]>([])
-  const [isLoading, setIsLoading] = useState(true) // Commencer avec isLoading = true
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
-  const [inventoryFetched, setInventoryFetched] = useState(false) // Nouvel état pour suivre si l'inventaire a été récupéré
+  const [inventoryFetched, setInventoryFetched] = useState(false)
 
-  // Fonction pour récupérer l'inventaire Steam de l'utilisateur
+  // Function to fetch the user's Steam inventory
   const fetchInventory = async () => {
-    // Vérifier si l'inventaire a déjà été récupéré
+    // Check if the inventory has already been fetched
     if (inventoryFetched) {
-      console.log("Inventaire déjà récupéré, utilisation du cache");
+      console.log("Inventory already fetched, using cache");
       return;
     }
     
-    // Vérifier si l'utilisateur est authentifié et a un steamId et un tradeLink
+    // Check if the user is authenticated and has a steamId and tradeLink
     if (!isAuthenticated || !profile?.steamId || !profile?.tradeLink) {
-      setError("Vous devez être connecté avec Steam et avoir un lien d'échange pour voir votre inventaire")
+      setError("You must be connected with Steam and have an exchange link to see your inventory")
       setIsLoading(false);
       return
     }
 
-    console.log("Début de la récupération de l'inventaire pour", profile.steamId);
+    console.log("Start fetching inventory for", profile.steamId);
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log("Appel API vers /api/inventory avec Privy ID:", profile.id);
+      console.log("API call to /api/inventory with Privy ID:", profile.id);
       const response = await fetch('http://localhost:3333/api/inventory', {
         method: 'GET',
         headers: {
@@ -64,67 +63,59 @@ export function useSteamInventory() {
       })
 
       if (!response.ok) {
-        throw new Error(`Erreur lors de la récupération de l'inventaire: ${await response.text()}`)
+        throw new Error(`Error fetching inventory: ${await response.text()}`)
       }
 
       const data: SteamInventoryResponse = await response.json()
       
-      // Extraire les items de l'inventaire selon la structure de la réponse
+      // Extract inventory items based on the response structure
       let inventoryItems: SteamItem[] = [];
       if (data.inventory) {
         if ('items' in data.inventory) {
-          // Structure { inventory: { items: SteamItem[] } }
           inventoryItems = data.inventory.items;
           console.log("Format d'API détecté: inventory.items[]");
         } else if (Array.isArray(data.inventory)) {
-          // Structure { inventory: SteamItem[] }
           inventoryItems = data.inventory;
           console.log("Format d'API détecté: inventory[]");
         }
       }
       
-      console.log("Inventaire récupéré avec succès:", inventoryItems.length, "skins");
-      console.log("Contenu de l'inventaire:", inventoryItems);
-      
-      // Vérifier si l'inventaire est vide ou non
+      console.log("Inventory fetched successfully:", inventoryItems.length, "skins");
+      console.log("Inventory content:", inventoryItems);
       if (inventoryItems.length === 0) {
-        console.warn("L'API a retourné un inventaire vide!");
+        console.warn("API returned an empty inventory!");
       }
       
       setInventory(inventoryItems)
       setLastUpdated(data.lastUpdated)
-      setInventoryFetched(true); // Marquer l'inventaire comme récupéré
+      setInventoryFetched(true);
     } catch (error) {
-      console.error("Erreur lors de la récupération de l'inventaire Steam:", error)
-      setError(error instanceof Error ? error.message : "Une erreur est survenue")
+      console.error("Error fetching inventory:", error)
+      setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
-      console.log("Fin de la récupération de l'inventaire, isLoading = false");
+      console.log("End fetching inventory, isLoading = false");
       setIsLoading(false)
     }
   }
 
-  // Récupérer l'inventaire lorsque le profil est chargé et que l'utilisateur a un steamId et un tradeLink
+  // Function to fetch inventory when the profile is loaded and the user has a steamId and tradeLink
   useEffect(() => {
     console.log("useEffect dans useSteamInventory - Auth:", isAuthenticated, "SteamId:", profile?.steamId);
-    
-    // Vérifier si l'utilisateur est authentifié et a un steamId et un tradeLink
+
     if (isAuthenticated && profile?.steamId && profile?.tradeLink) {
       console.log("Conditions remplies pour récupérer l'inventaire");
-      // Appeler fetchInventory une seule fois
       fetchInventory();
     } else {
-      // Réinitialiser l'inventaire si l'utilisateur n'est pas authentifié ou n'a pas de steamId/tradeLink
       console.log("Conditions non remplies, réinitialisation de l'inventaire");
       setInventory([]);
       setLastUpdated(null);
-      setIsLoading(false); // S'assurer que isLoading est mis à false
+      setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, profile?.steamId, profile?.tradeLink])
 
-  // Fonction pour forcer le rafraîchissement de l'inventaire
   const forceRefreshInventory = () => {
-    setInventoryFetched(false); // Réinitialiser l'état pour permettre une nouvelle récupération
+    setInventoryFetched(false);
     return fetchInventory();
   };
   

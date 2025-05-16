@@ -28,13 +28,13 @@ export function SeasonalRewards({ currentLevel, seasonEndDate, rewards, onClaimR
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Calendar className="text-primary" />
-            <span>Récompenses Saisonnières</span>
+            <span>Seasonal Rewards</span>
           </div>
-          <span className="text-sm font-medium">Niveau {currentLevel}</span>
+          <span className="text-sm font-medium">Level {currentLevel}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="text-sm text-muted-foreground text-center">La saison se termine le {seasonEndDate}</div>
+        <div className="text-sm text-muted-foreground text-center">The season ends on {seasonEndDate}</div>
 
         <div className="grid grid-cols-1 gap-4">
           {rewards.map((reward) => (
@@ -70,10 +70,10 @@ export function SeasonalRewards({ currentLevel, seasonEndDate, rewards, onClaimR
                     {reward.locked ? (
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Lock size={14} />
-                        <span>Verrouillé</span>
+                        <span>Locked</span>
                       </div>
                     ) : reward.claimed ? (
-                      <div className="text-sm text-primary">Réclamé</div>
+                      <div className="text-sm text-primary">Claimed</div>
                     ) : (
                       <Button
                         size="sm"
@@ -81,7 +81,7 @@ export function SeasonalRewards({ currentLevel, seasonEndDate, rewards, onClaimR
                         className="h-8 bg-primary hover:bg-primary/90 text-black"
                       >
                         <Gift size={14} className="mr-1" />
-                        Réclamer
+                        Claim
                       </Button>
                     )}
                   </div>
@@ -92,7 +92,7 @@ export function SeasonalRewards({ currentLevel, seasonEndDate, rewards, onClaimR
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-sm rounded-lg flex items-center justify-center">
                   <div className="flex flex-col items-center gap-2">
                     <Lock size={24} className="text-white/70" />
-                    <span className="text-white/70 font-medium">Niveau {reward.level} requis</span>
+                    <span className="text-white/70 font-medium">Level {reward.level} required</span>
                   </div>
                 </div>
               )}

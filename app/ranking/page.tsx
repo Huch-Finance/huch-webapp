@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Navbar } from "@/components/navbar"
+import { Navbar } from "@/components/organism/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Trophy, Medal, Award, ChevronUp } from "lucide-react"
-import { Footer } from "@/components/footer"
+import { Footer } from "@/components/organism/footer"
 import { useAuth } from "@/hooks/use-auth"
 
 // Mocked leaderboard data

@@ -1,10 +1,9 @@
 "use client"
 
-import { redirect } from "next/navigation"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { SolanaTransfer } from "@/components/SolanaTransfer"
-import { Footer } from "@/components/footer"
+import { Footer } from "@/components/organism/footer"
 
 export default function Home() {
   return (

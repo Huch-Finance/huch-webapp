@@ -15,7 +15,7 @@ export interface Loan {
   dueDate: string;
   duration: number;
   status: LoanStatus;
-  repaymentProgress?: number; // Pourcentage remboursé (0-100)
+  repaymentProgress?: number;
   tradeOfferId?: string;
 }
 

@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Navbar } from "@/components/navbar"
+import { Navbar } from "@/components/organism/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CustomSwitch as Switch } from "@/components/ui/custom-switch"
 import { Label } from "@/components/ui/label"
-import { CyberpunkContainer } from "@/components/cyberpunk-container"
+import { CyberpunkContainer } from "@/components/layout/cyberpunk-container"
 import {
   User,
   Shield,
@@ -25,7 +25,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/use-auth"
 import { usePrivy } from "@privy-io/react-auth"
-import { Footer } from "@/components/footer"
+import { Footer } from "@/components/organism/footer"
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("profile")
@@ -37,7 +37,7 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false)
 
   const { profile, updateProfile, isAuthenticated, isLoading } = useAuth()
-  const { user, linkEmail, linkWallet, unlinkEmail, unlinkWallet } = usePrivy()
+  const { linkEmail, linkWallet, unlinkEmail, unlinkWallet } = usePrivy()
 
   useEffect(() => {
     if (profile) {
@@ -123,7 +123,6 @@ export default function Settings() {
               </TabsTrigger>
               <TabsTrigger
                 value="notifications"
-                className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white"
                 className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white"
               >
                 <Bell size={16} className="mr-2" />

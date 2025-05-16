@@ -1,5 +1,5 @@
 "use client"
-import { CyberpunkContainer } from "@/components/cyberpunk-container"
+import { CyberpunkContainer } from "@/components/layout/cyberpunk-container"
 import { Calendar, DollarSign, Percent, Clock, Shield, Wallet, ArrowRight } from "lucide-react"
 
 interface LoanSummaryProps {
@@ -32,7 +32,7 @@ export function LoanSummary({
     <div className="space-y-6">
       <CyberpunkContainer className="overflow-hidden">
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Colonne de gauche - Résumé visuel */}
+          {/* Left column - Visual summary */}
           <div className="md:w-1/2 space-y-6">
             <div className="text-center">
               <h3 className="text-lg font-bold mb-2">Loan Overview</h3>
@@ -73,7 +73,7 @@ export function LoanSummary({
               </div>
             </div>
 
-            {/* Visualisation du pourcentage du prêt */}
+            {/* Loan to Value Ratio */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Loan to Value Ratio</span>
@@ -88,7 +88,7 @@ export function LoanSummary({
               </div>
             </div>
 
-            {/* Date d'échéance */}
+            {/* Due date */}
             <div className="bg-[#2A2A2A] p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Calendar size={18} className="text-[#5D5FEF]" />
@@ -107,7 +107,7 @@ export function LoanSummary({
             </div>
           </div>
 
-          {/* Colonne de droite - Détails du prêt */}
+          {/* Right column - Loan details */}
           <div className="md:w-1/2 space-y-4">
             <h3 className="text-lg font-bold">Loan Details</h3>
 
@@ -161,7 +161,7 @@ export function LoanSummary({
               </div>
             </div>
 
-            {/* Informations de sécurité */}
+            {/* Security information */}
             <div className="bg-[#2A2A2A]/50 p-3 rounded-lg flex items-start gap-2">
               <Shield size={18} className="text-[#5D5FEF] mt-0.5 flex-shrink-0" />
               <div className="text-xs text-gray-400">
@@ -173,7 +173,7 @@ export function LoanSummary({
         </div>
       </CyberpunkContainer>
 
-      {/* Termes et conditions */}
+      {/* Terms and conditions */}
       <div className="text-sm text-gray-400 p-4 bg-[#2A2A2A]/30 rounded-lg">
         <p>
           By clicking on "Borrow", you accept the terms and conditions of the service and confirm that you have read our

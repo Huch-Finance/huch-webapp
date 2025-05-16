@@ -85,7 +85,7 @@ export function useTradeApi() {
   
   const API_BASE_URL = "http://localhost:3333/api"
   
-  // Créer une offre de trade
+  // Create trade
   const createTrade = async (itemId: string, comment: string = "Loan collateral"): Promise<CreateTradeResponse | null> => {
     if (!profile?.id) {
       setError("User not authenticated")
@@ -127,7 +127,7 @@ export function useTradeApi() {
     }
   }
   
-  // Vérifier le statut d'une offre de trade
+  // Check trade status
   const checkTradeStatus = async (tradeId: string): Promise<TradeStatusResponse | null> => {
     if (!profile?.id) {
       setError("User not authenticated")
@@ -161,7 +161,7 @@ export function useTradeApi() {
     }
   }
   
-  // Annuler une offre de trade
+  // Cancel trade
   const cancelTrade = async (tradeId: string): Promise<CancelTradeResponse | null> => {
     if (!profile?.id) {
       setError("User not authenticated")

@@ -10,12 +10,11 @@ export function useAuth() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isConfigured, setIsConfigured] = useState(isPrivyConfigured)
 
-  const { ready, authenticated, user, login, logout, createWallet, connectWallet } = usePrivy()
+  const { ready, authenticated, user, login, logout, connectWallet } = usePrivy()
   const { wallets } = useWallets()
 
   useEffect(() => {
     if (!isConfigured) {
-      // Simulate a loading delay then switch to unauthenticated
       const timer = setTimeout(() => {
         setStatus("unauthenticated")
       }, 500)
@@ -23,7 +22,11 @@ export function useAuth() {
     }
   }, [isConfigured])
 
-  // Fonction pour enregistrer l'utilisateur dans la base de données via l'API
+  /**
+   * Handles authentication and user management.
+   * This hook provides functionality to manage authentication state,
+   * user profiles and wallet connections.
+   */
   const registerUserInDatabase = async (userId: string, walletAddress?: string) => {
     try {
       const response = await fetch('http://localhost:3333/api/auth/privy', {
@@ -42,21 +45,16 @@ export function useAuth() {
         console.error('Error register user in database:', await response.text());
         return;
       }
-      
-      // Récupérer les données de l'utilisateur depuis la réponse
       try {
         const data = await response.json();
         
-        // Si l'utilisateur a déjà un steamId, mettre à jour le profil local
+        // If the user already has a steamId, update the local profile
         if (data.user && data.user.steamId) {
           setProfile(prevProfile => {
             if (!prevProfile) return null;
-            
-            // Construire le profil avec les informations Steam
             const updatedProfile = {
               ...prevProfile,
               steamId: data.user.steamId,
-              // Récupérer le tradeLink s'il existe
               tradeLink: data.user.tradeLink || prevProfile.tradeLink
             };
             
@@ -69,9 +67,7 @@ export function useAuth() {
                 updatedProfile.avatar = data.user.profile.steamAvatar;
               }
             }
-            
-            // Log pour débogage
-            console.log('Profil mis à jour avec les données de l\'API:', updatedProfile);
+            console.log('Profil updated:', updatedProfile);
             
             return updatedProfile;
           });
@@ -83,13 +79,11 @@ export function useAuth() {
       console.error('Error call API register user in database:', error);
     }
   };
-
-  // Fonction pour recharger les données utilisateur depuis l'API
+  
+  // Function to reload user data from the API
   const reloadUserData = async () => {
     if (!user) return;
-    
     try {
-      // Appeler l'API pour récupérer les données utilisateur à jour
       const response = await fetch('http://localhost:3333/api/user/', {
         method: 'GET',
         headers: {
@@ -97,15 +91,12 @@ export function useAuth() {
           'X-Privy-Id': user.id
         }
       });
-      
       if (!response.ok) {
         console.error('Error fetching user data:', await response.text());
         return;
       }
       
       const data = await response.json();
-      
-      // Mettre à jour le profil avec les données récupérées
       if (data.user) {
         setProfile(prevProfile => {
           if (!prevProfile) return null;
@@ -115,8 +106,6 @@ export function useAuth() {
             steamId: data.user.steamId,
             tradeLink: data.user.tradeLink
           };
-          
-          // Ajouter les informations du profil Steam si disponibles
           if (data.user.profile) {
             if (data.user.profile.steamName) {
               updatedProfile.username = data.user.profile.steamName;
@@ -126,7 +115,7 @@ export function useAuth() {
             }
           }
           
-          console.log('Profil rechargé depuis l\'API:', updatedProfile);
+          console.log('Loaded profil from API:', updatedProfile);
           return updatedProfile;
         });
       }
@@ -152,8 +141,6 @@ export function useAuth() {
       id: user?.id || "",
       email: user?.email?.address,
       wallet: wallets?.[0]?.address,
-      // Nous ne récupérons plus le steamId depuis les métadonnées ou le localStorage
-      // car nous le récupérerons depuis l'API dans registerUserInDatabase
       steamId: undefined,
       username: undefined,
     }
@@ -165,12 +152,9 @@ export function useAuth() {
     if (user && wallets && wallets.length > 0 && wallets[0]?.address) {
       registerUserInDatabase(user.id, wallets[0].address)
         .then(() => {
-          // Après l'enregistrement, recharger les données utilisateur pour avoir les informations les plus récentes
           reloadUserData();
         });
     }
-    
-    // Recharger les données utilisateur à chaque rafraîchissement de la page
     if (user && typeof window !== 'undefined') {
       reloadUserData();
     }
@@ -181,14 +165,10 @@ export function useAuth() {
     if (!authenticated || !user) return false
 
     try {
-      // Update Privy metadata - utiliser l'API de Privy pour mettre à jour les métadonnées
-      // Note: Nous n'utilisons plus directement user.setMetadata car cette méthode n'existe pas dans le type User
       if (data.steamId) {
-        // Stocker dans le localStorage comme solution de secours
         localStorage.setItem("steamID", data.steamId)
       }
 
-      // Update local profile
       setProfile((prev) => (prev ? { ...prev, ...data } : null))
       return true
     } catch (error) {
@@ -197,12 +177,12 @@ export function useAuth() {
     }
   }
 
-  // Fonction pour mettre à jour le profil utilisateur avec un steamID
+  // Function to update the user profile with a steamID
   const updateSteamId = async (steamId: string, tradeLink: string = '', steamName: string = '', steamAvatar: string = ''): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      // Enregistrer dans l'API du USER
+      // Register in the USER API
       try {
         const response = await fetch('http://localhost:3333/api/user/', {
           method: 'POST',
@@ -214,7 +194,6 @@ export function useAuth() {
             steamId,
             tradeLink,
             profile: {
-              // N'envoyer les valeurs que si elles ne sont pas vides
               ...(steamName ? { steamName } : {}),
               ...(steamAvatar ? { steamAvatar } : {})
             }
@@ -225,24 +204,18 @@ export function useAuth() {
           console.error('Error updating Steam ID in API:', await response.text())
           return false;
         }
-        
-        // Vérifier que la réponse contient bien les données attendues
         try {
           const data = await response.json();
-          
-          // Vérifier que la réponse contient bien le steamId et le tradeLink
           if (!data.user || !data.user.steamId) {
             console.error('Steam ID not found in API response');
             return false;
           }
-          
-          // Vérifier le tradeLink si on en a fourni un
           if (tradeLink && (!data.user.tradeLink || data.user.tradeLink !== tradeLink)) {
             console.error('Trade link not properly saved in API response');
             return false;
           }
           
-          // Mettre à jour le profil local seulement après confirmation du backend
+          // Update local profile
           if (profile) {
             setProfile({
               ...profile,
@@ -275,26 +248,19 @@ export function useAuth() {
       login: () =>
         alert("Authentication is not configured. Please add NEXT_PUBLIC_PRIVY_APP_ID to your environment variables."),
       logout: () => {},
-      //createWallet: () => {},
       connectWallet: () => {},
       updateProfile: () => Promise.resolve(false),
       isLoading: status === "loading",
       isAuthenticated: false,
-      //hasWallet: false,
     }
     
   }
 
-  // Fonction personnalisée pour se déconnecter et nettoyer les données Steam
+  // Function to logout and clean Steam data
   const handleLogout = () => {
-    // D'abord, appeler la fonction logout de Privy
     logout();
-    
-    // Ensuite, réinitialiser l'état local
     setStatus("unauthenticated");
     setProfile(null);
-    
-    // Nettoyer les paramètres d'URL liés à Steam pour éviter toute confusion
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.delete('steam_connected');
@@ -309,11 +275,11 @@ export function useAuth() {
     status,
     profile,
     login,
-    logout: handleLogout, // Remplacer la fonction logout par notre version personnalisée
+    logout: handleLogout,
     connectWallet,
     updateProfile,
     updateSteamId,
-    reloadUserData, // Exposer la fonction pour recharger les données utilisateur
+    reloadUserData,
     isLoading: status === "loading",
     isAuthenticated: status === "authenticated",
   }

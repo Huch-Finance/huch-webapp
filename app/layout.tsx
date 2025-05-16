@@ -3,8 +3,8 @@ import type { Metadata } from "next"
 import { Poppins } from "next/font/google"
 import "./globals.css"
 import "./privy-overrides.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { PrivyProvider } from "@/components/privy-provider"
+import { ThemeProvider } from "@/components/layout/theme-provider"
+import { PrivyProvider } from "@/components/auth/privy-provider"
 import { Toaster } from "sonner"
 
 const poppins = Poppins({

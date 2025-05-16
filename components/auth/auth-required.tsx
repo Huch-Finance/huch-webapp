@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Wallet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { usePrivy } from "@privy-io/react-auth"
-import { CyberpunkContainer } from "@/components/cyberpunk-container"
+import { CyberpunkContainer } from "@/components/layout/cyberpunk-container"
 
 interface AuthRequiredProps {
   children: ReactNode

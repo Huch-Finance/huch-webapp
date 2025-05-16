@@ -22,7 +22,7 @@ export function BorrowCancelModal({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  // Fonction pour fermer le modal
+  // Function to close the modal
   const handleClose = () => {
     setError(null);
     onClose();
@@ -39,15 +39,15 @@ export function BorrowCancelModal({
           </DialogDescription>
         </DialogHeader>
         
-        {/* Contenu principal */}
+        {/* Main content */}
         <div className="py-6">
           <div className="flex flex-col items-center justify-center gap-6">
-            {/* Icône de succès */}
+            {/* Success icon */}
             <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center">
               <Check className="h-8 w-8 text-green-500" />
             </div>
             
-            {/* Détails de l'item */}
+            {/* Item details */}
             {item && (
               <div className="flex flex-col items-center gap-2">
                 <div className="relative w-20 h-20 overflow-hidden rounded-md">
@@ -62,12 +62,12 @@ export function BorrowCancelModal({
               </div>
             )}
             
-            {/* Message de confirmation */}
+            {/* Confirmation message */}
             <p className="text-center text-sm text-gray-400">
               The trade offer for this item has been canceled. You can start a new loan process if you wish.
             </p>
             
-            {/* Message d'erreur */}
+            {/* Error message */}
             {error && (
               <div className="flex items-center gap-2 text-red-500">
                 <AlertCircle className="h-4 w-4" />

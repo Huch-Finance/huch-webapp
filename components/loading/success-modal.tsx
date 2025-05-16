@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Check, Trophy, Wallet } from "lucide-react"
 import Link from "next/link"
-import { TransactionLoading } from "@/components/transaction-loading"
+import { TransactionLoading } from "@/components/loading/transaction-loading"
 
 interface SuccessModalProps {
   isOpen: boolean
@@ -39,8 +39,6 @@ export function SuccessModal({ isOpen, onClose, loanAmount, skinNames, loanDurat
   const handleLoadingComplete = () => {
     setIsLoading(false)
   }
-
-  // Reset loading state when modal is reopened
   useEffect(() => {
     if (isOpen) {
       setIsLoading(true)

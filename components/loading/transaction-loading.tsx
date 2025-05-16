@@ -7,15 +7,14 @@ interface TransactionLoadingProps {
   onComplete: () => void
 }
 
+// Loading animation for the transaction
 export function TransactionLoading({ onComplete }: TransactionLoadingProps) {
   const [progress, setProgress] = useState(0)
   const [isStuck, setIsStuck] = useState(false)
   const [statusText, setStatusText] = useState("Initializing transaction...")
 
   useEffect(() => {
-    // Simulation du chargement avec un "bug" au milieu
     const timer1 = setTimeout(() => {
-      // Première phase rapide jusqu'à 45%
       const interval = setInterval(() => {
         setProgress((prev) => {
           if (prev < 45) {
@@ -29,18 +28,14 @@ export function TransactionLoading({ onComplete }: TransactionLoadingProps) {
       return () => clearInterval(interval)
     }, 300)
 
-    // Simuler un "bug" à 45%
     const timer2 = setTimeout(() => {
       setIsStuck(true)
       setStatusText("Verifying collateral...")
     }, 1500)
 
-    // Reprendre après le "bug" (après 2 secondes)
     const timer3 = setTimeout(() => {
       setIsStuck(false)
       setStatusText("Processing loan...")
-
-      // Continuer jusqu'à 100%
       const interval = setInterval(() => {
         setProgress((prev) => {
           if (prev < 100) {
@@ -55,7 +50,6 @@ export function TransactionLoading({ onComplete }: TransactionLoadingProps) {
       return () => clearInterval(interval)
     }, 3500)
 
-    // Terminer le chargement
     const timer4 = setTimeout(() => {
       onComplete()
     }, 5000)
@@ -70,7 +64,6 @@ export function TransactionLoading({ onComplete }: TransactionLoadingProps) {
 
   return (
     <div className="flex flex-col items-center justify-center p-8 space-y-8">
-      {/* Cercle de chargement principal */}
       <div className="relative">
         <div
           className={`w-20 h-20 border-4 border-t-[#5D5FEF] border-r-[#5D5FEF]/40 border-b-[#5D5FEF]/20 border-l-[#5D5FEF]/60 rounded-full ${isStuck ? "animate-pulse" : "animate-spin"}`}
@@ -83,7 +76,6 @@ export function TransactionLoading({ onComplete }: TransactionLoadingProps) {
         ></div>
       </div>
 
-      {/* Barre de progression unique */}
       <div className="w-full max-w-md space-y-3">
         <div className="text-center mb-2">
           <span className={`text-sm font-medium ${isStuck ? "text-yellow-400 animate-pulse" : "text-white"}`}>

@@ -1,18 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Navbar } from "@/components/navbar"
+import { Navbar } from "@/components/organism/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Award, Clock, CreditCard, ExternalLink, Gift, History, Trophy, Wallet, Settings, Copy, Check } from "lucide-react"
+import { Award, Clock, CreditCard, Gift, History, Trophy, Wallet, Settings, Copy, Check } from "lucide-react"
 import Link from "next/link"
-import { Footer } from "@/components/footer"
+import { Footer } from "@/components/organism/footer"
 import { useAuth } from "@/hooks/use-auth"
 import { useSolanaWallets, useSendTransaction } from '@privy-io/react-auth/solana';
-import { LoadingOverlay } from "@/components/loading-overlay"
-// import { usePrivy, useWallets } from "@privy-io/react-auth"
+import { LoadingOverlay } from "@/components/loading/loading-overlay"
 import {
   Dialog,
   DialogContent,

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { useActiveLoans, Loan } from "@/hooks/use-active-loans"
-import { LoadingOverlay } from "@/components/loading-overlay"
+import { LoadingOverlay } from "@/components/loading/loading-overlay"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -15,10 +15,10 @@ import { fr } from "date-fns/locale"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { SteamAuthButton } from "@/components/steam-auth-button"
-import { CyberpunkContainer } from "@/components/cyberpunk-container"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
+import { SteamAuthButton } from "@/components/auth/steam-auth-button"
+import { CyberpunkContainer } from "@/components/layout/cyberpunk-container"
+import { Navbar } from "@/components/organism/navbar"
+import { Footer } from "@/components/organism/footer"
 
 export default function DashboardPage() {
   const { isAuthenticated, isLoading: privyLoading, profile } = useAuth()

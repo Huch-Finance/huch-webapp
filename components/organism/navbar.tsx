@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Menu, X, Trophy, Home } from "lucide-react"
-import { AuthButton } from "@/components/auth-button"
+import { AuthButton } from "@/components/auth/auth-button"
 import { useAuth } from "@/hooks/use-auth"
 import Image from "next/image"
 
@@ -37,7 +37,7 @@ export function Navbar() {
             <Link href="/ranking" className="text-gray-300 hover:text-[#5D5FEF] transition-colors">
               Ranking
             </Link>
-            {/* Suppression des liens Wallet, Profile et Settings car ils sont dans le menu déroulant de Privy */}
+            {/* Dropdown menu */}
             <AuthButton />
           </div>
 
@@ -79,7 +79,7 @@ export function Navbar() {
               <Trophy size={18} />
               Ranking
             </Link>
-            {/* Suppression des liens Wallet, Profile et Settings car ils sont dans le menu déroulant de Privy */}
+            {/* Dropdown menu */}
             <div className="pt-2">
               <AuthButton />
             </div>

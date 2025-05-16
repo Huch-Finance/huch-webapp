@@ -3,65 +3,62 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Bell, ChevronDown, Filter, RotateCcw, Search, Settings, ArrowRight, Clock, AlertCircle, Check, Loader2, LayoutGrid, List } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { BorrowConfirmationModal } from "@/components/borrow-confirmation-modal"
-import { LoadingOverlay } from "@/components/loading-overlay"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
+import { ChevronDown, Filter, RotateCcw, Search, ArrowRight, LayoutGrid, List } from "lucide-react"
+import { BorrowConfirmationModal } from "@/components/borrow/borrow-confirmation-modal"
+import { LoadingOverlay } from "@/components/loading/loading-overlay"
+import { Navbar } from "@/components/organism/navbar"
+import { Footer } from "@/components/organism/footer"
 import { useAuth } from "@/hooks/use-auth"
-import { SteamAuthButton } from "@/components/steam-auth-button"
+import { SteamAuthButton } from "@/components/auth/steam-auth-button"
 import { useSteamInventory, SteamItem } from "@/hooks/use-steam-inventory"
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("borrow")
-  const [currency, setCurrency] = useState("USDC")
   const [selectedSkin, setSelectedSkin] = useState<string | null>(null)
   const [skinSelectorOpen, setSkinSelectorOpen] = useState(false)
   const [gridViewActive, setGridViewActive] = useState(false)
   const [loanPercentage, setLoanPercentage] = useState(100)
   const [loanAmount, setLoanAmount] = useState(0)
-  const [loanDuration, setLoanDuration] = useState(7) // Durée du prêt en jours
-  const loanDurationOptions = [14, 25, 30, 35] // Options de durée en jours
-  const [howItWorksOpen, setHowItWorksOpen] = useState(false) // État pour le menu déroulant "How it works"
+  const [loanDuration, setLoanDuration] = useState(7) // Loan duration in days
+  const loanDurationOptions = [14, 25, 30, 35] // Loan duration options in days
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false) // State for the "How it works" dropdown menu
   
-  // État pour le modal de confirmation d'emprunt
+  // State for the borrow confirmation modal
   const [borrowModalOpen, setBorrowModalOpen] = useState(false)
-  // État pour suivre si un emprunt a été confirmé avec succès
+  // State to track if a loan has been confirmed successfully
   const [borrowSuccessful, setBorrowSuccessful] = useState(false)
   
   // Gestionnaire pour la fermeture du modal de confirmation
   const handleConfirmationOpenChange = (open: boolean) => {
     setBorrowModalOpen(open);
     
-    // Si le modal se ferme, réinitialiser uniquement si l'emprunt a été confirmé avec succès
+    // If the modal closes, reset only if the loan was confirmed successfully
     if (!open) {
-      // Délai court pour éviter des changements visuels pendant la fermeture
+      // Short delay to avoid visual changes during closing
       setTimeout(() => {
         if (borrowSuccessful) {
-          // Ne pas réinitialiser selectedSkin ici pour permettre à l'utilisateur de voir son choix précédent
-          // mais réinitialiser d'autres états si nécessaire
+          // Do not reset selectedSkin here to allow the user to see their previous choice
+          // but reset other states if necessary
           setLoanAmount(0);
           setLoanDuration(7);
-          // Réinitialiser l'état de succès pour le prochain emprunt
+          // Reset the success state for the next loan
           setBorrowSuccessful(false);
         }
       }, 300);
     }
   }
   
-  // Authentification avec Privy
+  // Authentication with Privy
   const { isAuthenticated, isLoading: privyLoading, login, logout, profile, connectWallet } = useAuth()
   
-  // Récupérer l'inventaire Steam de l'utilisateur
+  // Retrieve the user's Steam inventory
   const { inventory, isLoading: inventoryLoading, error: inventoryError, lastUpdated, refreshInventory, inventoryFetched } = useSteamInventory()
   
-  // État de chargement global (Privy + données utilisateur)
+  // Global loading state (Privy + user data)
   const isLoading = privyLoading || inventoryLoading;
   
-  // Afficher des logs pour déboguer
+  // Debug logs
   useEffect(() => {
-    console.log("Page borrow - États:", {
+    console.log("Page borrow - States:", {
       privyLoading,
       inventoryLoading,
       isAuthenticated,
@@ -70,7 +67,7 @@ export default function Home() {
     });
   }, [privyLoading, inventoryLoading, isAuthenticated, inventoryFetched, inventory]);
   
-  // Mock CS2 skins pour l'affichage d'exemple quand l'utilisateur n'est pas connecté
+  // Mock CS2 skins for example display when user is not connected
   const mockSkins: SteamItem[] = [
     { id: "1", market_hash_name: "AWP | Dragon Lore", basePrice: 1500, rarity: "Covert", imageUrl: "/awp.webp", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 975, steamId: "", stickers: [] },
     { id: "2", market_hash_name: "Butterfly Knife | Fade", basePrice: 800, rarity: "★", imageUrl: "/karambit.webp", wear: "Minimal Wear", floatValue: 0.08, liquidationRate: 65, loanOffer: 520, steamId: "", stickers: [] },
@@ -97,11 +94,11 @@ export default function Home() {
     }
   }
   
-  // Déterminer les skins à afficher
-  // Utiliser directement l'inventaire réel si disponible, sinon utiliser les mocks
+  // Determine the skins to display
+  // Use the real inventory directly if available, otherwise use the mocks
   const [displaySkins, setDisplaySkins] = useState<SteamItem[]>(mockSkins);
   
-  // Mettre à jour les skins à afficher lorsque l'inventaire change
+  // Update the skins to display when the inventory changes
   useEffect(() => {
     console.log("Effect de mise à jour des displaySkins - États:", {
       isAuthenticated,
@@ -111,19 +108,19 @@ export default function Home() {
     });
     
     if (isAuthenticated && inventory && Array.isArray(inventory) && inventory.length > 0) {
-      console.log("Utilisation de l'inventaire réel avec", inventory.length, "skins");
-      console.log("Premier item de l'inventaire:", inventory[0]);
+      console.log("Using real inventory with", inventory.length, "skins");
+      console.log("First item of the inventory:", inventory[0]);
       setDisplaySkins(inventory);
     } else if (isAuthenticated && inventoryFetched) {
-      console.log("Inventaire récupéré mais vide ou invalide, utilisation des mocks");
+      console.log("Inventory fetched but empty or invalid, using mocks");
       setDisplaySkins(mockSkins);
     } else if (!isAuthenticated) {
-      console.log("Utilisateur non authentifié, utilisation des mocks");
+      console.log("User not authenticated, using mocks");
       setDisplaySkins(mockSkins);
     }
   }, [isAuthenticated, inventory, inventoryFetched, mockSkins]);
   
-  // Calcul du montant du prêt en fonction du pourcentage choisi
+  // Calculate the loan amount based on the selected skin and chosen percentage
   useEffect(() => {
     if (selectedSkin) {
       const selectedSkinData = displaySkins.find(skin => skin.id === selectedSkin);
@@ -137,7 +134,7 @@ export default function Home() {
     }
   }, [selectedSkin, loanPercentage, displaySkins])
   
-  // Pas besoin de fonction handleBorrow car elle est désormais dans le composant BorrowConfirmationModal
+  // No need for handleBorrow function since it's now in the BorrowConfirmationModal component
 
   const liveTransactions = [
     { username: "alex_cs", amount: "$250", skin: "AWP | Dragon Lore" },
@@ -149,16 +146,16 @@ export default function Home() {
 
   const [currentTransaction, setCurrentTransaction] = useState(0)
 
-  // Rafraîchir l'inventaire manuellement si nécessaire
+  // Manually refresh the inventory if needed
   const handleRefreshInventory = () => {
-    console.log("Rafraîchissement manuel de l'inventaire");
+    console.log("Manual inventory refresh");
     refreshInventory();
   };
   
-  // Tenter de récupérer l'inventaire si l'utilisateur est authentifié mais que l'inventaire n'a pas été récupéré
+  // Try to fetch the inventory if the user is authenticated but the inventory has not been fetched
   useEffect(() => {
     if (!privyLoading && isAuthenticated && !inventoryFetched && !inventoryLoading) {
-      console.log("Authentifié mais inventaire non récupéré, tentative de récupération...");
+      console.log("Authenticated but inventory not fetched, attempt to fetch...");
       refreshInventory();
     }
   }, [isAuthenticated, inventoryFetched, privyLoading, inventoryLoading, refreshInventory]);
@@ -178,28 +175,28 @@ export default function Home() {
   const [filterPriceMax, setFilterPriceMax] = useState<number>(10000);
   const [showFilters, setShowFilters] = useState<boolean>(false);
   
-  // Fonction de filtrage réutilisable pour les deux vues
+  // Reusable filtering function for both views
   const filterSkins = (skin: any) => {
-    // Filtrer par nom
+    // Filter by name
     const nameMatch = skin.market_hash_name.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Filtrer par rareté
+    // Filter by rarity
     const rarityMatch = filterRarity === 'all' ? true : 
       skin.market_hash_name.includes(filterRarity);
     
-    // Filtrer par usure
+    // Filter by wear
     const { wear } = extractSkinInfo(skin.market_hash_name);
     const wearMap = { 'Factory New': 'FN', 'Minimal Wear': 'MW', 'Field-Tested': 'FT', 'Well-Worn': 'WW', 'Battle-Scarred': 'BS' };
     const wearMatch = filterWear === 'all' ? true : 
       wear === wearMap[filterWear as keyof typeof wearMap];
     
-    // Filtrer par prix
+    // Filter by price
     const priceMatch = skin.basePrice >= filterPriceMin && skin.basePrice <= filterPriceMax;
     
     return nameMatch && rarityMatch && wearMatch && priceMatch;
   };
   
-  // Options de rareté pour le filtre
+  // Rarity options for the filter
   const rarityOptions = [
     { value: 'all', label: 'All Rarities' },
     { value: 'Consumer', label: 'Consumer', color: 'rgb(176, 195, 217)' },
@@ -211,7 +208,7 @@ export default function Home() {
     { value: 'Contraband', label: 'Contraband', color: 'rgb(228, 174, 57)' },
   ];
   
-  // Options d'usure pour le filtre
+  // Wear options for the filter
   const wearOptions = [
     { value: 'all', label: 'All Wear' },
     { value: 'Factory New', label: 'Factory New' },
@@ -293,25 +290,6 @@ export default function Home() {
             <div className="mb-6 text-center">
               <h2 className="text-2xl font-medium text-white mb-3">Loan Now</h2>
             </div>
-            
-            {/* Commented buttons - not needed for now
-            <div className="flex items-center justify-end mb-6">
-              <div className="flex items-center gap-3">
-                <Button variant="secondary" size="sm" className="rounded-full bg-[#1f2937] hover:bg-[#1f2937]/80 px-5">
-                  Lend
-                </Button>
-                <div className="flex bg-[#1f2937] rounded-full p-1">
-                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
-                    <Filter className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-            */}
-
             {/* Main borrow interface - rain.fi style */}
             <div className="bg-[#0f1420] backdrop-blur-sm rounded-xl overflow-hidden border border-[#1f2937] mb-4 shadow-md w-full max-w-[95vw] sm:max-w-[80vw] md:max-w-[500px] lg:max-w-md mx-auto">
               {/* Top section with title */}
@@ -326,9 +304,9 @@ export default function Home() {
                   
                   {/* Skin selector button */}
                   <div className="relative">
-                    {/* Vérifier si l'utilisateur est connecté et a un Steam ID et un lien d'échange */}
+                    {/* Verify if the user is authenticated and has a Steam ID and trade link */}
                     {isAuthenticated && profile?.steamId && profile?.tradeLink ? (
-                      /* L'utilisaeur a un Steam ID et un lien d'échange, afficher le sélecteur de skins */
+                      /* The user has a Steam ID and trade link, display the skin selector */
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
@@ -340,10 +318,10 @@ export default function Home() {
                         </Button>
                       </div>
                     ) : isAuthenticated ? (
-                      /* L'utilisateur est connecté mais n'a pas de Steam ID ou de lien d'échange */
+                      /* The user is authenticated but does not have a Steam ID or trade link */
                       <SteamAuthButton />
                     ) : (
-                      /* L'utilisateur n'est pas connecté */
+                      /* The user is not authenticated */
                       <Button
                         variant="outline"
                         size="sm"
@@ -423,7 +401,7 @@ export default function Home() {
                   </div>
                 </div>
                 
-                {/* Montant du prêt */}
+                {/* Loan amount */}
                 <div className="bg-[#1f2937] rounded-lg p-3 mb-3">
                   <div className="flex items-center">
                     <div className="flex-grow">
@@ -445,7 +423,7 @@ export default function Home() {
                 
                 {selectedSkin !== null && (
                   <>
-                    {/* Curseur de pourcentage */}
+                    {/* Loan percentage slider */}
                     <div className="mb-4">
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-xs text-white font-medium">Loan amount</span>
@@ -479,7 +457,7 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    {/* Sélection de la durée */}
+                    {/* Loan duration selection */}
                     <div className="mb-2">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-xs text-white font-medium">Loan duration</span>
@@ -499,7 +477,7 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    {/* Informations sur le prêt */}
+                    {/* Loan information */}
                     <div className="bg-[#1f2937] rounded-lg p-2 mt-3">
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-xs text-gray-400">Total to repay</span>
@@ -567,7 +545,7 @@ export default function Home() {
                     if (!isAuthenticated) {
                       login();
                     } else if (selectedSkin !== null) {
-                      // Ouvrir le modal de confirmation d'emprunt
+                      // Open the borrow confirmation modal
                       setBorrowModalOpen(true);
                     } else {
                       setSkinSelectorOpen(true);
@@ -729,17 +707,17 @@ export default function Home() {
                   </div>
                 )}
                 
-                {/* Vue en liste */}
+                {/* List view */}
                 {!gridViewActive && displaySkins.filter(filterSkins).length > 0 && (
                   <div className="space-y-1 w-full">
                     {displaySkins
                       .filter(filterSkins)
                       .sort((a, b) => a.basePrice - b.basePrice)
                       .map((skin) => {
-                        // Extraire le nom et l'usure du skin
+                        // Extract the name and wear of the skin
                         const { name, wear } = extractSkinInfo(skin.market_hash_name)
                         
-                        // Déterminer la rareté (pour la couleur)
+                        // Determine rarity (for color)
                         const rarity = skin.rarity || 
                           (skin.market_hash_name.includes('★') ? '★' : 
                           skin.market_hash_name.includes('Covert') ? 'Covert' : 
@@ -790,17 +768,17 @@ export default function Home() {
                   </div>
                 )}
                 
-                {/* Vue en grille */}
+                {/* Grid view */}
                 {gridViewActive && displaySkins.filter(filterSkins).length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {displaySkins
                       .filter(filterSkins)
                       .sort((a, b) => a.basePrice - b.basePrice)
                       .map((skin) => {
-                        // Extraire le nom et l'usure du skin
+                        // Extract the name and wear of the skin
                         const { name, wear } = extractSkinInfo(skin.market_hash_name)
                         
-                        // Déterminer la rareté (pour la couleur)
+                        // Determine rarity (for color)
                         const rarity = skin.rarity || 
                           (skin.market_hash_name.includes('★') ? '★' : 
                           skin.market_hash_name.includes('Covert') ? 'Covert' : 
@@ -857,7 +835,7 @@ export default function Home() {
       </main>
       <Footer />
       
-      {/* Modal de confirmation d'emprunt */}
+      {/* Borrow confirmation modal */}
       <BorrowConfirmationModal 
         open={borrowModalOpen} 
         onOpenChange={handleConfirmationOpenChange}
@@ -868,13 +846,7 @@ export default function Home() {
         extractSkinInfo={extractSkinInfo}
         onConfirm={() => {
           console.log("Loan confirmed for", loanAmount, "USDC")
-          // Indiquer que l'emprunt a été confirmé avec succès pour permettre la réinitialisation
           setBorrowSuccessful(true);
-          
-          // Dans une implémentation réelle, ici on pourrait:
-          // 1. Mettre à jour l'état de l'utilisateur
-          // 2. Rediriger vers une page de confirmation
-          // 3. Mettre à jour le solde USDC de l'utilisateur
         }}
       />
     </>
