@@ -15,10 +15,7 @@ import {
   Bell,
   Wallet,
   ComputerIcon as Steam,
-  Smartphone,
   ExternalLink,
-  Save,
-  Check,
   Info,
   Mail,
   AlertTriangle,
@@ -27,6 +24,7 @@ import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/use-auth"
 import { usePrivy, useLinkAccount } from "@privy-io/react-auth"
 import { Footer } from "@/components/organism/footer"
+import { SteamAuthButton } from "@/components/auth/steam-auth-button"
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("profile")
@@ -38,21 +36,37 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false)
 
   const { profile, updateProfile, isAuthenticated, isLoading, reloadUserData } = useAuth()
-  const { linkEmail, linkWallet, unlinkEmail, unlinkWallet, user } = usePrivy()
-  const { linkEmail: linkAccountEmail } = useLinkAccount()
+  const { linkEmail, linkWallet, unlinkEmail, unlinkWallet, user, ready } = usePrivy()
   
   const handleAddEmail = async () => {
+    console.log('handleAddEmail function called')
     try {
-      if (linkAccountEmail) {
-        await linkAccountEmail()
+      console.log('Privy ready:', ready)
+      console.log('linkEmail available:', !!linkEmail)
+      console.log('Current user:', user)
       
+      console.log('Calling Privy linkEmail...')
+      await linkEmail()
+      console.log('linkEmail completed')
+      
+      let attempts = 0
+      const maxAttempts = 10
+      const pollInterval = 3000
+      
+      const pollForEmailUpdate = () => {
+        attempts++
+        console.log(`Polling for email update... (attempt ${attempts}/${maxAttempts})`)
+        
         setTimeout(async () => {
           if (user && user.id) {
-            try {
-              const currentEmail = user.email?.address
-              
-              if (currentEmail) {
-                const response = await fetch('http://localhost:3333/api/user/', {
+            const currentEmail = user.email?.address
+            console.log('Current email after polling:', currentEmail)
+            
+            if (currentEmail) {
+              console.log('Email detected, updating backend:', currentEmail)
+              console.log('Email detected, updating backend:', currentEmail)
+              try {
+                const response = await fetch('http://localhost:3333/api/user', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -60,57 +74,70 @@ export default function Settings() {
                   },
                   body: JSON.stringify({
                     profile: {
-                        email: currentEmail
-                      }
+                      email: currentEmail
+                    }
                   }),
                 })
                 
                 if (!response.ok) {
-                  console.error('Error update email')
+                  console.error('Error updating email:', await response.text())
+                } else {
+                  const data = await response.json()
+                  console.log('Email update successful:', data)
+                  // Mettre à jour l'interface
+                  setEmail(currentEmail)
                 }
+                
+                // Recharger les données utilisateur
+                reloadUserData()
+                return // Arrêter le polling une fois l'email mis à jour
+              } catch (apiError) {
+                console.error('Error calling API:', apiError)
               }
-            } catch (apiError) {
-              console.error('Error API')
+            } else if (attempts < maxAttempts) {
+              // Continuer le polling si le nombre maximum de tentatives n'est pas atteint
+              pollForEmailUpdate()
+            } else {
+              console.log('Max attempts reached, email not detected')
+              // Recharger les données utilisateur une dernière fois
+              reloadUserData()
             }
+          } else if (attempts < maxAttempts) {
+            // Continuer le polling si le nombre maximum de tentatives n'est pas atteint
+            pollForEmailUpdate()
+          } else {
+            console.log('Max attempts reached, user not available')
+            // Recharger les données utilisateur une dernière fois
+            reloadUserData()
           }
-          
-          reloadUserData()
-        }, 2000)
+        }, pollInterval)
       }
+      
+      // Démarrer le processus de polling
+      pollForEmailUpdate()
     } catch (error) {
-      console.error('Error add email:')
+      console.error('Error adding email:', error)
     }
   }
 
+  // Update local states when profile changes
   useEffect(() => {
     if (profile) {
+      console.log('Profile updated in useEffect:', profile)
       setSteamID(profile.steamId || "")
       setUsername(profile.username || "")
       setEmail(profile.email || "")
       setWalletAddress(profile.wallet || "")
     }
   }, [profile])
-
-  const handleSave = async () => {
-    if (!isAuthenticated) return
-
-    setIsSaving(true)
-    try {
-      const success = await updateProfile({
-        steamId: steamID,
-        username,
-      })
-
-      if (success) {
-        setSaveSuccess(true)
-        setTimeout(() => setSaveSuccess(false), 3000)
-      }
-    } catch (error) {
-      console.error("Error saving profile:", error)
-    } finally {
-      setIsSaving(false)
+  
+  // Check if the email has been updated in Privy
+  useEffect(() => {
+    if (user?.email?.address && user.email.address !== email) {
+      console.log('Email detected in user object but not in local state, updating...', user.email.address)
+      setEmail(user.email.address)
     }
-  }
+  }, [user, email])
 
   if (isLoading) {
     return (
@@ -147,6 +174,7 @@ export default function Settings() {
     <main className="min-h-screen flex flex-col bg-gradient-to-b from-[#0f0f13] to-[#1a1a1f] relative z-10">
       <div className="scanlines"></div>
       <Navbar />
+      
 
       <section className="pt-24 pb-16 px-4 flex-1">
         <div className="container mx-auto max-w-4xl">
@@ -156,29 +184,39 @@ export default function Settings() {
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid grid-cols-4 w-full bg-[#1E1E1E] p-1">
-              <TabsTrigger value="profile" className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white">
-                <User size={16} className="mr-2" />
-                Profile
+              <TabsTrigger value="profile" className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white text-xs sm:text-sm">
+                <User size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="hidden sm:inline">Profile</span>
               </TabsTrigger>
-              <TabsTrigger value="security" className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white">
-                <Shield size={16} className="mr-2" />
-                Security
+              <TabsTrigger value="security" className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white text-xs sm:text-sm">
+                <Shield size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="hidden sm:inline">Security</span>
               </TabsTrigger>
               <TabsTrigger
                 value="notifications"
-                className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white"
+                className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white text-xs sm:text-sm"
               >
-                <Bell size={16} className="mr-2" />
-                Notifications
+                <Bell size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="hidden md:inline">Notifications</span>
               </TabsTrigger>
-              <TabsTrigger value="wallet" className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white">
-                <Wallet size={16} className="mr-2" />
-                Wallet
+              <TabsTrigger value="wallet" className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white text-xs sm:text-sm">
+                <Wallet size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="hidden sm:inline">Wallet</span>
               </TabsTrigger>
             </TabsList>
 
             {/* Profile Tab */}
-            <TabsContent value="profile" className="space-y-6">
+            <TabsContent value="profile" className="space-y-6 relative">
+              {!profile?.steamId && (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg">
+                  <AlertTriangle size={40} className="text-yellow-500 mb-2" />
+                  <h3 className="text-lg font-medium text-white mb-1">Steam Account Required</h3>
+                  <p className="text-sm text-gray-300 text-center max-w-xs mb-4">Connect your Steam account to complete your profile and access all features.</p>
+                  <div className="scale-125">
+                    <SteamAuthButton />
+                  </div>
+                </div>
+              )}
               <Card className="border-[#2A2A2A] bg-[#1E1E1E]">
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -190,15 +228,27 @@ export default function Settings() {
                 </CardHeader>
                 
                 <CardContent className="space-y-4">
-                <div className="flex items-center gap-4 mt-2 mb-1">
-                    <div className="w-16 h-16 rounded-full bg-[#2A2A2A] overflow-hidden">
-                      <img
-                        src={profile?.avatar || "/avatars/logo-black.svg?height=100&width=100"}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                      />
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-2 mb-3">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full bg-[#2A2A2A] overflow-hidden">
+                        <img
+                          src={profile?.avatar || "/avatars/logo-black.svg?height=100&width=100"}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="text-sm text-gray-400">{profile?.username || "Anonymous"}</div>
                     </div>
-                    <div className="text-sm text-gray-400">{profile?.username || "Anonymous"}</div>
+                    
+                    {!profile?.steamId && (
+                      <div className="flex-1 flex items-center gap-3 p-3 rounded-lg bg-yellow-600/10 border border-yellow-600/30">
+                        <AlertTriangle size={18} className="text-yellow-500 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-xs text-yellow-400">Connect your Steam account to complete your profile</p>
+                        </div>
+                        <SteamAuthButton />
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -229,6 +279,17 @@ export default function Settings() {
               </Card>
 
               <CyberpunkContainer>
+                {!profile?.steamId && (
+                <div className="rounded-lg border border-yellow-600/30 bg-yellow-600/10 px-4 py-3 mb-4 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-medium text-yellow-500">Steam account required</h3>
+                    <p className="text-sm text-yellow-200/70 mt-1">
+                      You need to connect your Steam account to use our lending services. This allows us to access your CS2 inventory for collateral.
+                    </p>
+                  </div>
+                </div>
+              )}
                 <CardHeader className="px-0 pt-0">
                   <CardTitle className="flex items-center">
                     <Steam className="mr-2 text-[#5D5FEF]" />
@@ -237,30 +298,93 @@ export default function Settings() {
                   <CardDescription>Link your Steam account to access your CS2 inventory</CardDescription>
                 </CardHeader>
                 <CardContent className="px-0 pb-0 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="steamid">Steam ID</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="steamid"
-                        placeholder="Your current Steam ID : 76561198858784909 (Dornag0x)"
-                        value={steamID}
-                        disabled={true}
-                        className="bg-[#2A2A2A] border-[#2A2A2A]"
-                      />
-                      <Button 
-                        variant="outline" 
-                        className="border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20"
-                        onClick={() => {
-                          if (profile?.steamId) {
-                            window.open(`https://steamcommunity.com/profiles/${profile.steamId}`, '_blank');
-                          }
-                        }}
-                      >
-                        <ExternalLink size={16} className="mr-2" />
-                        View Profile
-                      </Button>
+                  {!profile?.steamId ? (
+                    <div className="p-4 bg-[#2A2A2A] rounded-lg">
+                      <div className="text-center mb-4">
+                        <h4 className="font-medium mb-2">Connect your Steam account</h4>
+                        <p className="text-sm text-gray-400 mb-4">
+                          You need to connect your Steam account to use our services. This allows us to access your CS2 inventory.
+                        </p>
+                        <div className="flex justify-center">
+                          <SteamAuthButton />
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="steamid">Steam ID</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="steamid"
+                            placeholder="Your current Steam ID : 76561198858784909 (Dornag0x)"
+                            value={steamID}
+                            disabled={true}
+                            className="bg-[#2A2A2A] border-[#2A2A2A]"
+                          />
+                          <Button 
+                            variant="outline" 
+                            className="border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20"
+                            onClick={() => {
+                              if (profile?.steamId) {
+                                window.open(`https://steamcommunity.com/profiles/${profile.steamId}`, '_blank');
+                              }
+                            }}
+                          >
+                            <ExternalLink size={16} className="mr-2" />
+                            View Profile
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="tradelink" className="flex items-center gap-2">
+                          Trade Link
+                          {!profile?.tradeLink && (
+                            <Badge className="bg-yellow-600/20 text-yellow-400 border-yellow-600 text-xs">
+                              Required
+                            </Badge>
+                          )}
+                        </Label>
+                        <div className="flex gap-2 items-center">
+                          {profile?.tradeLink ? (
+                            <div className="flex-1 flex justify-between items-center bg-[#2A2A2A] border border-[#2A2A2A] rounded-md px-3 py-2">
+                              <span className="text-sm text-gray-400 truncate max-w-xs">{profile.tradeLink}</span>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20 ml-2 h-8"
+                                onClick={() => {
+                                  // Permettre à l'utilisateur de modifier son trade link
+                                  const steamAuthButton = document.querySelector('button[data-steam-auth]');
+                                  if (steamAuthButton) {
+                                    (steamAuthButton as HTMLButtonElement).click();
+                                  }
+                                }}
+                              >
+                                Edit
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex-1">
+                              <SteamAuthButton />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400">
+                          Your trade link is required to receive and return CS2 items. 
+                          <a 
+                            href="https://steamcommunity.com/my/tradeoffers/privacy" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-[#5D5FEF] hover:underline"
+                          >
+                            Find your trade link here
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="p-3 bg-[#2A2A2A]/50 rounded-lg flex items-start gap-2">
                     <Info size={16} className="text-[#5D5FEF] mt-0.5 flex-shrink-0" />
@@ -284,42 +408,42 @@ export default function Settings() {
                   <CardDescription>Manage your email authentication methods</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {!email && walletAddress && (
-                    <div className="p-4 mb-4 bg-yellow-600/10 border border-yellow-600/30 rounded-lg flex items-start gap-3">
+                  {!email && walletAddress ? (
+                    <div className="p-4 bg-yellow-600/10 border border-yellow-600/30 rounded-lg flex items-start gap-3">
                       <AlertTriangle className="text-yellow-500 flex-shrink-0 mt-1" size={20} />
-                      <div>
+                      <div className="flex-1">
                         <h4 className="font-medium text-yellow-500">Email recommended</h4>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-gray-400 mb-3">
                           We recommend adding an email to your account for better security and recovery options.
                         </p>
                         <Button 
-                          className="mt-2 bg-yellow-600 hover:bg-yellow-700 text-white" 
-                          size="sm"
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white" 
                           onClick={handleAddEmail}
                         >
                           Add Email Now
                         </Button>
                       </div>
                     </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium">{email || "No email connected"}</h4>
-                      <p className="text-sm text-gray-400">Your primary email address</p>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">{email || "No email connected"}</h4>
+                        <p className="text-sm text-gray-400">Your primary email address</p>
+                      </div>
+                      {!email ? (
+                        <Button 
+                          className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white" 
+                          onClick={handleAddEmail}
+                        >
+                          Connect Email
+                        </Button>
+                      ) : (
+                        <Badge className="bg-green-600/20 text-green-400 border-green-600">
+                          Verified
+                        </Badge>
+                      )}
                     </div>
-                    {!email ? (
-                      <Button 
-                        className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white" 
-                        onClick={handleAddEmail}
-                      >
-                        Connect Email
-                      </Button>
-                    ) : (
-                      <Badge className="bg-green-600/20 text-green-400 border-green-600">
-                        Verified
-                      </Badge>
-                    )}
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -355,35 +479,6 @@ export default function Settings() {
                       </Button>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-[#2A2A2A] bg-[#1E1E1E]">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Smartphone className="mr-2 text-[#5D5FEF]" />
-                    Two-Factor Authentication
-                  </CardTitle>
-                  <CardDescription>Add an extra layer of security to your account</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium">Email Authentication</h4>
-                      <p className="text-sm text-gray-400">Receive a code via email when logging in</p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium">Authenticator App</h4>
-                      <p className="text-sm text-gray-400">Use an authenticator app to generate codes</p>
-                    </div>
-                    <Switch />
-                  </div>
-                  <Button variant="outline" className="border-[#2A2A2A] text-gray-300 hover:text-white">
-                    Set Up Authenticator
-                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>

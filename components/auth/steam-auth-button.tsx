@@ -36,7 +36,7 @@ export function SteamAuthButton() {
     }
   }, [isAuthenticated, profile?.steamId, profile?.tradeLink, showtradeLinkInput])
   
-  // Vérifier si l'utilisateur revient de l'authentification Steam
+  // Check if the user is coming from the Steam authentication callback
   useEffect(() => {
     const steamConnected = searchParams.get('steam_connected')
     const steamId = searchParams.get('steam_id')

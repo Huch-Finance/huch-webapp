@@ -5,7 +5,8 @@ import { Navbar } from "@/components/organism/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Award, Clock, CreditCard, Gift, History, Trophy, Wallet, Settings, Copy, Check } from "lucide-react"
+import { Award, Clock, CreditCard, Gift, History, Trophy, Wallet, Settings, Copy, Check, AlertTriangle } from "lucide-react"
+import { SteamAuthButton } from "@/components/auth/steam-auth-button"
 import Link from "next/link"
 import { Footer } from "@/components/organism/footer"
 import { useAuth } from "@/hooks/use-auth"
@@ -153,7 +154,17 @@ export default function Profile() {
         <div className="container mx-auto max-w-4xl">
           <div className="flex flex-col md:flex-row gap-8 mb-8">
             {/* Profile Card */}
-            <Card className="border-muted bg-[#1E1E1E] md:w-1/3">
+            <Card className="border-muted bg-[#1E1E1E] md:w-1/3 relative">
+              {!profile?.steamId && (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
+                  <AlertTriangle size={32} className="text-yellow-500 mb-2" />
+                  <h3 className="text-lg font-medium text-white mb-1 text-center">Steam Account Required</h3>
+                  <p className="text-sm text-gray-300 text-center mb-4">Connect your Steam account to access all features.</p>
+                  <div className="scale-110">
+                    <SteamAuthButton />
+                  </div>
+                </div>
+              )}
               <CardContent className="p-6">
                 <div className="flex flex-col items-center">
                   <div className="w-24 h-24 rounded-full bg-muted overflow-hidden mb-4">
