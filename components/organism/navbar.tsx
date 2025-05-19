@@ -10,7 +10,7 @@ import Image from "next/image"
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
-  const { isAuthenticated } = useAuth()
+  const { profile, isAuthenticated } = useAuth()
 
   const toggleMenu = () => {
     setIsOpen(!isOpen)
@@ -26,6 +26,11 @@ export function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center space-x-6">
+            {profile?.admin && (
+              <Link href="/admin" className="text-gray-300 hover:text-[#5D5FEF] transition-colors">
+                Admin
+              </Link>
+            )}
             <Link href="/borrow" className="text-gray-300 hover:text-[#5D5FEF] transition-colors">
               Borrow
             </Link>
@@ -48,6 +53,16 @@ export function Navbar() {
       {isOpen && (
         <div className="md:hidden bg-[#0f0f13] border-b border-[#2A2A2A] animate-in fade-in slide-in-from-top-5 duration-300">
           <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
+            {profile?.admin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 text-gray-300 hover:text-[#5D5FEF] py-2 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <Home size={18} />
+                Admin
+              </Link>
+            )}
             <Link
               href="/borrow"
               className="flex items-center gap-2 text-gray-300 hover:text-[#5D5FEF] py-2 transition-colors"

@@ -5,7 +5,10 @@ import "./globals.css"
 import "./privy-overrides.css"
 import { ThemeProvider } from "@/components/layout/theme-provider"
 import { PrivyProvider } from "@/components/auth/privy-provider"
+import { Navbar } from "@/components/organism/navbar"
+import { Footer } from "@/components/organism/footer"
 import { Toaster } from "sonner"
+import { BeamsBackground } from "@/components/bg/beams-background"
 
 const poppins = Poppins({
   weight: ["400", "500", "600", "700"],
@@ -26,12 +29,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${poppins.variable} bg-[#0f0f13] text-white`}>
+      <body className={`${poppins.variable} text-white`}>
+        <BeamsBackground />
         <PrivyProvider>
+          <Navbar />
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
             {children}
             <Toaster richColors position="top-right" />
           </ThemeProvider>
+          <Footer/>
         </PrivyProvider>
       </body>
     </html>

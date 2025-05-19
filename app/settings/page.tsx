@@ -142,7 +142,6 @@ export default function Settings() {
   if (isLoading) {
     return (
       <main className="min-h-screen flex flex-col bg-gradient-to-b from-[#0f0f13] to-[#1a1a1f] relative z-10">
-        <Navbar />
         <div className="flex items-center justify-center flex-1">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-t-[#5D5FEF] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -156,7 +155,6 @@ export default function Settings() {
   if (!isAuthenticated) {
     return (
       <main className="min-h-screen flex flex-col bg-gradient-to-b from-[#0f0f13] to-[#1a1a1f] relative z-10">
-        <Navbar />
         <div className="flex items-center justify-center flex-1">
           <div className="text-center max-w-md p-6">
             <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
@@ -173,7 +171,6 @@ export default function Settings() {
   return (
     <main className="min-h-screen flex flex-col bg-gradient-to-b from-[#0f0f13] to-[#1a1a1f] relative z-10">
       <div className="scanlines"></div>
-      <Navbar />
       
 
       <section className="pt-24 pb-16 px-4 flex-1">
@@ -596,7 +593,6 @@ export default function Settings() {
         </div>
       </section>
 
-      <Footer />
     </main>
   )
 }

@@ -55,7 +55,8 @@ export function useAuth() {
             const updatedProfile = {
               ...prevProfile,
               steamId: data.user.steamId,
-              tradeLink: data.user.tradeLink || prevProfile.tradeLink
+              tradeLink: data.user.tradeLink || prevProfile.tradeLink,
+              admin: data.user.admin ?? false, // Toujours mettre à jour admin
             };
             
             // Ajouter les informations du profil Steam si disponibles
@@ -104,7 +105,8 @@ export function useAuth() {
           const updatedProfile = {
             ...prevProfile,
             steamId: data.user.steamId,
-            tradeLink: data.user.tradeLink
+            tradeLink: data.user.tradeLink,
+            admin: data.user.admin ?? false, // Toujours mettre à jour admin
           };
           if (data.user.profile) {
             if (data.user.profile.steamName) {
@@ -136,6 +138,13 @@ export function useAuth() {
       return
     }
 
+    // Récupère la valeur admin depuis le localStorage si elle existe (optionnel)
+    let adminFromDb = false;
+    if (user && typeof window !== "undefined") {
+      const adminStr = window.localStorage.getItem("admin");
+      if (adminStr === "true") adminFromDb = true;
+    }
+
     // User is authenticated, build profile
     const userProfile: UserProfile = {
       id: user?.id || "",
@@ -143,6 +152,7 @@ export function useAuth() {
       wallet: wallets?.[0]?.address,
       steamId: undefined,
       username: undefined,
+      admin: adminFromDb || false,
     }
 
     setProfile(userProfile)

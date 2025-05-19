@@ -164,8 +164,7 @@ export default function Classement() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col bg-gradient-to-b from-[#0f0f13] to-[#1a1a1f]">
-      <Navbar />
+    <main className="min-h-screen flex flex-col">
 
       <section className="pt-24 pb-16 px-4 flex-1">
         <div className="container mx-auto max-w-4xl">
@@ -515,8 +514,6 @@ export default function Classement() {
           )}
         </div>
       </section>
-
-      <Footer />
     </main>
   )
 }

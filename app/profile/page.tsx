@@ -121,8 +121,7 @@ export default function Profile() {
 
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen flex flex-col bg-gradient-to-b from-[#0f0f13] to-[#1a1a1f]">
-        <Navbar />
+      <main className="min-h-screen flex flex-col ">
         <LoadingOverlay 
           isLoading={isLoading} 
           message="Loading your profile..."
@@ -143,8 +142,7 @@ export default function Profile() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col bg-gradient-to-b from-[#0f0f13] to-[#1a1a1f]">
-      <Navbar />
+    <main className="min-h-screen flex flex-col ">
       <LoadingOverlay 
         isLoading={isLoading} 
         message="Loading your profile..."
@@ -330,8 +328,6 @@ export default function Profile() {
           </div>
         </div>
       </section>
-
-      <Footer />
 
       {/* Deposit Modal */}
       <Dialog open={isDepositOpen} onOpenChange={setIsDepositOpen}>

@@ -9,6 +9,7 @@ export type UserProfile = {
   username?: string
   avatar?: string
   tradeLink?: string
+  admin?: boolean
 }
 
 export type AuthStatus = "authenticated" | "unauthenticated" | "loading"

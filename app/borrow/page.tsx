@@ -220,13 +220,12 @@ export default function Home() {
 
   return (
     <>
-      <Navbar />
       <LoadingOverlay 
         isLoading={isLoading} 
         message="Connecting to your wallet..."
         opacity={0.7}
       />
-      <main className="min-h-screen bg-[#0a0c14] text-white relative overflow-hidden pt-16">
+      <main className="min-h-screen text-white relative overflow-hidden pt-16">
         {/* Background with floating elements */} 
         <div className="inset-0 overflow-hidden">
           <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-purple-500/10 blur-3xl"></div>
@@ -832,9 +831,7 @@ export default function Home() {
             </div>
           </div>
         )}
-      </main>
-      <Footer />
-      
+      </main>      
       {/* Borrow confirmation modal */}
       <BorrowConfirmationModal 
         open={borrowModalOpen} 
