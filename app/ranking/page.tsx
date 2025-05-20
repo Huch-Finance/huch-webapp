@@ -165,7 +165,6 @@ export default function Classement() {
 
   return (
     <main className="min-h-screen flex flex-col">
-
       <section className="pt-24 pb-16 px-4 flex-1">
         <div className="container mx-auto max-w-4xl">
           <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">

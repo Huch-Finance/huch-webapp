@@ -30,10 +30,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${poppins.variable} text-white`}>
-        <BeamsBackground />
+        {/* <BeamsBackground /> */}
         <PrivyProvider>
           <Navbar />
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem={false} disableTransitionOnChange>
             {children}
             <Toaster richColors position="top-right" />
           </ThemeProvider>
