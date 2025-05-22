@@ -40,7 +40,7 @@ export function AuthButton() {
         onClick={() =>
           alert("Authentication is not configured. Please add NEXT_PUBLIC_PRIVY_APP_ID to your environment variables.")
         }
-        className="bg-purple-600 hover:bg-purple-700 text-white"
+        className="bg-gradient-to-br from-gray-100 to-gray-300 text-black font-semibold rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm shadow-md hover:from-gray-200 hover:to-gray-400 transition-all duration-200"
       >
         Connect
       </Button>
@@ -50,7 +50,7 @@ export function AuthButton() {
   // If Privy is loading, display a loading state
   if (!privyReady) {
     return (
-      <Button disabled className="bg-[#2A2A2A] text-gray-400">
+      <Button disabled className="bg-[#2A2A2A] text-gray-400 rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm">
         Loading...
       </Button>
     )
@@ -59,7 +59,10 @@ export function AuthButton() {
   // If the user is not authenticated, display the connect button
   if (!authenticated) {
     return (
-      <Button onClick={login} className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white">
+      <Button
+        onClick={login}
+        className="bg-gradient-to-br from-gray-100 to-gray-300 text-black font-semibold rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm shadow-md hover:from-gray-200 hover:to-gray-400 transition-all duration-200"
+      >
         Connect
       </Button>
     )
@@ -89,15 +92,26 @@ export function AuthButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="border-[#5D5FEF] text-white hover:bg-[#5D5FEF]/20 flex items-center">
-          <img
-            src={profilePicture}
-            alt="Profile"
-            className="w-6 h-6 rounded-full mr-2"
-          />
-          <span>{displayName}</span>
-          <ChevronDown size={16} className="ml-2" />
-        </Button>
+        <div className="relative group w-full sm:w-auto">
+          <div className="absolute inset-0 -m-2 rounded-full
+            hidden sm:block
+            bg-gray-100
+            opacity-40 filter blur-lg pointer-events-none
+            transition-all duration-300 ease-out
+            group-hover:opacity-60 group-hover:blur-xl group-hover:-m-3"></div>
+          <Button
+            variant="outline"
+            className="relative z-10 border-none bg-gradient-to-br from-gray-100 to-gray-300 text-black font-semibold rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm flex items-center shadow-md hover:from-gray-200 hover:to-gray-400 transition-all duration-200"
+          >
+            <img
+              src={profilePicture}
+              alt="Profile"
+              className="w-6 h-6 rounded-full mr-2"
+            />
+            <span>{displayName}</span>
+            <ChevronDown size={16} className="ml-2" />
+          </Button>
+        </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 bg-[#1a1a1f] border-[#2A2A2A]">
         <DropdownMenuLabel>My Account</DropdownMenuLabel>

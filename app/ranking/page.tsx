@@ -164,355 +164,358 @@ export default function Classement() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col">
-      <section className="pt-24 pb-16 px-4 flex-1">
-        <div className="container mx-auto max-w-4xl">
-          <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">
-            <span className="neon-text text-[#5D5FEF]">Huch.</span> Ranking
-          </h1>
+    <div className="min-h-screen flex flex-col bg-[#111] text-white">
+      <main className="flex-1 flex flex-col items-center justify-center">
+        <section className="pt-24 pb-16 px-4 flex-1">
+          <div className="container mx-auto max-w-4xl">
+            <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">
+              <span className="neon-text text-[#5D5FEF]">Huch.</span> Ranking
+            </h1>
 
-          {/* Tabs */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-card rounded-lg p-1 flex">
-              <button
-                className={`px-4 py-2 rounded-md transition-colors ${
-                  activeTab === "top10" ? "bg-[#5D5FEF] text-white font-bold" : "text-gray-400 hover:text-white"
-                }`}
-                onClick={() => setActiveTab("top10")}
-              >
-                Top 10
-              </button>
-              <button
-                className={`px-4 py-2 rounded-md transition-colors ${
-                  activeTab === "rewards" ? "bg-[#5D5FEF] text-white font-bold" : "text-gray-400 hover:text-white"
-                }`}
-                onClick={() => setActiveTab("rewards")}
-              >
-                Rewards
-              </button>
+            {/* Tabs */}
+            <div className="flex justify-center mb-8">
+              <div className="bg-card rounded-lg p-1 flex">
+                <button
+                  className={`px-4 py-2 rounded-md transition-colors ${
+                    activeTab === "top10" ? "bg-[#5D5FEF] text-white font-bold" : "text-gray-400 hover:text-white"
+                  }`}
+                  onClick={() => setActiveTab("top10")}
+                >
+                  Top 10
+                </button>
+                <button
+                  className={`px-4 py-2 rounded-md transition-colors ${
+                    activeTab === "rewards" ? "bg-[#5D5FEF] text-white font-bold" : "text-gray-400 hover:text-white"
+                  }`}
+                  onClick={() => setActiveTab("rewards")}
+                >
+                  Rewards
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Top 10 Tab */}
-          {activeTab === "top10" && (
-            <div className="animate-appear">
-              {/* User Progress Card */}
-              <Card className="mb-8 border-muted bg-[#1E1E1E] overflow-hidden relative">
-                {/* Masque pour utilisateur non connecté */}
-                {!isUserConnected && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
-                    <AlertTriangle size={32} className="text-yellow-500 mb-2" />
-                    <h3 className="text-lg font-medium text-white mb-1 text-center">Authentication Required</h3>
-                    <p className="text-sm text-gray-300 text-center mb-4">Connect your wallet to view your ranking and earn points.</p>
-                    <Button 
-                      className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white" 
-                      onClick={() => login()}
-                    >
-                      <Wallet size={16} className="mr-2" />
-                      Connect Wallet
-                    </Button>
-                  </div>
-                )}
-                
-                {/* Masque pour utilisateur sans Steam */}
-                {isUserConnected && !hasSteamLinked && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
-                    <AlertTriangle size={32} className="text-yellow-500 mb-2" />
-                    <h3 className="text-lg font-medium text-white mb-1 text-center">Steam Account Required</h3>
-                    <p className="text-sm text-gray-300 text-center mb-4">Connect your Steam account to participate in the ranking system.</p>
-                    <div className="scale-110">
-                      <SteamAuthButton />
+            {/* Top 10 Tab */}
+            {activeTab === "top10" && (
+              <div className="animate-appear">
+                {/* User Progress Card */}
+                <Card className="mb-8 border-muted bg-[#1E1E1E] overflow-hidden relative">
+                  {/* Masque pour utilisateur non connecté */}
+                  {!isUserConnected && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
+                      <AlertTriangle size={32} className="text-yellow-500 mb-2" />
+                      <h3 className="text-lg font-medium text-white mb-1 text-center">Authentication Required</h3>
+                      <p className="text-sm text-gray-300 text-center mb-4">Connect your wallet to view your ranking and earn points.</p>
+                      <Button 
+                        className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white" 
+                        onClick={() => login()}
+                      >
+                        <Wallet size={16} className="mr-2" />
+                        Connect Wallet
+                      </Button>
                     </div>
-                  </div>
-                )}
-                
-                <CardHeader className="bg-muted py-4">
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    <span>Your Ranking</span>
-                    {isUserConnected && hasSteamLinked && currentUser && (
-                      <span className="text-[#5D5FEF] font-bold">#{currentUser.rank || 1}</span>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {isUserConnected && hasSteamLinked && currentUser && (
-                    <>
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0">
-                          <img
-                            src={currentUser.steamAvatar || profile?.avatar || "/avatars/logo-black.svg"}
-                            alt={currentUser.steamUser || profile?.username || "User"}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <h3 className="font-bold">{currentUser.steamUser || profile?.username || "User"}</h3>
-                          <div className="flex items-center gap-1">
-                            {getBadgeIcon(getUserBadge(currentUser.points))}
-                            <span className={`text-sm ${getBadgeColor(getUserBadge(currentUser.points))}`}>
-                              {getUserBadge(currentUser.points)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="ml-auto text-right">
-                          <div className="text-2xl font-bold text-[#5D5FEF]">{currentUser.points}</div>
-                          <div className="text-sm text-gray-400">points</div>
-                        </div>
-                      </div>
-
-                      {/* Progress bar */}
-                      {getPointsToNextBadge(currentUser.points) > 0 && (
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-400">
-                              Progress to {getNextBadge(getUserBadge(currentUser.points))}
-                            </span>
-                            <span className="text-[#5D5FEF]">
-                              {currentUser.points}/{currentUser.points + getPointsToNextBadge(currentUser.points)}
-                            </span>
-                          </div>
-                          <div className="relative h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="absolute top-0 left-0 h-full bg-[#5D5FEF]"
-                              style={{
-                                width: `${(currentUser.points / (currentUser.points + getPointsToNextBadge(currentUser.points))) * 100}%`,
-                              }}
-                            ></div>
-                          </div>
-                          <p className="text-sm text-center">
-                            You need <span className="text-[#5D5FEF] font-bold">{getPointsToNextBadge(currentUser.points)} pts</span> to
-                            reach the {getNextBadge(getUserBadge(currentUser.points))} League
-                          </p>
-                        </div>
-                      )}
-                      
-                      {/* Max level message */}
-                      {getPointsToNextBadge(currentUser.points) === 0 && (
-                        <div className="p-3 bg-[#5D5FEF]/10 border border-[#5D5FEF]/30 rounded-lg text-center">
-                          <p className="text-sm">
-                            Congratulations! You've reached the highest league level.
-                          </p>
-                        </div>
-                      )}
-                    </>
                   )}
-                </CardContent>
-              </Card>
+                  
+                  {/* Masque pour utilisateur sans Steam */}
+                  {isUserConnected && !hasSteamLinked && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
+                      <AlertTriangle size={32} className="text-yellow-500 mb-2" />
+                      <h3 className="text-lg font-medium text-white mb-1 text-center">Steam Account Required</h3>
+                      <p className="text-sm text-gray-300 text-center mb-4">Connect your Steam account to participate in the ranking system.</p>
+                      <div className="scale-110">
+                        <SteamAuthButton />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <CardHeader className="bg-muted py-4">
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <span>Your Ranking</span>
+                      {isUserConnected && hasSteamLinked && currentUser && (
+                        <span className="text-[#5D5FEF] font-bold">#{currentUser.rank || 1}</span>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {isUserConnected && hasSteamLinked && currentUser && (
+                      <>
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                            <img
+                              src={currentUser.steamAvatar || profile?.avatar || "/avatars/logo-black.svg"}
+                              alt={currentUser.steamUser || profile?.username || "User"}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div>
+                            <h3 className="font-bold">{currentUser.steamUser || profile?.username || "User"}</h3>
+                            <div className="flex items-center gap-1">
+                              {getBadgeIcon(getUserBadge(currentUser.points))}
+                              <span className={`text-sm ${getBadgeColor(getUserBadge(currentUser.points))}`}>
+                                {getUserBadge(currentUser.points)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="ml-auto text-right">
+                            <div className="text-2xl font-bold text-[#5D5FEF]">{currentUser.points}</div>
+                            <div className="text-sm text-gray-400">points</div>
+                          </div>
+                        </div>
 
-              {/* Leaderboard Table */}
-              <Card className="border-muted bg-[#1E1E1E]">
-                <CardHeader className="py-4 px-6">
-                  <CardTitle>Top 10 Champions</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-muted text-left">
-                        <tr>
-                          <th className="py-3 px-6">Rank</th>
-                          <th className="py-3 px-6">Player</th>
-                          <th className="py-3 px-6">Badge</th>
-                          <th className="py-3 px-6 text-right">Points</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-muted">
-                        {/* Afficher les données de l'API si disponibles, sinon utiliser les données mockées */}
-                        {(apiData?.leaderboard || LEADERBOARD).map((player, index) => {
-                          // Déterminer le badge en fonction des points pour les données de l'API
-                          const badge = 'badge' in player ? player.badge : getUserBadge(player.points);
-                          // Déterminer le nom d'utilisateur
-                          const username = 'username' in player ? 
-                            player.username : 
-                            (player.steamUser || `User ${index + 1}`);
-                          // Déterminer l'avatar
-                          const avatar = 'avatar' in player ? 
-                            player.avatar : 
-                            (player.steamAvatar || "/avatars/logo-black.svg");
-                          
-                          return (
-                            <tr key={player.id} className="hover:bg-muted/50 transition-colors">
-                              <td className="py-4 px-6 font-bold">
-                                {index === 0 ? (
-                                  <span className="text-yellow-400">1</span>
-                                ) : index === 1 ? (
-                                  <span className="text-gray-300">2</span>
-                                ) : index === 2 ? (
-                                  <span className="text-amber-600">3</span>
-                                ) : (
-                                  index + 1
-                                )}
-                              </td>
-                              <td className="py-4 px-6">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-muted overflow-hidden">
-                                    <img
-                                      src={avatar}
-                                      alt={username}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </div>
-                                  <span>{username}</span>
-                                </div>
-                              </td>
-                              <td className="py-4 px-6">
-                                <div className="flex items-center gap-1">
-                                  {getBadgeIcon(badge)}
-                                  <span className={`${getBadgeColor(badge)}`}>{badge}</span>
-                                </div>
-                              </td>
-                              <td className="py-4 px-6 text-right font-bold">{player.points}</td>
-                            </tr>
-                          );
-                        })}
-                        
-                        {/* Message si aucune donnée n'est disponible */}
-                        {(!apiData?.leaderboard && LEADERBOARD.length === 0) && (
-                          <tr>
-                            <td colSpan={4} className="py-8 text-center text-gray-400">
-                              No leaderboard data available
-                            </td>
-                          </tr>
+                        {/* Progress bar */}
+                        {getPointsToNextBadge(currentUser.points) > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-400">
+                                Progress to {getNextBadge(getUserBadge(currentUser.points))}
+                              </span>
+                              <span className="text-[#5D5FEF]">
+                                {currentUser.points}/{currentUser.points + getPointsToNextBadge(currentUser.points)}
+                              </span>
+                            </div>
+                            <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="absolute top-0 left-0 h-full bg-[#5D5FEF]"
+                                style={{
+                                  width: `${(currentUser.points / (currentUser.points + getPointsToNextBadge(currentUser.points))) * 100}%`,
+                                }}
+                              ></div>
+                            </div>
+                            <p className="text-sm text-center">
+                              You need <span className="text-[#5D5FEF] font-bold">{getPointsToNextBadge(currentUser.points)} pts</span> to
+                              reach the {getNextBadge(getUserBadge(currentUser.points))} League
+                            </p>
+                          </div>
                         )}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Rewards Tab */}
-          {activeTab === "rewards" && (
-            <div className="animate-appear">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Bronze Tier */}
-                <Card className="border-amber-600/30 bg-[#1E1E1E] hover:border-amber-600 transition-colors">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2">
-                      <Award className="text-amber-600" />
-                      <span>Bronze League</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="text-center py-2">
-                        <span className="text-2xl font-bold">0 - 500</span>
-                        <p className="text-sm text-gray-400">points</p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <ChevronUp className="text-[#5D5FEF]" />
-                          <span>Access to standard loans</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <ChevronUp className="text-[#5D5FEF]" />
-                          <span>Standard interest rates</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <ChevronUp className="text-[#5D5FEF]" />
-                          <span>Exclusive badges</span>
-                        </div>
-                      </div>
-
-                      {apiData?.user && getUserBadge(apiData.user.points) === "Bronze" && (
-                        <div className="py-2 px-3 bg-amber-600/20 rounded-md text-center text-sm">
-                          Your current level
-                        </div>
-                      )}
-                    </div>
+                        
+                        {/* Max level message */}
+                        {getPointsToNextBadge(currentUser.points) === 0 && (
+                          <div className="p-3 bg-[#5D5FEF]/10 border border-[#5D5FEF]/30 rounded-lg text-center">
+                            <p className="text-sm">
+                              Congratulations! You've reached the highest league level.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 
-                {/* Silver Tier */}
-                <Card className="border-gray-300/30 bg-[#1E1E1E] hover:border-gray-300 transition-colors">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2">
-                      <Medal className="text-gray-300" />
-                      <span>Silver League</span>
-                    </CardTitle>
+                {/* Leaderboard Table */}
+                <Card className="border-muted bg-[#1E1E1E]">
+                  <CardHeader className="py-4 px-6">
+                    <CardTitle>Top 10 Champions</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="text-center py-2">
-                        <span className="text-2xl font-bold">500 - 1000</span>
-                        <p className="text-sm text-gray-400">points</p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <ChevronUp className="text-[#5D5FEF]" />
-                          <span>5% discount on interest rates</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <ChevronUp className="text-[#5D5FEF]" />
-                          <span>Access to premium loans</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <ChevronUp className="text-[#5D5FEF]" />
-                          <span>1% cashback on repayments</span>
-                        </div>
-                      </div>
-
-                      {apiData?.user && getUserBadge(apiData.user.points) === "Silver" && (
-                        <div className="py-2 px-3 bg-gray-300/20 rounded-md text-center text-sm">
-                          Your current level
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Gold Tier */}
-                <Card className="border-yellow-400/30 bg-[#1E1E1E] hover:border-yellow-400 transition-colors">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2">
-                      <Trophy className="text-yellow-400" />
-                      <span>Gold League</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="text-center py-2">
-                        <span className="text-2xl font-bold">1000+</span>
-                        <p className="text-sm text-gray-400">points</p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <ChevronUp className="text-[#5D5FEF]" />
-                          <span>Free skin every month</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <ChevronUp className="text-[#5D5FEF]" />
-                          <span>10% discount on interest rates</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <ChevronUp className="text-[#5D5FEF]" />
-                          <span>Access to exclusive events</span>
-                        </div>
-                      </div>
-
-                      {apiData?.user && getUserBadge(apiData.user.points) === "Gold" && (
-                        <div className="py-2 px-3 bg-yellow-400/20 rounded-md text-center text-sm">
-                          Your current level
-                        </div>
-                      )}
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted text-left">
+                          <tr>
+                            <th className="py-3 px-6">Rank</th>
+                            <th className="py-3 px-6">Player</th>
+                            <th className="py-3 px-6">Badge</th>
+                            <th className="py-3 px-6 text-right">Points</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-muted">
+                          {/* Afficher les données de l'API si disponibles, sinon utiliser les données mockées */}
+                          {(apiData?.leaderboard || LEADERBOARD).map((player, index) => {
+                            // Déterminer le badge en fonction des points pour les données de l'API
+                            const badge = 'badge' in player ? player.badge : getUserBadge(player.points);
+                            // Déterminer le nom d'utilisateur
+                            const username = 'username' in player ? 
+                              player.username : 
+                              (player.steamUser || `User ${index + 1}`);
+                            // Déterminer l'avatar
+                            const avatar = 'avatar' in player ? 
+                              player.avatar : 
+                              (player.steamAvatar || "/avatars/logo-black.svg");
+                            
+                            return (
+                              <tr key={player.id} className="hover:bg-muted/50 transition-colors">
+                                <td className="py-4 px-6 font-bold">
+                                  {index === 0 ? (
+                                    <span className="text-yellow-400">1</span>
+                                  ) : index === 1 ? (
+                                    <span className="text-gray-300">2</span>
+                                  ) : index === 2 ? (
+                                    <span className="text-amber-600">3</span>
+                                  ) : (
+                                    index + 1
+                                  )}
+                                </td>
+                                <td className="py-4 px-6">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-muted overflow-hidden">
+                                      <img
+                                        src={avatar}
+                                        alt={username}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                    <span>{username}</span>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-6">
+                                  <div className="flex items-center gap-1">
+                                    {getBadgeIcon(badge)}
+                                    <span className={`${getBadgeColor(badge)}`}>{badge}</span>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-6 text-right font-bold">{player.points}</td>
+                              </tr>
+                            );
+                          })}
+                          
+                          {/* Message si aucune donnée n'est disponible */}
+                          {(!apiData?.leaderboard && LEADERBOARD.length === 0) && (
+                            <tr>
+                              <td colSpan={4} className="py-8 text-center text-gray-400">
+                                No leaderboard data available
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </CardContent>
                 </Card>
               </div>
+            )}
 
-              <div className="mt-8 text-center">
-                <Button className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white font-bold">
-                  <Trophy className="mr-2" />
-                  Borrow to earn points
-                </Button>
+            {/* Rewards Tab */}
+            {activeTab === "rewards" && (
+              <div className="animate-appear">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Bronze Tier */}
+                  <Card className="border-amber-600/30 bg-[#1E1E1E] hover:border-amber-600 transition-colors">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2">
+                        <Award className="text-amber-600" />
+                        <span>Bronze League</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="text-center py-2">
+                          <span className="text-2xl font-bold">0 - 500</span>
+                          <p className="text-sm text-gray-400">points</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <ChevronUp className="text-[#5D5FEF]" />
+                            <span>Access to standard loans</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <ChevronUp className="text-[#5D5FEF]" />
+                            <span>Standard interest rates</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <ChevronUp className="text-[#5D5FEF]" />
+                            <span>Exclusive badges</span>
+                          </div>
+                        </div>
+
+                        {apiData?.user && getUserBadge(apiData.user.points) === "Bronze" && (
+                          <div className="py-2 px-3 bg-amber-600/20 rounded-md text-center text-sm">
+                            Your current level
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Silver Tier */}
+                  <Card className="border-gray-300/30 bg-[#1E1E1E] hover:border-gray-300 transition-colors">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2">
+                        <Medal className="text-gray-300" />
+                        <span>Silver League</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="text-center py-2">
+                          <span className="text-2xl font-bold">500 - 1000</span>
+                          <p className="text-sm text-gray-400">points</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <ChevronUp className="text-[#5D5FEF]" />
+                            <span>5% discount on interest rates</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <ChevronUp className="text-[#5D5FEF]" />
+                            <span>Access to premium loans</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <ChevronUp className="text-[#5D5FEF]" />
+                            <span>1% cashback on repayments</span>
+                          </div>
+                        </div>
+
+                        {apiData?.user && getUserBadge(apiData.user.points) === "Silver" && (
+                          <div className="py-2 px-3 bg-gray-300/20 rounded-md text-center text-sm">
+                            Your current level
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Gold Tier */}
+                  <Card className="border-yellow-400/30 bg-[#1E1E1E] hover:border-yellow-400 transition-colors">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2">
+                        <Trophy className="text-yellow-400" />
+                        <span>Gold League</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="text-center py-2">
+                          <span className="text-2xl font-bold">1000+</span>
+                          <p className="text-sm text-gray-400">points</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <ChevronUp className="text-[#5D5FEF]" />
+                            <span>Free skin every month</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <ChevronUp className="text-[#5D5FEF]" />
+                            <span>10% discount on interest rates</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <ChevronUp className="text-[#5D5FEF]" />
+                            <span>Access to exclusive events</span>
+                          </div>
+                        </div>
+
+                        {apiData?.user && getUserBadge(apiData.user.points) === "Gold" && (
+                          <div className="py-2 px-3 bg-yellow-400/20 rounded-md text-center text-sm">
+                            Your current level
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="mt-8 text-center">
+                  <Button className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white font-bold">
+                    <Trophy className="mr-2" />
+                    Borrow to earn points
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </section>
-    </main>
+            )}
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </div>
   )
 }

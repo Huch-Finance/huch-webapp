@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Footer } from "@/components/organism/footer";
 
 export default function AdminPage() {
   const { profile } = useAuth();
@@ -22,6 +23,8 @@ export default function AdminPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [showConfirmInit, setShowConfirmInit] = useState(false);
   const [showDoubleConfirmInit, setShowDoubleConfirmInit] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawDestination, setWithdrawDestination] = useState("");
 
   useEffect(() => {
     // Redirige seulement si profile est non-null et pas admin
@@ -55,16 +58,6 @@ export default function AdminPage() {
     };
     fetchVault();
   }, []);
-
-  if (profile === undefined || !profile?.admin) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        <main className="flex-1 flex items-center justify-center">
-          <div>Chargement...</div>
-        </main>
-      </div>
-    );
-  }
 
   const handleInitializeVault = async () => {
     setLoading(true);
@@ -123,13 +116,52 @@ export default function AdminPage() {
     setLoading(false);
   };
 
+  const handleWithdraw = async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const amountInBaseUnits = Math.floor(Number(withdrawAmount) * Math.pow(10, Number(vaultDecimals)));
+      const res = await fetch("http://localhost:3333/solana/withdraw", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          amount: amountInBaseUnits,
+          destinationTokenAccount: withdrawDestination,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage("Retrait effectué avec succès !");
+        setWithdrawAmount("");
+        setWithdrawDestination("");
+      } else {
+        setMessage(data.error || "Erreur lors du retrait.");
+      }
+    } catch (e) {
+      setMessage("Erreur lors du retrait.");
+    }
+    setLoading(false);
+  };
+
+  if (profile === undefined || !profile?.admin) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#111] text-white">
+        <main className="flex-1 flex items-center justify-center">
+          <div>Chargement...</div>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col min-h-screen bg-muted">
-      <main className="flex-1 flex flex-col items-center justify-center">
-        <h1 className="text-3xl font-bold mb-8 text-center">Admin Mode</h1>
-        <div className="w-full max-w-2xl flex flex-col gap-8">
+    <div className="flex flex-col min-h-screen bg-[#111] text-white">
+      <main className="flex-1 flex flex-col items-center justify-center px-2 py-4 min-h-0">
+        <h1 className="text-3xl font-bold mb-4 text-center">Admin Dashboard</h1>
+        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Vault Value Card */}
-          <Card>
+          <Card className="bg-[#18181b] border-[#232323] text-white">
             <CardHeader>
               <CardTitle>Valeur dans le Vault</CardTitle>
             </CardHeader>
@@ -146,40 +178,8 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          {/* Deposit Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Déposer dans le Vault</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col sm:flex-row gap-2 items-center">
-              <Input
-                type="number"
-                placeholder="Montant"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-                disabled={loading}
-                className="w-full sm:w-auto"
-              />
-              <Input
-                type="text"
-                placeholder="Source Token Account"
-                value={sourceTokenAccount}
-                onChange={(e) => setSourceTokenAccount(e.target.value)}
-                disabled={loading}
-                className="w-full sm:w-auto"
-              />
-              <Button
-                onClick={handleDeposit}
-                disabled={loading || !depositAmount || !sourceTokenAccount}
-                className="w-full sm:w-auto"
-              >
-                Déposer
-              </Button>
-            </CardContent>
-          </Card>
-
           {/* Initializer Card */}
-          <Card>
+          <Card className="bg-[#18181b] border-[#232323] text-white">
             <CardHeader>
               <CardTitle>Initialiser le Vault</CardTitle>
             </CardHeader>
@@ -195,7 +195,7 @@ export default function AdminPage() {
                 </Button>
               ) : !showDoubleConfirmInit ? (
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm text-red-600">Première confirmation requise</span>
+                  <span className="text-sm text-red-400">Première confirmation requise</span>
                   <div className="flex gap-2">
                     <Button
                       onClick={() => setShowDoubleConfirmInit(true)}
@@ -215,7 +215,7 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm text-red-600">Seconde confirmation requise</span>
+                  <span className="text-sm text-red-400">Seconde confirmation requise</span>
                   <div className="flex gap-2">
                     <Button
                       onClick={handleInitializeVault}
@@ -238,25 +238,92 @@ export default function AdminPage() {
                 </div>
               )}
               {initializer && (
-                <div className="mt-4 break-all">
+                <div className="mt-4 break-all text-xs text-gray-400">
                   Adresse de l'initializer : <b>{initializer}</b>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Message */}
-          {message && (
-            <Card>
+          {/* Deposit Card */}
+          <Card className="bg-[#18181b] border-[#232323] text-white col-span-1">
+            <CardHeader>
+              <CardTitle>Déposer dans le Vault</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              <Input
+                type="number"
+                placeholder="Montant"
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                disabled={loading}
+                className="bg-[#232323] border-[#232323] text-white"
+              />
+              <Input
+                type="text"
+                placeholder="Source Token Account"
+                value={sourceTokenAccount}
+                onChange={(e) => setSourceTokenAccount(e.target.value)}
+                disabled={loading}
+                className="bg-[#232323] border-[#232323] text-white"
+              />
+              <Button
+                onClick={handleDeposit}
+                disabled={loading || !depositAmount || !sourceTokenAccount}
+                className="w-full"
+              >
+                Déposer
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Withdraw Card */}
+          <Card className="bg-[#18181b] border-[#232323] text-white col-span-1">
+            <CardHeader>
+              <CardTitle>Retirer du Vault</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              <Input
+                type="number"
+                placeholder="Montant"
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                disabled={loading}
+                className="bg-[#232323] border-[#232323] text-white"
+              />
+              <Input
+                type="text"
+                placeholder="Destination Token Account"
+                value={withdrawDestination}
+                onChange={(e) => setWithdrawDestination(e.target.value)}
+                disabled={loading}
+                className="bg-[#232323] border-[#232323] text-white"
+              />
+              <Button
+                onClick={handleWithdraw}
+                disabled={loading || !withdrawAmount || !withdrawDestination}
+                className="w-full"
+              >
+                Retirer
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Message */}
+        {message && (
+          <div className="w-full max-w-4xl mt-4">
+            <Card className="bg-yellow-900 border-yellow-700 text-yellow-100">
               <CardContent>
-                <div className="p-2 bg-yellow-100 border border-yellow-400 rounded text-center text-black">
+                <div className="p-2 text-center">
                   {message}
                 </div>
               </CardContent>
             </Card>
-          )}
-        </div>
+          </div>
+        )}
       </main>
+      <Footer />
     </div>
   );
 }

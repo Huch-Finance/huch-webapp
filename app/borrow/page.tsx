@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { ChevronDown, Filter, RotateCcw, Search, ArrowRight, LayoutGrid, List } from "lucide-react"
 import { BorrowConfirmationModal } from "@/components/borrow/borrow-confirmation-modal"
 import { LoadingOverlay } from "@/components/loading/loading-overlay"
-import { Navbar } from "@/components/organism/navbar"
 import { Footer } from "@/components/organism/footer"
 import { useAuth } from "@/hooks/use-auth"
 import { SteamAuthButton } from "@/components/auth/steam-auth-button"
@@ -134,7 +133,38 @@ export default function Home() {
     }
   }, [selectedSkin, loanPercentage, displaySkins])
   
-  // No need for handleBorrow function since it's now in the BorrowConfirmationModal component
+  const handleBorrowRequest = async () => {
+    if (!profile?.userId || !profile?.steamId || !selectedSkin) {
+      alert("Missing user or skin info.");
+      return;
+    }
+    const skin = displaySkins.find(s => s.id === selectedSkin);
+    if (!skin) {
+      alert("Skin not found.");
+      return;
+    }
+    try {
+      const res = await fetch("http://localhost:3333/solana/borrow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: profile.userId,
+          steamId: profile.steamId,
+          items: [skin], // ou juste skin.id selon l'API
+          amount: loanAmount,
+          duration: loanDuration,
+          skinId: skin.id,
+          value: skin.basePrice,
+        }),
+      });
+      if (!res.ok) throw new Error("Request failed");
+      const data = await res.json();
+      console.log("Borrow response:", data);
+      setBorrowSuccessful(true);
+    } catch (err) {
+      alert("Error: " + err);
+    }
+  };
 
   const liveTransactions = [
     { username: "alex_cs", amount: "$250", skin: "AWP | Dragon Lore" },
@@ -219,50 +249,13 @@ export default function Home() {
   ];
 
   return (
-    <>
-      <LoadingOverlay 
-        isLoading={isLoading} 
-        message="Connecting to your wallet..."
-        opacity={0.7}
-      />
-      <main className="min-h-screen text-white relative overflow-hidden pt-16">
-        {/* Background with floating elements */} 
-        <div className="inset-0 overflow-hidden">
-          <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-purple-500/10 blur-3xl"></div>
-          <div className="absolute bottom-1/3 right-1/4 w-40 h-40 rounded-full bg-teal-500/10 blur-3xl"></div>
-          <div className="absolute top-2/3 left-1/3 w-24 h-24 rounded-full bg-blue-500/10 blur-3xl"></div>
-
-          {/* Floating skin images */}
-          <div className="absolute top-[20%] right-[15%] w-16 h-16 opacity-30 animate-float-slow">
-            <Image
-              src="/ak47.webp"
-              alt="Floating skin"
-              width={64}
-              height={64}
-              className="rounded-md"
-            />
-          </div>
-          <div className="absolute top-[60%] left-[10%] w-20 h-20 opacity-20 animate-float">
-            <Image
-              src="/awp.webp"
-              alt="Floating skin"
-              width={80}
-              height={80}
-              className="rounded-md"
-            />
-          </div>
-          <div className="absolute bottom-[20%] right-[25%] w-24 h-24 opacity-25 animate-float-slow-reverse">
-            <Image
-              src="/karambit.webp"
-              alt="Floating skin"
-              width={96}
-              height={96}
-              className="rounded-md"
-            />
-          </div>
-        </div>
-
-        {/* Main content */}
+    <div className="min-h-screen flex flex-col bg-[#111] text-white">
+      <main className="flex-1 flex flex-col items-center justify-center">
+        <LoadingOverlay 
+          isLoading={isLoading} 
+          message="Connecting to your wallet..."
+          opacity={0.7}
+        />
         <div className="container mx-auto px-4 py-8">
           {/* Live borrows ticker */}
           <div className="flex justify-center mb-6 overflow-hidden">
@@ -581,11 +574,14 @@ export default function Home() {
                     variant="ghost"
                     size="sm"
                     className="h-6 w-6 p-0 rounded-full hover:bg-[#2a3548] flex items-center justify-center"
-                    onClick={handleRefreshInventory}
+                    onClick={() => {
+                      handleRefreshInventory();
+                      // Optionally, you can show a toast or loading indicator here
+                    }}
                     disabled={inventoryLoading}
                     title="Refresh inventory"
                   >
-                    <RotateCcw className="h-3 w-3" />
+                    <RotateCcw className={`h-3 w-3 ${inventoryLoading ? "animate-spin" : ""}`} />
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -841,11 +837,9 @@ export default function Home() {
         loanAmount={loanAmount}
         loanDuration={loanDuration}
         extractSkinInfo={extractSkinInfo}
-        onConfirm={() => {
-          console.log("Loan confirmed for", loanAmount, "USDC")
-          setBorrowSuccessful(true);
-        }}
+        onConfirm={handleBorrowRequest}
       />
-    </>
+      <Footer />
+    </div>
   )
 }
