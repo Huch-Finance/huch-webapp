@@ -48,12 +48,12 @@ export function useSteamInventory() {
       return
     }
 
-    console.log("Start fetching inventory for", profile.steamId);
+    //console.log("Start fetching inventory for", profile.steamId);
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log("API call to /api/inventory with Privy ID:", profile.id);
+      //console.log("API call to /api/inventory with Privy ID:", profile.id);
       const response = await fetch('http://localhost:3333/api/inventory', {
         method: 'GET',
         headers: {
@@ -73,15 +73,15 @@ export function useSteamInventory() {
       if (data.inventory) {
         if ('items' in data.inventory) {
           inventoryItems = data.inventory.items;
-          console.log("Format d'API détecté: inventory.items[]");
+          //console.log("Format d'API détecté: inventory.items[]");
         } else if (Array.isArray(data.inventory)) {
           inventoryItems = data.inventory;
-          console.log("Format d'API détecté: inventory[]");
+          //console.log("Format d'API détecté: inventory[]");
         }
       }
       
-      console.log("Inventory fetched successfully:", inventoryItems.length, "skins");
-      console.log("Inventory content:", inventoryItems);
+      //console.log("Inventory fetched successfully:", inventoryItems.length, "skins");
+      //console.log("Inventory content:", inventoryItems);
       if (inventoryItems.length === 0) {
         console.warn("API returned an empty inventory!");
       }
@@ -90,10 +90,10 @@ export function useSteamInventory() {
       setLastUpdated(data.lastUpdated)
       setInventoryFetched(true);
     } catch (error) {
-      console.error("Error fetching inventory:", error)
+      //console.error("Error fetching inventory:", error)
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
-      console.log("End fetching inventory, isLoading = false");
+      //console.log("End fetching inventory, isLoading = false");
       setIsLoading(false)
     }
   }
@@ -114,9 +114,28 @@ export function useSteamInventory() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, profile?.steamId, profile?.tradeLink])
 
-  const forceRefreshInventory = () => {
+  const forceRefreshInventory = async() => {
     setInventoryFetched(false);
-    return fetchInventory();
+    if (!isAuthenticated || !profile?.id) {
+      setError("You must be connected with Steam and have an exchange link to see your inventory")
+      setIsLoading(false);
+      return
+    }
+    try{
+      const response = await fetch('http://localhost:3333/api/user/inventory/refresh', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Privy-Id': profile.id
+        }
+      })
+      if (!response.ok) {
+        throw new Error(`Error refreshing inventory: ${await response.text()}`)
+      }
+      fetchInventory();
+    } catch (error) {
+      console.error("Error refreshing inventory:", error)
+    }
   };
   
   return {
