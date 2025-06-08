@@ -64,7 +64,7 @@ export function Navbar() {
   return (
     <header
       className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center pl-6 pr-6 py-3 backdrop-blur-sm
-      ${headerShapeClass} border border-[#FFFFFF] bg-[#0F0F2A] border-opacity-10 bg-opacity-70 w-full max-w-3xl sm:max-w-4xl lg:max-w-5xl transition-[border-radius] duration-0 ease-in-out rounded-inherit overflow-hidden`}
+      ${headerShapeClass} border border-[#FFFFFF] bg-[#0F0F2A] border-opacity-10 bg-opacity-70 w-full max-w-xl sm:max-w-2xl lg:max-w-3xl transition-[border-radius] duration-0 ease-in-out rounded-inherit overflow-hidden`}
     >
       {/* Overlay grain */}
       <div
@@ -85,7 +85,7 @@ export function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="relative inline-block min-h-[2em] flex items-center justify-center px-3 text-gray-300 hover:text-white transition-colors"
+              className="relative inline-flex items-center justify-center min-h-[2em] px-3 text-gray-300 hover:text-white transition-colors"
               style={{ height: "2em" }}
             >
               {link.label}
@@ -103,11 +103,11 @@ export function Navbar() {
           aria-label={isOpen ? "Close Menu" : "Open Menu"}
         >
           {isOpen ? (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           ) : (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
           )}

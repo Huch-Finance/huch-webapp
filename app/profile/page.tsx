@@ -1,113 +1,147 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Navbar } from "@/components/organism/navbar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Award, Clock, CreditCard, Gift, History, Trophy, Wallet, Settings, Copy, Check, AlertTriangle } from "lucide-react"
-import { SteamAuthButton } from "@/components/auth/steam-auth-button"
-import Link from "next/link"
-import { Footer } from "@/components/organism/footer"
-import { useAuth } from "@/hooks/use-auth"
-import { useSolanaWallets, useSendTransaction } from '@privy-io/react-auth/solana';
-import { LoadingOverlay } from "@/components/loading/loading-overlay"
+import { useState, useEffect } from "react";
+import { Navbar } from "@/components/organism/navbar";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Award,
+  Clock,
+  CreditCard,
+  Gift,
+  History,
+  Trophy,
+  Wallet,
+  Settings,
+  Copy,
+  Check,
+  AlertTriangle,
+} from "lucide-react";
+import { SteamAuthButton } from "@/components/auth/steam-auth-button";
+import Link from "next/link";
+import { Footer } from "@/components/organism/footer";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  useSolanaWallets,
+  useSendTransaction,
+} from "@privy-io/react-auth/solana";
+import { LoadingOverlay } from "@/components/loading/loading-overlay";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { toast } from "sonner"
-import { Connection, LAMPORTS_PER_SOL, PublicKey, Transaction, SystemProgram } from "@solana/web3.js"
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+import {
+  Connection,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  Transaction,
+  SystemProgram,
+} from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export default function Profile() {
-  const [activeTab, setActiveTab] = useState("wallet")
-  const [isDepositOpen, setIsDepositOpen] = useState(false)
-  const [isCopied, setIsCopied] = useState(false)
-  const [solBalance, setSolBalance] = useState<number>(0)
-  const [splBalance, setSplBalance] = useState<number>(0)
-  const { profile, isAuthenticated, isLoading } = useAuth()
-  const { wallets } = useSolanaWallets()
-  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false)
-  const [withdrawAddress, setWithdrawAddress] = useState("")
-  const [withdrawAmount, setWithdrawAmount] = useState("")
-  const [isWithdrawing, setIsWithdrawing] = useState(false)
+  const [activeTab, setActiveTab] = useState("wallet");
+  const [isDepositOpen, setIsDepositOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const [solBalance, setSolBalance] = useState<number>(0);
+  const [splBalance, setSplBalance] = useState<number>(0);
+  const { profile, isAuthenticated, isLoading } = useAuth();
+  const { wallets } = useSolanaWallets();
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [withdrawAddress, setWithdrawAddress] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const { sendTransaction } = useSendTransaction();
 
   useEffect(() => {
     const fetchBalance = async () => {
       if (wallets?.[0]?.address) {
         try {
-          const connection = new Connection("https://api.devnet.solana.com", "confirmed")
-          const publicKey = new PublicKey(wallets[0].address)
-          const balance = await connection.getBalance(publicKey)
-          setSolBalance(balance / LAMPORTS_PER_SOL)
+          const connection = new Connection(
+            "https://api.devnet.solana.com",
+            "confirmed",
+          );
+          const publicKey = new PublicKey(wallets[0].address);
+          const balance = await connection.getBalance(publicKey);
+          setSolBalance(balance / LAMPORTS_PER_SOL);
         } catch (error) {
-          console.error("Error fetching balance:", error)
+          console.error("Error fetching balance:", error);
         }
       }
-    }
+    };
 
-    fetchBalance()
+    fetchBalance();
     // Refresh balance every 30 seconds
-    const interval = setInterval(fetchBalance, 30000)
-    return () => clearInterval(interval)
-  }, [wallets])
+    const interval = setInterval(fetchBalance, 30000);
+    return () => clearInterval(interval);
+  }, [wallets]);
 
   useEffect(() => {
     const fetchSplBalance = async () => {
-      const walletAddress = "3HEwVsb9yARN3zazKDCjp4Fr2qkE5ZHNHUrKrmWAAVgb"
-      const mintAddress = "4KNxmZizMom4v1HjwjnFqYa55LFyUBshHCAKs1UGvSSj"
+      const walletAddress = "3HEwVsb9yARN3zazKDCjp4Fr2qkE5ZHNHUrKrmWAAVgb";
+      const mintAddress = "4KNxmZizMom4v1HjwjnFqYa55LFyUBshHCAKs1UGvSSj";
       try {
-        const connection = new Connection("https://api.devnet.solana.com", "confirmed")
+        const connection = new Connection(
+          "https://api.devnet.solana.com",
+          "confirmed",
+        );
         const accounts = await connection.getParsedTokenAccountsByOwner(
           new PublicKey(walletAddress),
-          { programId: TOKEN_PROGRAM_ID }
-        )
+          { programId: TOKEN_PROGRAM_ID },
+        );
         const tokenAccount = accounts.value.find(
-          (acc: any) => acc.account.data.parsed.info.mint === mintAddress
-        )
+          (acc: any) => acc.account.data.parsed.info.mint === mintAddress,
+        );
         if (tokenAccount) {
-          const amount = tokenAccount.account.data.parsed.info.tokenAmount
-          setSplBalance(Number(amount.uiAmount))
+          const amount = tokenAccount.account.data.parsed.info.tokenAmount;
+          setSplBalance(Number(amount.uiAmount));
         } else {
-          setSplBalance(0)
+          setSplBalance(0);
         }
       } catch (error) {
-        console.error("Error fetching SPL token balance:", error)
-        setSplBalance(0)
+        console.error("Error fetching SPL token balance:", error);
+        setSplBalance(0);
       }
-    }
+    };
 
-    fetchSplBalance()
-    const interval = setInterval(fetchSplBalance, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    fetchSplBalance();
+    const interval = setInterval(fetchSplBalance, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleCopyAddress = () => {
     if (wallets?.[0]?.address) {
-      navigator.clipboard.writeText(wallets[0].address)
-      setIsCopied(true)
-      toast.success("Address copied to clipboard")
-      setTimeout(() => setIsCopied(false), 2000)
+      navigator.clipboard.writeText(wallets[0].address);
+      setIsCopied(true);
+      toast.success("Address copied to clipboard");
+      setTimeout(() => setIsCopied(false), 2000);
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-[#5D5FEF]/20 text-[#5D5FEF] border-[#5D5FEF]"
+        return "bg-[#5D5FEF]/20 text-[#5D5FEF] border-[#5D5FEF]";
       case "repaid":
-        return "bg-green-500/20 text-green-500 border-green-500"
+        return "bg-green-500/20 text-green-500 border-green-500";
       case "overdue":
-        return "bg-red-500/20 text-red-500 border-red-500"
+        return "bg-red-500/20 text-red-500 border-red-500";
       default:
-        return "bg-gray-500/20 text-gray-400 border-gray-400"
+        return "bg-gray-500/20 text-gray-400 border-gray-400";
     }
-  }
+  };
 
   // Withdraw handler
   const handleWithdraw = async () => {
@@ -117,7 +151,10 @@ export default function Profile() {
     }
     setIsWithdrawing(true);
     try {
-      const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+      const connection = new Connection(
+        "https://api.devnet.solana.com",
+        "confirmed",
+      );
       const fromPubkey = new PublicKey(wallets[0].address);
       const toPubkey = new PublicKey(withdrawAddress);
       const lamports = Math.floor(Number(withdrawAmount) * LAMPORTS_PER_SOL);
@@ -128,7 +165,7 @@ export default function Profile() {
           fromPubkey,
           toPubkey,
           lamports,
-        })
+        }),
       );
 
       // Fetch the recent blockhash and set it in the transaction
@@ -155,15 +192,19 @@ export default function Profile() {
     return (
       <div className="min-h-screen flex flex-col bg-[#111] text-white">
         <main className="flex-1 flex flex-col items-center justify-center">
-          <LoadingOverlay 
-            isLoading={isLoading} 
+          <LoadingOverlay
+            isLoading={isLoading}
             message="Loading your profile..."
             opacity={0.7}
           />
           <Card className="bg-[#1E1E1E] border-[#2A2A2A] p-8 flex flex-col items-center">
             <CardHeader>
-              <CardTitle className="text-2xl font-bold mb-2">Please connect your wallet</CardTitle>
-              <CardDescription className="text-gray-400 mb-4">You need to connect your wallet to view your profile</CardDescription>
+              <CardTitle className="text-2xl font-bold mb-2">
+                Please connect your wallet
+              </CardTitle>
+              <CardDescription className="text-gray-400 mb-4">
+                You need to connect your wallet to view your profile
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white">
@@ -175,14 +216,14 @@ export default function Profile() {
         </main>
         <Footer />
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen flex flex-col text-white">
       <main className="flex-1 flex flex-col items-center justify-center">
-        <LoadingOverlay 
-          isLoading={isLoading} 
+        <LoadingOverlay
+          isLoading={isLoading}
           message="Loading your profile..."
           opacity={0.7}
         />
@@ -197,14 +238,18 @@ export default function Profile() {
                   className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
                   style={{
                     backgroundImage: "url('/grainbg.avif')",
-                    backgroundRepeat: "repeat"
+                    backgroundRepeat: "repeat",
                   }}
                 />
                 {!profile?.steamId && (
                   <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
                     <AlertTriangle size={32} className="text-yellow-500 mb-2" />
-                    <h3 className="text-lg font-medium text-white mb-1 text-center">Steam Account Required</h3>
-                    <p className="text-sm text-gray-300 text-center mb-4">Connect your Steam account to access all features.</p>
+                    <h3 className="text-lg font-medium text-white mb-1 text-center">
+                      Steam Account Required
+                    </h3>
+                    <p className="text-sm text-gray-300 text-center mb-4">
+                      Connect your Steam account to access all features.
+                    </p>
                     <div className="scale-110">
                       <SteamAuthButton />
                     </div>
@@ -212,9 +257,15 @@ export default function Profile() {
                 )}
                 <CardHeader className="flex flex-col items-center gap-2">
                   <div className="w-24 h-24 rounded-full bg-muted overflow-hidden mb-2">
-                    <img src={profile?.avatar || "/avatars/logo-black.svg"} alt="Profile" className="w-full h-full object-cover bg-black" />
+                    <img
+                      src={profile?.avatar || "/avatars/logo-black.svg"}
+                      alt="Profile"
+                      className="w-full h-full object-cover bg-black"
+                    />
                   </div>
-                  <CardTitle className="text-xl font-bold">{profile?.username || "Anonymous"}</CardTitle>
+                  <CardTitle className="text-xl font-bold">
+                    {profile?.username || "Anonymous"}
+                  </CardTitle>
                   <div className="flex items-center gap-1 mb-2">
                     <Award className="text-amber-600" />
                     <span className="text-amber-600">New User</span>
@@ -237,7 +288,10 @@ export default function Profile() {
                   </div>
                   <div className="mt-4 flex flex-col gap-2">
                     <Link href="/settings">
-                      <Button variant="outline" className="w-full border-[#2A2A2A] text-gray-300 hover:text-white">
+                      <Button
+                        variant="outline"
+                        className="w-full border-[#2A2A2A] text-gray-300 hover:text-white"
+                      >
                         <Settings size={16} className="mr-2" />
                         Account Settings
                       </Button>
@@ -254,10 +308,14 @@ export default function Profile() {
                   className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
                   style={{
                     backgroundImage: "url('/grainbg.avif')",
-                    backgroundRepeat: "repeat"
+                    backgroundRepeat: "repeat",
                   }}
                 />
-                <Tabs defaultValue="wallet" value={activeTab} onValueChange={setActiveTab}>
+                <Tabs
+                  defaultValue="wallet"
+                  value={activeTab}
+                  onValueChange={setActiveTab}
+                >
                   <CardHeader className="pb-0">
                     <TabsList className="grid grid-cols-3">
                       <TabsTrigger
@@ -297,11 +355,15 @@ export default function Profile() {
                                   className="w-5 h-5 rounded-full"
                                 />
                                 <span className="font-medium">USDC</span>
-                                <span className="ml-auto text-xs text-gray-400">4KNx...vSSj</span>
+                                <span className="ml-auto text-xs text-gray-400">
+                                  4KNx...vSSj
+                                </span>
                               </div>
                             </CardHeader>
                             <CardContent>
-                              <div className="text-2xl font-bold">{splBalance.toFixed(2)} USDC</div>
+                              <div className="text-2xl font-bold">
+                                {splBalance.toFixed(2)} USDC
+                              </div>
                             </CardContent>
                           </Card>
                           {/* Carte Huch Coin */}
@@ -314,7 +376,9 @@ export default function Profile() {
                                   className="w-7 h-7 rounded-full"
                                 />
                                 <span className="font-medium">Huch Point</span>
-                                <span className="ml-auto text-xs text-gray-400">POINT</span>
+                                <span className="ml-auto text-xs text-gray-400">
+                                  POINT
+                                </span>
                               </div>
                             </CardHeader>
                             <CardContent>
@@ -324,7 +388,7 @@ export default function Profile() {
                         </div>
 
                         <div className="flex flex-col gap-3">
-                          <Button 
+                          <Button
                             className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white font-bold"
                             onClick={() => setIsDepositOpen(true)}
                           >
@@ -345,38 +409,53 @@ export default function Profile() {
                           <CardHeader className="pb-2">
                             <div className="flex items-center gap-2">
                               <Clock className="text-[#5D5FEF]" />
-                              <span className="font-medium">Connected Wallet</span>
+                              <span className="font-medium">
+                                Connected Wallet
+                              </span>
                             </div>
                           </CardHeader>
                           <CardContent>
                             {wallets?.[0] ? (
                               <div className="space-y-2">
                                 <div className="flex justify-between">
-                                  <span className="text-gray-400">Address:</span>
+                                  <span className="text-gray-400">
+                                    Address:
+                                  </span>
                                   <span className="font-mono text-sm">
                                     {`${wallets[0].address.substring(0, 6)}...${wallets[0].address.substring(
-                                      wallets[0].address.length - 4
+                                      wallets[0].address.length - 4,
                                     )}`}
                                   </span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span className="text-gray-400">Network:</span>
-                                  <span className="font-bold">Solana Devnet</span>
+                                  <span className="text-gray-400">
+                                    Network:
+                                  </span>
+                                  <span className="font-bold">
+                                    Solana Devnet
+                                  </span>
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-gray-400">No wallet connected</p>
+                              <p className="text-gray-400">
+                                No wallet connected
+                              </p>
                             )}
                           </CardContent>
                         </Card>
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="history" className="mt-0 animate-appear">
+                    <TabsContent
+                      value="history"
+                      className="mt-0 animate-appear"
+                    >
                       <Card className="bg-[#18181b] border border-muted">
                         <CardContent>
                           <div className="text-center py-8">
-                            <p className="text-gray-400">No transaction history</p>
+                            <p className="text-gray-400">
+                              No transaction history
+                            </p>
                           </div>
                         </CardContent>
                       </Card>
@@ -402,9 +481,12 @@ export default function Profile() {
         <Dialog open={isDepositOpen} onOpenChange={setIsDepositOpen}>
           <DialogContent className="sm:max-w-md bg-[#1E1E1E] border-[#2A2A2A]">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold">Deposit SOL</DialogTitle>
+              <DialogTitle className="text-xl font-bold">
+                Deposit SOL
+              </DialogTitle>
               <DialogDescription className="text-gray-400">
-                Send SOL to your wallet address below. Make sure to use the Solana Devnet network.
+                Send SOL to your wallet address below. Make sure to use the
+                Solana Devnet network.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col items-center space-y-4 py-4">
@@ -446,9 +528,12 @@ export default function Profile() {
         <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
           <DialogContent className="sm:max-w-md bg-[#1E1E1E] border-[#2A2A2A]">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold">Withdraw SOL</DialogTitle>
+              <DialogTitle className="text-xl font-bold">
+                Withdraw SOL
+              </DialogTitle>
               <DialogDescription className="text-gray-400">
-                Enter the destination address and amount to send SOL on Solana Devnet.
+                Enter the destination address and amount to send SOL on Solana
+                Devnet.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-4 py-4">
@@ -457,7 +542,7 @@ export default function Profile() {
                 placeholder="Destination address"
                 className="w-full p-3 rounded-lg bg-[#23232a] text-white border border-[#2A2A2A] focus:outline-none"
                 value={withdrawAddress}
-                onChange={e => setWithdrawAddress(e.target.value)}
+                onChange={(e) => setWithdrawAddress(e.target.value)}
                 disabled={isWithdrawing}
               />
               <input
@@ -467,7 +552,7 @@ export default function Profile() {
                 placeholder="Amount (SOL)"
                 className="w-full p-3 rounded-lg bg-[#23232a] text-white border border-[#2A2A2A] focus:outline-none"
                 value={withdrawAmount}
-                onChange={e => setWithdrawAmount(e.target.value)}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
                 disabled={isWithdrawing}
               />
               <Button
@@ -483,5 +568,5 @@ export default function Profile() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }

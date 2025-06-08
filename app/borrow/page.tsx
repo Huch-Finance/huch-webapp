@@ -77,6 +77,7 @@ export default function Home() {
     console.log('❌ No steamId found, skipping price update');
     return;
   }
+  console.log('profile.steamId:', profile.steamId);
   
   try {
       console.log('🔄 Updating inventory prices...');

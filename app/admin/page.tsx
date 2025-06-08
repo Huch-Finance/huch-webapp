@@ -14,7 +14,9 @@ export default function AdminPage() {
 
   const [vaultValue, setVaultValue] = useState<number | null>(null);
   const [vaultName, setVaultName] = useState<string>("");
-  const [vaultTokenAccount, setVaultTokenAccount] = useState<string | null>(null);
+  const [vaultTokenAccount, setVaultTokenAccount] = useState<string | null>(
+    null,
+  );
   const [vaultDecimals, setVaultDecimals] = useState<number>(6);
   const [depositAmount, setDepositAmount] = useState("");
   const [sourceTokenAccount, setSourceTokenAccount] = useState("");
@@ -66,7 +68,7 @@ export default function AdminPage() {
       const res = await fetch("http://localhost:3333/solana/initialize-vault", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           name: "2eme vault par pitie fetch frr",
@@ -91,11 +93,13 @@ export default function AdminPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const amountInBaseUnits = Math.floor(Number(depositAmount) * Math.pow(10, Number(vaultDecimals)));
+      const amountInBaseUnits = Math.floor(
+        Number(depositAmount) * Math.pow(10, Number(vaultDecimals)),
+      );
       const res = await fetch("http://localhost:3333/solana/deposit", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           amount: amountInBaseUnits,
@@ -120,11 +124,13 @@ export default function AdminPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const amountInBaseUnits = Math.floor(Number(withdrawAmount) * Math.pow(10, Number(vaultDecimals)));
+      const amountInBaseUnits = Math.floor(
+        Number(withdrawAmount) * Math.pow(10, Number(vaultDecimals)),
+      );
       const res = await fetch("http://localhost:3333/solana/withdraw", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           amount: amountInBaseUnits,
@@ -195,7 +201,9 @@ export default function AdminPage() {
                 </Button>
               ) : !showDoubleConfirmInit ? (
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm text-red-400">Première confirmation requise</span>
+                  <span className="text-sm text-red-400">
+                    Première confirmation requise
+                  </span>
                   <div className="flex gap-2">
                     <Button
                       onClick={() => setShowDoubleConfirmInit(true)}
@@ -215,7 +223,9 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm text-red-400">Seconde confirmation requise</span>
+                  <span className="text-sm text-red-400">
+                    Seconde confirmation requise
+                  </span>
                   <div className="flex gap-2">
                     <Button
                       onClick={handleInitializeVault}
@@ -315,9 +325,7 @@ export default function AdminPage() {
           <div className="w-full max-w-4xl mt-4">
             <Card className="bg-yellow-900 border-yellow-700 text-yellow-100">
               <CardContent>
-                <div className="p-2 text-center">
-                  {message}
-                </div>
+                <div className="p-2 text-center">{message}</div>
               </CardContent>
             </Card>
           </div>
