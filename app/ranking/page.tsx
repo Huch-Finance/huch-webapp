@@ -164,7 +164,7 @@ export default function Classement() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#111] text-white">
+    <div className="min-h-screen flex flex-col text-white">
       <main className="flex-1 flex flex-col items-center justify-center">
         <section className="pt-24 pb-16 px-4 flex-1">
           <div className="container mx-auto max-w-4xl">

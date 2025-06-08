@@ -40,7 +40,7 @@ export function useSteamInventory() {
       console.log("Inventory already fetched, using cache");
       return;
     }
-    
+
     // Check if the user is authenticated and has a steamId and tradeLink
     if (!isAuthenticated || !profile?.steamId || !profile?.tradeLink) {
       setError("You must be connected with Steam and have an exchange link to see your inventory")
@@ -123,7 +123,7 @@ export function useSteamInventory() {
     }
     try{
       const response = await fetch('http://localhost:3333/api/user/inventory/refresh', {
-        method: 'GET',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Privy-Id': profile.id

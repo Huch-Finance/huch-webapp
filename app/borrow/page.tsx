@@ -10,6 +10,7 @@ import { Footer } from "@/components/organism/footer"
 import { useAuth } from "@/hooks/use-auth"
 import { SteamAuthButton } from "@/components/auth/steam-auth-button"
 import { useSteamInventory, SteamItem } from "@/hooks/use-steam-inventory"
+import { Card } from "@/components/ui/card"
 
 export default function Home() {
   const [selectedSkin, setSelectedSkin] = useState<string | null>(null)
@@ -68,12 +69,13 @@ export default function Home() {
   
   // Mock CS2 skins for example display when user is not connected
   const mockSkins: SteamItem[] = [
-    { id: "1", market_hash_name: "AWP | Dragon Lore", basePrice: 1500, rarity: "Covert", imageUrl: "/awp.webp", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 975, steamId: "", stickers: [] },
-    { id: "2", market_hash_name: "Butterfly Knife | Fade", basePrice: 800, rarity: "★", imageUrl: "/karambit.webp", wear: "Minimal Wear", floatValue: 0.08, liquidationRate: 65, loanOffer: 520, steamId: "", stickers: [] },
-    { id: "3", market_hash_name: "AK-47 | Fire Serpent", basePrice: 550, rarity: "Covert", imageUrl: "/ak47.webp", wear: "Field-Tested", floatValue: 0.18, liquidationRate: 65, loanOffer: 357.5, steamId: "", stickers: [] },
-    { id: "4", market_hash_name: "M4A4 | Howl", basePrice: 1200, rarity: "Contraband", imageUrl: "/awp.webp", wear: "Factory New", floatValue: 0.03, liquidationRate: 65, loanOffer: 780, steamId: "", stickers: [] },
-    { id: "5", market_hash_name: "Karambit | Doppler", basePrice: 650, rarity: "★", imageUrl: "/karambit.webp", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 422.5, steamId: "", stickers: [] },
-    { id: "6", market_hash_name: "Glock-18 | Fade", basePrice: 300, rarity: "Covert", imageUrl: "/ak47.webp", wear: "Factory New", floatValue: 0.02, liquidationRate: 65, loanOffer: 195, steamId: "", stickers: [] }
+    // { id: "1", market_hash_name: "AWP | Dragon Lore", basePrice: 1500, rarity: "Covert", imageUrl: "/awp.webp", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 975, steamId: "", stickers: [] },
+    // { id: "2", market_hash_name: "Butterfly Knife | Fade", basePrice: 800, rarity: "★", imageUrl: "/karambit.webp", wear: "Minimal Wear", floatValue: 0.08, liquidationRate: 65, loanOffer: 520, steamId: "", stickers: [] },
+    // { id: "3", market_hash_name: "AK-47 | Fire Serpent", basePrice: 550, rarity: "Covert", imageUrl: "/ak47.webp", wear: "Field-Tested", floatValue: 0.18, liquidationRate: 65, loanOffer: 357.5, steamId: "", stickers: [] },
+    // { id: "4", market_hash_name: "M4A4 | Howl", basePrice: 1200, rarity: "Contraband", imageUrl: "/awp.webp", wear: "Factory New", floatValue: 0.03, liquidationRate: 65, loanOffer: 780, steamId: "", stickers: [] },
+    // { id: "5", market_hash_name: "Karambit | Doppler", basePrice: 650, rarity: "★", imageUrl: "/karambit.webp", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 422.5, steamId: "", stickers: [] },
+    // { id: "6", market_hash_name: "Glock-18 | Fade", basePrice: 300, rarity: "Covert", imageUrl: "/ak47.webp", wear: "Factory New", floatValue: 0.02, liquidationRate: 65, loanOffer: 195, steamId: "", stickers: [] }
+    { id: "1", market_hash_name: "AK-47 | Redline", basePrice: 2500, rarity: "Classified", imageUrl: "/ak47-redline.png", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 975, steamId: "", stickers: [] },
   ]
   
   // Fonction pour extraire le nom et l'usure d'un skin à partir du market_hash_name
@@ -105,7 +107,7 @@ export default function Home() {
       inventoryLength: inventory?.length || 0,
       currentDisplaySkins: displaySkins === mockSkins ? "mockSkins" : "realInventory"
     });
-    
+
     if (isAuthenticated && inventory && Array.isArray(inventory) && inventory.length > 0) {
       console.log("Using real inventory with", inventory.length, "skins");
       console.log("First item of the inventory:", inventory[0]);
@@ -117,7 +119,7 @@ export default function Home() {
       console.log("User not authenticated, using mocks");
       setDisplaySkins(mockSkins);
     }
-  }, [isAuthenticated, inventory, inventoryFetched, mockSkins]);
+  }, [isAuthenticated, inventory, inventoryFetched]);
   
   // Calculate the loan amount based on the selected skin and chosen percentage
   useEffect(() => {
@@ -133,37 +135,54 @@ export default function Home() {
     }
   }, [selectedSkin, loanPercentage, displaySkins])
   
+  // const handleBorrowRequest = async () => {
+  //   if (!profile?.id || !profile?.steamId || !selectedSkin) {
+  //     alert("Missing user or skin info.");
+  //     throw new Error("Missing user or skin info.");
+  //   }
+  //   const skin = displaySkins.find(s => s.id === selectedSkin);
+  //   if (!skin) {
+  //     alert("Skin not found.");
+  //     throw new Error("Skin not found.");
+  //   }
+  //   try {
+  //     const res = await fetch("http://localhost:3333/solana/borrow", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         userId: profile.id,
+  //         steamId: profile.steamId, // <-- Vérification Steam ID ici (commentée)
+  //         items: [skin],
+  //         amount: loanAmount,
+  //         duration: loanDuration,
+  //         skinId: skin.id,
+  //         value: skin.basePrice,
+  //         userWallet: profile.wallet,
+  //       }),
+  //     });
+  //     const data = await res.json();
+  //     if (!res.ok) {
+  //       // Affiche le message d'erreur du backend
+  //       alert("Erreur: " + (data?.error || "Request failed"));
+  //       throw new Error(data?.error || "Request failed");
+  //     }
+  //     console.log("Borrow response:", data);
+  //     setBorrowSuccessful(true);
+  //     return data;
+  //   } catch (err) {
+  //     // Affiche l'erreur JS si jamais
+  //     alert("Error: " + (err instanceof Error ? err.message : err));
+  //     throw err;
+  //   }
+  // };
+
+  // Fonction mock pour la démo
   const handleBorrowRequest = async () => {
-    if (!profile?.userId || !profile?.steamId || !selectedSkin) {
-      alert("Missing user or skin info.");
-      return;
-    }
-    const skin = displaySkins.find(s => s.id === selectedSkin);
-    if (!skin) {
-      alert("Skin not found.");
-      return;
-    }
-    try {
-      const res = await fetch("http://localhost:3333/solana/borrow", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: profile.userId,
-          steamId: profile.steamId,
-          items: [skin], // ou juste skin.id selon l'API
-          amount: loanAmount,
-          duration: loanDuration,
-          skinId: skin.id,
-          value: skin.basePrice,
-        }),
-      });
-      if (!res.ok) throw new Error("Request failed");
-      const data = await res.json();
-      console.log("Borrow response:", data);
-      setBorrowSuccessful(true);
-    } catch (err) {
-      alert("Error: " + err);
-    }
+    // Simule un délai pour l'effet démo
+    await new Promise(res => setTimeout(res, 700));
+    setBorrowSuccessful(true);
+    alert("Transaction acceptée ! (démo)");
+    return { success: true };
   };
 
   const liveTransactions = [
@@ -249,15 +268,15 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#111] text-white">
+    <div className="min-h-screen flex flex-col text-white">
       <main className="flex-1 flex flex-col items-center justify-center">
-        <LoadingOverlay 
+        <LoadingOverlay
           isLoading={isLoading} 
           message="Connecting to your wallet..."
           opacity={0.7}
         />
-        <div className="container mx-auto px-4 py-8">
-          {/* Live borrows ticker */}
+        <div className="container mx-auto px-4">
+          {/* Live borrows ticker
           <div className="flex justify-center mb-6 overflow-hidden">
             <div className="bg-[#111827]/50 backdrop-blur-sm rounded-full px-6 py-1.5 flex items-center gap-2 max-w-full">
               <div className="w-3 h-3 rounded-full bg-gradient-to-r from-[#6366f1] to-[#22d3ee] animate-pulse"></div>
@@ -275,279 +294,210 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Main interface - Simple and elegant header */}
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             <div className="mb-6 text-center">
-              <h2 className="text-2xl font-medium text-white mb-3">Loan Now</h2>
-            </div>
-            {/* Main borrow interface - rain.fi style */}
-            <div className="bg-[#0f1420] backdrop-blur-sm rounded-xl overflow-hidden border border-[#1f2937] mb-4 shadow-md w-full max-w-[95vw] sm:max-w-[80vw] md:max-w-[500px] lg:max-w-md mx-auto">
-              {/* Top section with title */}
-              <div className="text-center border-b border-[#1f2937] py-2">
-                <h2 className="text-sm font-medium text-white">Borrow</h2>
+              <h2 className="text-3xl font-bold text-[#E1E1F5] mb-3 font-poppins">Loan Now</h2>
               </div>
-              
-              {/* You collateralize section */}
-              <div className="p-3 border-b border-[#1f2937]">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-xs font-medium text-gray-400">You collateralize</h3>
-                  
+            <div className="flex flex-col md:flex-row gap-[55px] w-full justify-center items-stretch relative">
+              {/* Card Collateralize */}
+              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md flex flex-col h-full min-h-[500px] overflow-hidden">
+                {/* Overlay grain */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
+                  style={{
+                    backgroundImage: "url('/grainbg.avif')",
+                    backgroundRepeat: "repeat"
+                  }}
+                />
+                <div className="text-left py-6 px-4 relative z-20">
+                  <h2 className="text-2xl font-bold font-poppins text-[#E1E1F5]">You collateralize</h2>
+                  {/* <p className="text-[#a1a1c5] text-sm mt-1">Lorem ipsum dolor</p> */}
+                </div>
+                <div className="p-3 flex flex-col flex-1 relative z-20">
                   {/* Skin selector button */}
-                  <div className="relative">
-                    {/* Verify if the user is authenticated and has a Steam ID and trade link */}
-                    {isAuthenticated && profile?.steamId && profile?.tradeLink ? (
-                      /* The user has a Steam ID and trade link, display the skin selector */
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-[#1f2937] border-[#2a3548] hover:bg-[#2a3548] rounded-full flex items-center gap-1 h-6 px-2 text-xs"
-                          onClick={() => setSkinSelectorOpen(true)}
-                        >
-                          {selectedSkin ? "Change skin" : "Select skin"}
-                        </Button>
-                      </div>
-                    ) : isAuthenticated ? (
-                      /* The user is authenticated but does not have a Steam ID or trade link */
-                      <SteamAuthButton />
-                    ) : (
-                      /* The user is not authenticated */
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-[#1f2937] border-[#2a3548] hover:bg-[#2a3548] rounded-full flex items-center gap-1 h-6 px-2 text-xs"
-                        onClick={() => setSkinSelectorOpen(true)}
-                      >
-                        <span>Select skin</span>
-                        <ChevronDown className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Skin selection display */}
-                <div className="bg-[#1f2937] rounded-lg p-2 flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-lg overflow-hidden relative flex-shrink-0">
-                    {selectedSkin !== null ? (
-                      <Image
-                        src={displaySkins.find(skin => skin.id === selectedSkin)?.imageUrl || ''}
-                        alt={displaySkins.find(skin => skin.id === selectedSkin)?.market_hash_name || ''}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[#2a3548] flex items-center justify-center">
-                        <span className="text-xs text-gray-400">No skin</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-grow">
-                    <div className="flex justify-between items-start mb-1">
-                      <div>
-                        <h4 className="text-sm font-medium">
-                          {selectedSkin !== null ? 
-                            extractSkinInfo(displaySkins.find(skin => skin.id === selectedSkin)?.market_hash_name || '').name : 
-                            "Select a skin"}
-                        </h4>
-                        {selectedSkin !== null && (
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <span className="text-xs text-gray-400">
-                              {extractSkinInfo(displaySkins.find(skin => skin.id === selectedSkin)?.market_hash_name || '').wear}
-                            </span>
-                            <span className="text-xs text-gray-400">•</span>
-                            <span className="text-xs text-gray-400">
-                              Float: {displaySkins.find(skin => skin.id === selectedSkin)?.floatValue.toFixed(2) || '0.00'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">
-                          ${selectedSkin !== null ? 
-                            displaySkins.find(skin => skin.id === selectedSkin)?.basePrice.toFixed(2) || '0' : '-'}
-                        </div>
-                        <div className="text-xs text-gray-400">Market price</div>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <div className="h-1 w-full bg-[#2a3548] rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-[#6366f1] to-[#22d3ee] w-[65%]"></div>
-                      </div>
-                      <div className="flex justify-between mt-1">
-                        <span className="text-[10px] text-gray-400">65% LTV</span>
-                        <span className="text-[10px] text-gray-400">Max: 85%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* You borrow section */}
-              <div className="p-3 border-b border-[#1f2937]">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-xs font-medium text-gray-400">You borrow</h3>
-                  <div className="flex items-center gap-1 bg-[#1f2937] px-2 py-1 rounded-full">
-                    <span className="text-xs">USDC</span>
-                  </div>
-                </div>
-                
-                {/* Loan amount */}
-                <div className="bg-[#1f2937] rounded-lg p-3 mb-3">
-                  <div className="flex items-center">
-                    <div className="flex-grow">
-                      <input
-                        type="text"
-                        className="w-full bg-transparent border-none text-white text-2xl font-medium focus:outline-none"
-                        placeholder="0.00"
-                        value={selectedSkin !== null ? loanAmount.toFixed(2) : ''}
-                        readOnly
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-[#2a3548] flex items-center justify-center">
-                        <span className="text-sm font-medium">$</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {selectedSkin !== null && (
-                  <>
-                    {/* Loan percentage slider */}
-                    <div className="mb-4">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-white font-medium">Loan amount</span>
-                        <span className="text-xs text-white font-medium">{loanPercentage}%</span>
-                      </div>
-                      <div className="relative">
-                        <div className="h-2 w-full bg-[#1f2937] rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-[#6366f1] to-[#22d3ee]" 
-                            style={{ width: `${loanPercentage}%` }}
-                          ></div>
-                        </div>
-                        {/* Rond du curseur */}
-                        <div 
-                          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white shadow-lg transition-none" 
-                          style={{ left: `calc(${loanPercentage}% - 8px)` }}
-                        ></div>
-                        <input 
-                          type="range" 
-                          min="0" 
-                          max="100" 
-                          value={loanPercentage} 
-                          onChange={(e) => setLoanPercentage(parseInt(e.target.value))} 
-                          className="absolute top-0 left-0 w-full h-2 opacity-0 cursor-grab active:cursor-grabbing z-10" 
-                        />
-                      </div>
-                      <div className="flex justify-between mt-1">
-                        <span className="text-[10px] text-gray-400">0%</span>
-                        <span className="text-[10px] text-gray-400">Max: ${selectedSkin !== null ? 
-                          (displaySkins.find(skin => skin.id === selectedSkin)?.loanOffer || 0).toFixed(2) : '0.00'}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Loan duration selection */}
-                    <div className="mb-2">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs text-white font-medium">Loan duration</span>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2">
-                        {loanDurationOptions.map((days) => (
-                          <button
-                            key={days}
-                            onClick={() => setLoanDuration(days)}
-                            className={`text-center py-1 px-2 rounded-lg text-xs ${loanDuration === days 
-                              ? 'bg-gradient-to-r from-[#6366f1] to-[#22d3ee] text-white' 
-                              : 'bg-[#1f2937] text-gray-400'}`}
-                          >
-                            {days} days
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Loan information */}
-                    <div className="bg-[#1f2937] rounded-lg p-2 mt-3">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs text-gray-400">Total to repay</span>
-                        <span className="text-xs text-white">${(loanAmount * (1 + 0.025 * loanDuration / 7)).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-400">Due date</span>
-                        <span className="text-xs text-white">{new Date(Date.now() + loanDuration * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              {/* How it works section */}
-              <div className="p-3">
-                <div className="w-full">
-                  <button 
-                    onClick={() => setHowItWorksOpen(prev => !prev)}
-                    className="w-full flex justify-between items-center bg-[#1f2937] hover:bg-[#2a3548] rounded-lg p-2 transition-colors"
+                  <Button
+                    className="mb-4 w-full bg-[#6366f1] hover:bg-[#5355d1] text-white font-semibold"
+                    onClick={() => setSkinSelectorOpen(true)}
                   >
-                    <span className="text-xs font-medium">How it works</span>
-                    <ChevronDown className={`h-3 w-3 transition-transform ${howItWorksOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {howItWorksOpen && (
-                    <div className="mt-2 bg-[#1f2937] rounded-lg p-3 border border-[#2a3548] animate-slideDown">
-                      <h3 className="text-sm font-medium mb-2">How Huch Finance works</h3>
-                      <p className="text-xs text-gray-400 mb-3">
-                        Huch Finance allows you to borrow USDC using your CS2 skins as collateral at a 65% loan-to-value ratio.
-                      </p>
-                      <div className="flex justify-between items-center gap-4 text-center">
-                        <div className="flex flex-col items-center">
-                          <div className="w-6 h-6 rounded-full bg-[#6366f1]/20 flex items-center justify-center mb-1">
-                            <span className="text-[#6366f1] text-[10px] font-bold">1</span>
-                          </div>
-                          <h4 className="text-[10px] font-medium mb-1">Connect wallet</h4>
-                          <p className="text-[9px] text-gray-400">Link your Steam account</p>
+                    {selectedSkin
+                      ? "Change skin"
+                      : "Select a skin as collateral"}
+                  </Button>
+                  {/* Skin selection display */}
+                  {selectedSkin ? (() => {
+                    const skin = displaySkins.find(s => s.id === selectedSkin)
+                    if (!skin) return null
+                    const { name, wear } = extractSkinInfo(skin.market_hash_name)
+                    return (
+                      <div className="flex items-center gap-4 p-3 bg-[#161e2e] rounded-lg border border-[#23263a] mb-4">
+                        <div className="relative w-16 h-16 overflow-hidden rounded-md flex-shrink-0 bg-[#23263a]">
+                          <Image
+                            src={skin.imageUrl}
+                            alt={name}
+                            fill
+                            className="object-contain p-1"
+                          />
                         </div>
-                        <div className="flex flex-col items-center">
-                          <div className="w-6 h-6 rounded-full bg-[#6366f1]/20 flex items-center justify-center mb-1">
-                            <span className="text-[#6366f1] text-[10px] font-bold">2</span>
-                          </div>
-                          <h4 className="text-[10px] font-medium mb-1">Borrow USDC</h4>
-                          <p className="text-[9px] text-gray-400">Get USDC loans against skins</p>
-                        </div>
-                        <div className="flex flex-col items-center">
-                          <div className="w-6 h-6 rounded-full bg-[#6366f1]/20 flex items-center justify-center mb-1">
-                            <span className="text-[#6366f1] text-[10px] font-bold">3</span>
-                          </div>
-                          <h4 className="text-[10px] font-medium mb-1">Repay anytime</h4>
-                          <p className="text-[9px] text-gray-400">No early repayment fees</p>
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <span className="font-semibold text-white text-base truncate">{name}</span>
+                          <span className="text-xs text-[#a1a1c5]">{wear}</span>
+                          <span className="text-xs text-[#a1a1c5] mt-1">
+                            {skin.liquidationRate}% LTV &ndash; Max ${skin.loanOffer.toFixed(2)}
+                          </span>
                         </div>
                       </div>
+                    )
+                  })() : (
+                    <div className="text-center text-[#a1a1c5] text-sm mt-6 mb-4">
+                      No skin selected
                     </div>
                   )}
+                  {/* Inventory list */}
+                  <div className="flex-1 overflow-y-auto max-h-[260px]">
+                    <div className="space-y-1 w-full">
+                      {displaySkins
+                        .sort((a, b) => a.basePrice - b.basePrice)
+                        .map((skin) => {
+                          const { name, wear } = extractSkinInfo(skin.market_hash_name)
+                          const rarity = skin.rarity ||
+                            (skin.market_hash_name.includes('★') ? '★' :
+                            skin.market_hash_name.includes('Covert') ? 'Covert' :
+                            skin.market_hash_name.includes('Contraband') ? 'Contraband' : '')
+                          return (
+                            <div
+                              key={skin.id}
+                              className={`flex items-center gap-3 p-2 hover:bg-[#23263a] transition-colors rounded-md cursor-pointer ${selectedSkin === skin.id ? 'bg-[#23263a] border border-[#6366f1]' : 'border border-transparent'}`}
+                              onClick={() => setSelectedSkin(skin.id)}
+                            >
+                              <div className="relative w-10 h-10 overflow-hidden rounded bg-[#161e2e]">
+                                <Image
+                                  src={skin.imageUrl}
+                                  alt={name}
+                                  fill
+                                  className="object-contain p-1"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium text-sm truncate">{name}</span>
+                                <div className="flex items-center gap-1 text-xs text-[#a1a1c5]">
+                                  <span>{wear}</span>
+                                  <span>•</span>
+                                  <span>{skin.liquidationRate}% LTV</span>
+                                </div>
+                              </div>
+                              <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(0)}</span>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
                 </div>
+              </Card>
+              
+              {/* Arrow image au centre */}
+              <div className="hidden md:flex items-center justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+                <img src="/arrow.png" alt="arrow" className="w-12 h-12" />
               </div>
               
-              {/* Borrow button */}
-              <div className="flex justify-center my-3 max-w-md mx-auto px-3">
-                <Button
-                  className="bg-[#6366f1] hover:bg-[#5355d1] rounded-full flex items-center gap-1 text-xs py-1.5 px-3 shadow-sm transition-all w-full"
-                  onClick={() => {
-                    if (!isAuthenticated) {
-                      login();
-                    } else if (selectedSkin !== null) {
-                      // Open the borrow confirmation modal
-                      setBorrowModalOpen(true);
-                    } else {
-                      setSkinSelectorOpen(true);
-                    }
+              {/* Card Borrow */}
+              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md flex flex-col min-h-[500px] overflow-hidden">
+                {/* Overlay grain */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
+                  style={{
+                    backgroundImage: "url('/grainbg.avif')",
+                    backgroundRepeat: "repeat"
                   }}
-                >
-                  <ArrowRight className="h-3 w-3" />
-                  <span>{!isAuthenticated ? "Connect Account to Borrow" : (selectedSkin !== null ? "Borrow Now" : "Select a Skin to Borrow")}</span>
-                </Button>
-              </div>
+                />
+                <div className="text-left py-6 px-4 relative z-20">
+                  <h2 className="text-2xl font-bold font-poppins text-[#E1E1F5]">You borrow</h2>
+                  {/* <p className="text-[#a1a1c5] text-sm mt-1">Lorem ipsum dolor sit amet</p> */}
+                </div>
+                <div className="p-3 flex flex-col items-center flex-1 relative z-20">
+                  {/* Loan amount */}
+                  <div className="flex flex-col items-center mb-4 w-full">
+                    <span className="text-3xl font-bold mb-2">
+                      {loanAmount ? `$${loanAmount.toFixed(2)}` : "$0.00"}
+                    </span>
+                    {/* Loan percentage slider */}
+                    <input
+                      type="range"
+                      min={10}
+                      max={100}
+                      step={1}
+                      value={loanPercentage}
+                      onChange={e => setLoanPercentage(Number(e.target.value))}
+                      className="w-full accent-[#6366f1] mb-2"
+                      disabled={!selectedSkin}
+                    />
+                    <div className="flex justify-between w-full text-xs text-[#a1a1c5] mb-2">
+                      <span>10%</span>
+                      <span>100%</span>
+                    </div>
+                    <div className="flex justify-between w-full gap-2 mb-2">
+                      {[10, 25, 50, 75, 100].map(val => (
+                        <Button
+                          key={val}
+                          size="sm"
+                          variant={loanPercentage === val ? "default" : "outline"}
+                          className={`rounded-full px-3 py-1 text-xs ${loanPercentage === val ? "bg-[#6366f1] text-white" : "bg-[#23263a] text-[#a1a1c5]"}`}
+                          onClick={() => setLoanPercentage(val)}
+                          disabled={!selectedSkin}
+                        >
+                          {val}%
+                        </Button>
+                      ))}
+                    </div>
+                    <span className="text-xs text-[#a1a1c5]">USDC</span>
+                  </div>
+                  {/* Loan duration */}
+                  <div className="flex flex-col items-center mb-4 w-full">
+                    <label className="text-xs text-[#a1a1c5] mb-1">Duration</label>
+                    <div className="flex gap-2 w-full justify-center">
+                      {[7, ...loanDurationOptions].map(option => (
+                        <Button
+                          key={option}
+                          size="sm"
+                          variant={loanDuration === option ? "default" : "outline"}
+                          className={`rounded-full px-3 py-1 text-xs ${loanDuration === option ? "bg-[#6366f1] text-white" : "bg-[#23263a] text-[#a1a1c5]"}`}
+                          onClick={() => setLoanDuration(option)}
+                          disabled={!selectedSkin}
+                        >
+                          {option}d
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* How it works */}
+                  <div className="mb-4 w-full text-center">
+                    <button
+                      className="text-xs text-[#a1a1c5] underline hover:text-[#6366f1] transition"
+                      onClick={() => setHowItWorksOpen(!howItWorksOpen)}
+                      type="button"
+                    >
+                      How does it work ?
+                    </button>
+                    {howItWorksOpen && (
+                      <div className="mt-2 text-xs text-[#a1a1c5] bg-[#161e2e] rounded-md p-2">
+                        Select a skin, choose your loan amount and duration, then confirm to borrow USDC. Your skin is held as collateral until you repay.
+                      </div>
+                    )}
+                  </div>
+                  {/* Confirm button */}
+                  <Button
+                    className="w-full bg-gradient-to-r from-[#6366f1] to-[#7f8fff] text-white font-semibold text-base py-2 rounded-lg mt-auto"
+                    disabled={!selectedSkin || loanAmount <= 0}
+                    onClick={() => setBorrowModalOpen(true)}
+                  >
+                    Confirm and borrow now
+                  </Button>
+                </div>
+              </Card>
             </div>
           </div>
         </div>
@@ -741,18 +691,7 @@ export default function Home() {
                                 <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(2)}</span>
                               </div>
                               <div className="flex items-center gap-1 mt-1.5">
-                                <span style={{
-                                  fontSize: '10px',
-                                  color: 
-                                    rarity === 'Covert' ? 'rgb(235, 75, 75)' :
-                                    rarity === 'Contraband' ? 'rgb(228, 174, 57)' :
-                                    rarity === 'Consumer' ? 'rgb(176, 195, 217)' :
-                                    rarity === 'Industrial' ? 'rgb(94, 152, 217)' :
-                                    rarity === 'Mil-Spec' ? 'rgb(75, 105, 255)' :
-                                    rarity === 'Restricted' ? 'rgb(136, 71, 255)' :
-                                    rarity === 'Classified' ? 'rgb(211, 44, 230)' :
-                                    rarity === '★' ? 'rgb(228, 174, 57)' : 'rgb(176, 195, 217)'
-                                }}>{rarity || 'Normal'}</span>
+                                <span className="text-[10px] text-gray-400">{rarity || 'Normal'}</span>
                                 <span className="text-[10px] text-gray-400">•</span>
                                 <span className="text-[10px] text-gray-400">{wear}</span>
                               </div>
@@ -837,9 +776,9 @@ export default function Home() {
         loanAmount={loanAmount}
         loanDuration={loanDuration}
         extractSkinInfo={extractSkinInfo}
-        onConfirm={handleBorrowRequest}
+        onConfirm={handleBorrowRequest} // <-- Utilise la fonction mock
       />
-      <Footer />
+    <Footer />
     </div>
   )
 }

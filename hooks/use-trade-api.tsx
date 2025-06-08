@@ -91,7 +91,7 @@ export function useTradeApi() {
       setError("User not authenticated")
       return null
     }
-    
+
     setIsLoading(true)
     setError(null)
     

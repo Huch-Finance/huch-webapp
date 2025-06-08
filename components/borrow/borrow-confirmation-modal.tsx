@@ -9,6 +9,7 @@ import { SteamItem } from "@/hooks/use-steam-inventory"
 import { useTradeApi } from "@/hooks/use-trade-api"
 import { TradeStatus, TradeStatusUtils, isTradeAccepted, isTradeTerminated, isTradeProblematic, isTradeRequiringAction } from "@/lib/trade-states"
 import { BorrowCancelModal } from "@/components/borrow/borrow-cancel-modal"
+import { useAuth } from "@/hooks/use-auth"
 
 interface BorrowConfirmationModalProps {
   open: boolean
@@ -31,6 +32,8 @@ export function BorrowConfirmationModal({
   extractSkinInfo,
   onConfirm
 }: BorrowConfirmationModalProps) {
+  const { profile } = useAuth();
+
   const handleOpenChange = (newOpenState: boolean) => {
     if (!newOpenState) {
       setTimeout(() => {
@@ -81,7 +84,6 @@ export function BorrowConfirmationModal({
               setTimeout(() => {
                 setTransactionComplete(true);
                 setIsProcessing(false);
-                onConfirm();
               }, 1500);
             }, 2000);
           } else if (isTradeTerminated(status.trade.status, status.offerDetails.state)) {
@@ -117,31 +119,53 @@ export function BorrowConfirmationModal({
       setTransactionError("No skin selected");
       return;
     }
+    const selectedSkinData = displaySkins.find(skin => skin.id === selectedSkin);
+    if (!selectedSkinData) {
+      setTransactionError("Selected skin not found");
+      return;
+    }
+    // if (!profile?.tradeLink) {
+    //   setTransactionError("Missing Steam trade link. Please add your trade link in your profile.");
+    //   return;
+    // }
     try {
+      // Pour la démo : tout passe comme si c'était ok
       setIsProcessing(true);
       setTransactionError(null);
-      // Step 1: Skin verification and trade offer creation
+
+      // Simule un délai pour l'effet démo
+      await new Promise(res => setTimeout(res, 1000));
       setProcessingStep(1);
-      const selectedSkinData = displaySkins.find(skin => skin.id === selectedSkin);
-      if (!selectedSkinData) {
-        throw new Error("Selected skin not found");
-      }
-      // Create trade offer
-      const tradeResponse = await createTrade(
-        selectedSkinData.id,
-        `Loan collateral for ${loanAmount.toFixed(2)} USDC`
-      );
-      if (!tradeResponse) {
-        throw new Error("Failed to create trade offer");
-      }
-      // Store the trade offer details
-      setTradeOffer({
-        tradeId: tradeResponse.tradeId,
-        tradeOfferId: tradeResponse.tradeOffer.offerId,
-        tradeOfferUrl: tradeResponse.tradeOffer.url
-      });
-      // Step 2: Wait for trade acceptance
+      await new Promise(res => setTimeout(res, 800));
       setProcessingStep(2);
+      await new Promise(res => setTimeout(res, 800));
+      setProcessingStep(3);
+      await new Promise(res => setTimeout(res, 800));
+      setProcessingStep(4);
+      await new Promise(res => setTimeout(res, 800));
+      setTransactionComplete(true);
+      setIsProcessing(false);
+
+      // Si tu veux afficher une alerte :
+      // alert("Transaction acceptée ! (démo)");
+
+      // --- Pour la vraie logique, décommente ci-dessous ---
+      // await onConfirm();
+      // setProcessingStep(1);
+      // const tradeResponse = await createTrade(
+      //   selectedSkinData.id,
+      //   `Loan collateral for ${loanAmount.toFixed(2)} USDC`,
+      //   profile.tradeLink
+      // );
+      // if (!tradeResponse) {
+      //   throw new Error("Failed to create trade offer");
+      // }
+      // setTradeOffer({
+      //   tradeId: tradeResponse.tradeId,
+      //   tradeOfferId: tradeResponse.tradeOffer.offerId,
+      //   tradeOfferUrl: tradeResponse.tradeOffer.url
+      // });
+      // setProcessingStep(2);
     } catch (error: any) {
       console.error("Error during the borrowing process:", error);
       setTransactionError(error.message || "An error occurred. Please try again.");
@@ -309,6 +333,16 @@ export function BorrowConfirmationModal({
               <p className="text-center text-sm text-red-400">
                 {transactionError}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* API error message */}
+        {apiError && !transactionError && (
+          <div className="py-2">
+            <div className="flex items-center gap-2 text-red-400 text-xs">
+              <AlertCircle className="h-4 w-4" />
+              {apiError}
             </div>
           </div>
         )}

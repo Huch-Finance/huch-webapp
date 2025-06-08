@@ -36,7 +36,11 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
+    domains: [
+      "community.cloudflare.steamstatic.com",
+      // add other domains if needed
+    ],
   },
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig

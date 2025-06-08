@@ -55,16 +55,27 @@ export function Navbar() {
 
   const navLinksData = [
     ...(profile?.admin ? [{ label: "Admin", href: "/admin" }] : []),
+    { label: "Home", href: "/" },
     { label: "Borrow", href: "/borrow" },
     { label: "Ranking", href: "/ranking" },
+    { label: "Trade", href: "/trade" },
   ];
 
   return (
     <header
       className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center pl-6 pr-6 py-3 backdrop-blur-sm
-      ${headerShapeClass} border border-[#333] bg-[#1f1f1f57] w-full max-w-3xl sm:max-w-4xl lg:max-w-5xl transition-[border-radius] duration-0 ease-in-out`}
+      ${headerShapeClass} border border-[#FFFFFF] bg-[#0F0F2A] border-opacity-10 bg-opacity-70 w-full max-w-3xl sm:max-w-4xl lg:max-w-5xl transition-[border-radius] duration-0 ease-in-out rounded-inherit overflow-hidden`}
     >
-      <div className="flex items-center justify-between w-full gap-x-6 sm:gap-x-8">
+      {/* Overlay grain */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-10 opacity-[.05] rounded-inherit w-full h-full"
+        style={{
+          backgroundImage: "url('/grainbg.avif')",
+          backgroundRepeat: "repeat"
+        }}
+      />
+      <div className="flex items-center justify-between w-full gap-x-6 sm:gap-x-8 relative z-20">
         <Link href="/" className="flex items-center">
           {logoElement}
         </Link>

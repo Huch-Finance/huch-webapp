@@ -173,7 +173,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#111] text-white">
+    <div className="min-h-screen flex flex-col text-white">
       <main className="flex-1 flex flex-col items-center justify-center">
         <section className="pt-24 pb-16 px-4 flex-1">
           <div className="container mx-auto max-w-4xl">
@@ -330,21 +330,32 @@ export default function Settings() {
                             )}
                           </Label>
                           <div className="flex gap-2 items-center">
-                            {profile?.tradeLink ? (
-                              <div className="flex-1 flex justify-between items-center bg-[#2A2A2A] border border-[#2A2A2A] rounded-md px-3 py-2">
-                                <span className="text-sm text-gray-400 truncate max-w-xs">{profile.tradeLink}</span>
-                              </div>
-                            ) : (
-                              <div className="flex-1">
-                                <SteamAuthButton />
-                              </div>
-                            )}
+                            <Input
+                              id="tradelink"
+                              placeholder="Paste your Steam trade link here"
+                              value={profile?.tradeLink ?? ""}
+                              onChange={e => updateProfile({ tradeLink: e.target.value })}
+                              className="bg-[#2A2A2A] border-[#2A2A2A] flex-1"
+                              disabled={!profile?.steamId}
+                              style={{ fontSize: "0.95rem" }}
+                            />
+                            <Button
+                              variant="outline"
+                              className="border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20"
+                              disabled={!profile?.steamId}
+                              onClick={async () => {
+                                await updateProfile({ tradeLink: profile?.tradeLink });
+                                reloadUserData();
+                              }}
+                            >
+                              Save
+                            </Button>
                           </div>
                           <p className="text-xs text-gray-400">
-                            Your trade link is required to receive and return CS2 items.  
-                            <a 
-                              href="https://steamcommunity.com/my/tradeoffers/privacy" 
-                              target="_blank" 
+                            Your trade link is required to receive and return CS2 items.&nbsp;
+                            <a
+                              href="https://steamcommunity.com/my/tradeoffers/privacy"
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-[#5D5FEF] hover:underline"
                             >

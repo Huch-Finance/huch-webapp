@@ -110,5 +110,5 @@
 
 /* Ajout d'un style pour le main qui crée un dégradé partant du bas */
 main {
-  background: linear-gradient(to bottom, #0f0f13 0%, #1a1a1f 100%);
+  /* background: linear-gradient(to bottom, #0f0f13 0%, #1a1a1f 100%); */
 }

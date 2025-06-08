@@ -29,12 +29,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${poppins.variable} text-white`}>
+      <body className={`${poppins.variable} text-white relative`}>
+        {/* Background image */}
+        <img
+          src="/background.png"
+          alt=""
+          className="fixed inset-0 w-full h-full object-cover -z-10"
+          aria-hidden="true"
+        />
         {/* <BeamsBackground /> */}
         <PrivyProvider>
           <Navbar />
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem={false} disableTransitionOnChange>
-            {children}
+            <main className="">
+              {children}
+            </main>
             <Toaster richColors position="top-right" />
           </ThemeProvider>
           {/* <Footer/> */}

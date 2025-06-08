@@ -179,7 +179,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#111] text-white">
+    <div className="min-h-screen flex flex-col text-white">
       <main className="flex-1 flex flex-col items-center justify-center">
         <LoadingOverlay 
           isLoading={isLoading} 
@@ -188,9 +188,18 @@ export default function Profile() {
         />
         <section className="flex flex-1 items-center justify-center w-full">
           <div className="container mx-auto max-w-4xl flex flex-col items-center justify-center">
-            <div className="flex flex-col md:flex-row gap-8 mb-8 items-center justify-center w-full">
+            <div className="flex flex-col md:flex-row gap-10 mt-[50px] mb-4 items-stretch justify-center w-full max-w-3xl mx-auto">
               {/* Profile Card */}
-              <Card className="border-muted bg-[#1E1E1E] md:w-1/3 relative">
+              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden flex flex-col min-h-[520px]">
+                {/* Overlay grain */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
+                  style={{
+                    backgroundImage: "url('/grainbg.avif')",
+                    backgroundRepeat: "repeat"
+                  }}
+                />
                 {!profile?.steamId && (
                   <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
                     <AlertTriangle size={32} className="text-yellow-500 mb-2" />
@@ -238,7 +247,16 @@ export default function Profile() {
               </Card>
 
               {/* Tabs Card */}
-              <Card className="border-muted bg-[#1E1E1E] flex-1 max-w-xl w-full">
+              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden flex flex-col min-h-[520px]">
+                {/* Overlay grain */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
+                  style={{
+                    backgroundImage: "url('/grainbg.avif')",
+                    backgroundRepeat: "repeat"
+                  }}
+                />
                 <Tabs defaultValue="wallet" value={activeTab} onValueChange={setActiveTab}>
                   <CardHeader className="pb-0">
                     <TabsList className="grid grid-cols-3">
