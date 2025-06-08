@@ -267,6 +267,16 @@ export default function Home() {
     { value: 'Battle-Scarred', label: 'Battle-Scarred' },
   ];
 
+  // Si le profil existe mais que l'utilisateur n'est pas connecté avec Steam
+  if (profile && !profile.steamId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#111] text-white">
+        <h2 className="text-2xl font-bold mb-4">Connect your Steam account</h2>
+        <SteamAuthButton />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex flex-col text-white">
       <main className="flex-1 flex flex-col items-center justify-center">

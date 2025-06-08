@@ -122,6 +122,7 @@ export function useSteamInventory() {
       return
     }
     try{
+      console.log('id:', profile.id);
       const response = await fetch('http://localhost:3333/api/user/inventory/refresh', {
         method: 'POST',
         headers: {

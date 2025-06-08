@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Gamepad2 } from "lucide-react" // Utiliser Gamepad2 à la place de Steam qui n'existe pas
+import { Gamepad2 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useSearchParams } from "next/navigation"
 
