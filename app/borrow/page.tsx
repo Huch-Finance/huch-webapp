@@ -67,6 +67,64 @@ export default function Home() {
     });
   }, [privyLoading, inventoryLoading, isAuthenticated, inventoryFetched, inventory]);
   
+  const updateInventoryPrices = async () => {
+  console.log('🔍 updateInventoryPrices called with:', { 
+    steamId: profile?.steamId,
+    hasProfile: !!profile 
+  });
+  
+  if (!profile?.steamId) {
+    console.log('❌ No steamId found, skipping price update');
+    return;
+  }
+  
+  try {
+      console.log('🔄 Updating inventory prices...');
+      const response = await fetch(`http://localhost:3333/inventory/${profile.steamId}/update-prices`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      console.log('📡 Response status:', response.status);
+      const data = await response.json();
+      console.log('📦 Response data:', data);
+      
+      if (data.success) {
+        console.log('✅ Prices updated:', data.data);
+        if (data.data.cached) {
+          console.log(`📦 Prices cached - next update in ${data.data.nextUpdateIn} minutes`);
+        } else if (data.data.updated > 0) {
+          console.log(`🆙 Updated ${data.data.updated} item prices`);
+          refreshInventory();
+        }
+      } else {
+        console.error('❌ Price update failed:', data.error);
+      }
+    } catch (error) {
+      console.error('❌ Failed to update prices:', error);
+    }
+  };
+
+  useEffect(() => {
+  console.log('🔍 Price update useEffect triggered:', {
+    privyLoading,
+    isAuthenticated,
+    steamId: profile?.steamId,
+    profileExists: !!profile
+  });
+  
+  if (!privyLoading && isAuthenticated && profile?.steamId) {
+    console.log("✅ All conditions met, updating prices on page load...");
+    updateInventoryPrices();
+  } else if (!privyLoading && isAuthenticated && !profile?.steamId) {
+    console.log("⚠️ User authenticated but no Steam ID - need to connect Steam first");
+  } else {
+    console.log("❌ Conditions not met for price update");
+  }
+}, [isAuthenticated, privyLoading, profile?.steamId]);
+
   // Mock CS2 skins for example display when user is not connected
   const mockSkins: SteamItem[] = [
     // { id: "1", market_hash_name: "AWP | Dragon Lore", basePrice: 1500, rarity: "Covert", imageUrl: "/awp.webp", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 975, steamId: "", stickers: [] },
