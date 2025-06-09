@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, Filter, RotateCcw, Search, ArrowRight, LayoutGrid, List } from "lucide-react"
@@ -21,6 +21,7 @@ export default function Home() {
   const [loanDuration, setLoanDuration] = useState(7) // Loan duration in days
   const loanDurationOptions = [14, 25, 30, 35] // Loan duration options in days
   const [howItWorksOpen, setHowItWorksOpen] = useState(false) // State for the "How it works" dropdown menu
+  const priceUpdateRef = useRef(false)
   
   // State for the borrow confirmation modal
   const [borrowModalOpen, setBorrowModalOpen] = useState(false)
@@ -98,7 +99,7 @@ export default function Home() {
           console.log(`📦 Prices cached - next update in ${data.data.nextUpdateIn} minutes`);
         } else if (data.data.updated > 0) {
           console.log(`🆙 Updated ${data.data.updated} item prices`);
-          refreshInventory();
+          // No need to call refreshInventory here - the inventory hook will handle it
         }
       } else {
         console.error('❌ Price update failed:', data.error);
@@ -113,16 +114,18 @@ export default function Home() {
     privyLoading,
     isAuthenticated,
     steamId: profile?.steamId,
-    profileExists: !!profile
+    profileExists: !!profile,
+    priceUpdateDone: priceUpdateRef.current
   });
   
-  if (!privyLoading && isAuthenticated && profile?.steamId) {
+  if (!privyLoading && isAuthenticated && profile?.steamId && !priceUpdateRef.current) {
     console.log("✅ All conditions met, updating prices on page load...");
-    updateInventoryPrices();
+    priceUpdateRef.current = true;
+    refreshInventory();
   } else if (!privyLoading && isAuthenticated && !profile?.steamId) {
     console.log("⚠️ User authenticated but no Steam ID - need to connect Steam first");
   } else {
-    console.log("❌ Conditions not met for price update");
+    console.log("❌ Conditions not met for price update or already updated");
   }
 }, [isAuthenticated, privyLoading, profile?.steamId]);
 
@@ -260,13 +263,7 @@ export default function Home() {
     refreshInventory();
   };
   
-  // Try to fetch the inventory if the user is authenticated but the inventory has not been fetched
-  useEffect(() => {
-    if (!privyLoading && isAuthenticated && !inventoryFetched && !inventoryLoading) {
-      console.log("Authenticated but inventory not fetched, attempt to fetch...");
-      refreshInventory();
-    }
-  }, [isAuthenticated, inventoryFetched, privyLoading, inventoryLoading, refreshInventory]);
+  // This effect is handled by useSteamInventory hook, no need to call refreshInventory here
 
   useEffect(() => {
     const interval = setInterval(() => {

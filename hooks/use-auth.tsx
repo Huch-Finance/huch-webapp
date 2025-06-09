@@ -1,7 +1,7 @@
 "use client"
 
 import { usePrivy, useWallets } from "@privy-io/react-auth"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import type { UserProfile, AuthStatus } from "@/lib/privy"
 import { isPrivyConfigured } from "@/lib/privy"
 
@@ -9,6 +9,7 @@ export function useAuth() {
   const [status, setStatus] = useState<AuthStatus>("loading")
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isConfigured, setIsConfigured] = useState(isPrivyConfigured)
+  const isRegisteringRef = useRef(false)
 
   const { ready, authenticated, user, login, logout, connectWallet } = usePrivy()
   const { wallets } = useWallets()
@@ -159,14 +160,26 @@ export function useAuth() {
     setStatus("authenticated")
 
     // Register user in database and retrieve steamId if available
-    if (user && wallets && wallets.length > 0 && wallets[0]?.address) {
-      registerUserInDatabase(user.id, wallets[0].address)
-        .then(() => {
-          reloadUserData();
-        });
-    }
-    if (user && typeof window !== 'undefined') {
-      reloadUserData();
+    if (user && !isRegisteringRef.current) {
+      isRegisteringRef.current = true;
+      
+      if (wallets && wallets.length > 0 && wallets[0]?.address) {
+        registerUserInDatabase(user.id, wallets[0].address)
+          .then(() => {
+            reloadUserData();
+          })
+          .finally(() => {
+            isRegisteringRef.current = false;
+          });
+      } else if (typeof window !== 'undefined' && (!wallets || wallets.length === 0)) {
+        // Only reload user data if we don't have wallets yet
+        reloadUserData()
+          .finally(() => {
+            isRegisteringRef.current = false;
+          });
+      } else {
+        isRegisteringRef.current = false;
+      }
     }
   }, [ready, authenticated, user, wallets])
 
