@@ -71,7 +71,7 @@ export default function AdminPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: "2eme vault par pitie fetch frr",
+          name: "Huch Vault n1",
           tokenDecimals: 6,
         }),
       });
