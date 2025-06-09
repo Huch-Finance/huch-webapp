@@ -53,7 +53,7 @@ export function useSteamInventory() {
     setError(null)
 
     try {
-      //console.log("API call to /api/inventory with Privy ID:", profile.id);
+      console.log("API call to /api/inventory with Privy ID:", profile.id);
       const response = await fetch('http://localhost:3333/api/inventory', {
         method: 'GET',
         headers: {
@@ -73,10 +73,10 @@ export function useSteamInventory() {
       if (data.inventory) {
         if ('items' in data.inventory) {
           inventoryItems = data.inventory.items;
-          //console.log("Format d'API détecté: inventory.items[]");
+          console.log("Format d'API détecté: inventory.items[]");
         } else if (Array.isArray(data.inventory)) {
           inventoryItems = data.inventory;
-          //console.log("Format d'API détecté: inventory[]");
+          console.log("Format d'API détecté: inventory[]");
         }
       }
       
@@ -85,7 +85,9 @@ export function useSteamInventory() {
       if (inventoryItems.length === 0) {
         console.warn("API returned an empty inventory!");
       }
-      
+
+      console.log("Tous les items retournés :", inventoryItems);
+
       setInventory(inventoryItems)
       setLastUpdated(data.lastUpdated)
       setInventoryFetched(true);
@@ -100,13 +102,9 @@ export function useSteamInventory() {
 
   // Function to fetch inventory when the profile is loaded and the user has a steamId and tradeLink
   useEffect(() => {
-    console.log("useEffect dans useSteamInventory - Auth:", isAuthenticated, "SteamId:", profile?.steamId);
-
     if (isAuthenticated && profile?.steamId && profile?.tradeLink) {
-      console.log("Conditions remplies pour récupérer l'inventaire");
       fetchInventory();
     } else {
-      console.log("Conditions non remplies, réinitialisation de l'inventaire");
       setInventory([]);
       setLastUpdated(null);
       setIsLoading(false);
