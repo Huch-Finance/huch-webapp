@@ -1,23 +1,66 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Navbar } from "@/components/organism/navbar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Trophy, Medal, Award, ChevronUp, AlertTriangle, Wallet } from "lucide-react"
-import { Footer } from "@/components/organism/footer"
-import { useAuth } from "@/hooks/use-auth"
-import { SteamAuthButton } from "@/components/auth/steam-auth-button"
-import { LoadingOverlay } from "@/components/loading/loading-overlay"
+import { useState, useEffect } from "react";
+import { Navbar } from "@/components/organism/navbar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Trophy,
+  Medal,
+  Award,
+  ChevronUp,
+  AlertTriangle,
+  Wallet,
+} from "lucide-react";
+import { Footer } from "@/components/organism/footer";
+import { useAuth } from "@/hooks/use-auth";
+import { SteamAuthButton } from "@/components/auth/steam-auth-button";
+import { LoadingOverlay } from "@/components/loading/loading-overlay";
 
 // Mocked leaderboard data
 const LEADERBOARD = [
-  { id: 1, username: "xXDragonSlayerXx", points: 1250, badge: "Gold", avatar: "/avatars/crown-pixel.webp" },
-  { id: 2, username: "HeadshotQueen", points: 1120, badge: "Gold", avatar: "/avatars/purple-eye.jpeg" },
-  { id: 3, username: "NinjaDefuser", points: 980, badge: "Gold", avatar: "/avatars/balaclava.jpeg" },
-  { id: 4, username: "AWPmaster2000", points: 850, badge: "Silver", avatar: "/avatars/rabbit-warrior.png" },
-  { id: 5, username: "FragMachine", points: 720, badge: "Silver", avatar: "/avatars/psyoch.jpeg" },
-  { id: 6, username: "ClutchKing", points: 680, badge: "Silver", avatar: "/avatars/totoro.png" },
+  {
+    id: 1,
+    username: "xXDragonSlayerXx",
+    points: 1250,
+    badge: "Gold",
+    avatar: "/avatars/crown-pixel.webp",
+  },
+  {
+    id: 2,
+    username: "HeadshotQueen",
+    points: 1120,
+    badge: "Gold",
+    avatar: "/avatars/purple-eye.jpeg",
+  },
+  {
+    id: 3,
+    username: "NinjaDefuser",
+    points: 980,
+    badge: "Gold",
+    avatar: "/avatars/balaclava.jpeg",
+  },
+  {
+    id: 4,
+    username: "AWPmaster2000",
+    points: 850,
+    badge: "Silver",
+    avatar: "/avatars/rabbit-warrior.png",
+  },
+  {
+    id: 5,
+    username: "FragMachine",
+    points: 720,
+    badge: "Silver",
+    avatar: "/avatars/psyoch.jpeg",
+  },
+  {
+    id: 6,
+    username: "ClutchKing",
+    points: 680,
+    badge: "Silver",
+    avatar: "/avatars/totoro.png",
+  },
   {
     id: 7,
     username: "SprayControl",
@@ -39,7 +82,8 @@ const LEADERBOARD = [
     username: "SmokeThrow",
     points: 420,
     badge: "Bronze",
-    avatar: "https://i.pinimg.com/564x/55/1f/ff/551fff636303fb8a696c213736ddc09e.jpg",
+    avatar:
+      "https://i.pinimg.com/564x/55/1f/ff/551fff636303fb8a696c213736ddc09e.jpg",
   },
   {
     id: 10,
@@ -49,7 +93,7 @@ const LEADERBOARD = [
     avatar:
       "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f5b8366a-d1b6-4447-b0b0-e1ba61bbb5ad/d8c9e4k-d80c27fa-1eef-43c0-b0d3-c0f87070b6f5.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiJcL2ZcL2Y1YjgzNjZhLWQxYjYtNDQ0Ny1iMGIwLWUxYmE2MWJiYjVhZFwvZDhjOWU0ay1kODBjMjdmYS0xZWVmLTQzYzAtYjBkMy1jMGY4NzA3MGI2ZjUucG5nIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmZpbGUuZG93bmxvYWQiXX0.4p6W32n2zeZauo15oUp--WLTbi-a_LvuRlmPgKH4FTY",
   },
-]
+];
 
 interface LeaderboardUser {
   id: string;
@@ -68,68 +112,73 @@ interface LeaderboardResponse {
 }
 
 export default function Classement() {
-  const [activeTab, setActiveTab] = useState("top10")
-  const [apiData, setApiData] = useState<LeaderboardResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState("top10");
+  const [apiData, setApiData] = useState<LeaderboardResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { profile, isAuthenticated, isLoading: authLoading, login } = useAuth();
-  
+
   // Fetch leaderboard data from API
   useEffect(() => {
     const fetchLeaderboard = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('http://localhost:3333/api/leaderboard', {
+        const response = await fetch("http://localhost:3333/api/leaderboard", {
           headers: {
-            'Content-Type': 'application/json',
-            'X-Privy-Id': localStorage.getItem('privy:id') || ''
-          }
+            "Content-Type": "application/json",
+            "X-Privy-Id": localStorage.getItem("privy:id") || "",
+          },
         });
-        
+
         if (response.ok) {
           const data: LeaderboardResponse = await response.json();
-          console.log('Leaderboard data:', data);
+          console.log("Leaderboard data:", data);
           setApiData(data);
         } else {
-          console.error('Failed to fetch leaderboard data:', response.statusText);
+          console.error(
+            "Failed to fetch leaderboard data:",
+            response.statusText,
+          );
           // Pas de fallback pour le moment, on garde null
           setApiData(null);
         }
       } catch (error) {
-        console.error('Error fetching leaderboard data:', error);
+        console.error("Error fetching leaderboard data:", error);
         setApiData(null);
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     fetchLeaderboard();
   }, []);
-  
+
   // Détermine si l'utilisateur est connecté (utilise uniquement l'état local de Privy car l'API peut être incorrecte)
   const isUserConnected = isAuthenticated;
-  
+
   // Détermine si l'utilisateur a un compte Steam lié (vérifie uniquement le profil local)
   const hasSteamLinked = profile?.steamId !== null;
-  
+
   // Recherche l'utilisateur dans le leaderboard si l'API n'a pas renvoyé les données utilisateur
-  const currentUser = apiData?.user || 
-    (apiData?.leaderboard && profile?.id ? 
-      apiData.leaderboard.find(user => user.id === profile.id) : null);
-  
+  const currentUser =
+    apiData?.user ||
+    (apiData?.leaderboard && profile?.id
+      ? apiData.leaderboard.find((user) => user.id === profile.id)
+      : null);
+
   // Détermine le badge de l'utilisateur en fonction de ses points
   const getUserBadge = (points: number) => {
     if (points >= 1000) return "Gold";
     if (points >= 500) return "Silver";
     return "Bronze";
   };
-  
+
   // Détermine le prochain badge de l'utilisateur
   const getNextBadge = (currentBadge: string) => {
     if (currentBadge === "Bronze") return "Silver";
     if (currentBadge === "Silver") return "Gold";
     return "Gold"; // Déjà au niveau maximum
   };
-  
+
   // Calcule les points nécessaires pour le prochain badge
   const getPointsToNextBadge = (points: number) => {
     if (points >= 1000) return 0; // Déjà au niveau maximum
@@ -140,28 +189,28 @@ export default function Classement() {
   const getBadgeColor = (badge: string) => {
     switch (badge) {
       case "Gold":
-        return "text-yellow-400"
+        return "text-yellow-400";
       case "Silver":
-        return "text-gray-300"
+        return "text-gray-300";
       case "Bronze":
-        return "text-amber-600"
+        return "text-amber-600";
       default:
-        return "text-gray-400"
+        return "text-gray-400";
     }
-  }
+  };
 
   const getBadgeIcon = (badge: string) => {
     switch (badge) {
       case "Gold":
-        return <Trophy className={`${getBadgeColor(badge)}`} />
+        return <Trophy className={`${getBadgeColor(badge)}`} />;
       case "Silver":
-        return <Medal className={`${getBadgeColor(badge)}`} />
+        return <Medal className={`${getBadgeColor(badge)}`} />;
       case "Bronze":
-        return <Award className={`${getBadgeColor(badge)}`} />
+        return <Award className={`${getBadgeColor(badge)}`} />;
       default:
-        return <Award className="text-gray-400" />
+        return <Award className="text-gray-400" />;
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex flex-col text-white">
@@ -177,7 +226,9 @@ export default function Classement() {
               <div className="bg-card rounded-lg p-1 flex">
                 <button
                   className={`px-4 py-2 rounded-md transition-colors ${
-                    activeTab === "top10" ? "bg-[#5D5FEF] text-white font-bold" : "text-gray-400 hover:text-white"
+                    activeTab === "top10"
+                      ? "bg-[#5D5FEF] text-white font-bold"
+                      : "text-gray-400 hover:text-white"
                   }`}
                   onClick={() => setActiveTab("top10")}
                 >
@@ -185,7 +236,9 @@ export default function Classement() {
                 </button>
                 <button
                   className={`px-4 py-2 rounded-md transition-colors ${
-                    activeTab === "rewards" ? "bg-[#5D5FEF] text-white font-bold" : "text-gray-400 hover:text-white"
+                    activeTab === "rewards"
+                      ? "bg-[#5D5FEF] text-white font-bold"
+                      : "text-gray-400 hover:text-white"
                   }`}
                   onClick={() => setActiveTab("rewards")}
                 >
@@ -202,11 +255,19 @@ export default function Classement() {
                   {/* Masque pour utilisateur non connecté */}
                   {!isUserConnected && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
-                      <AlertTriangle size={32} className="text-yellow-500 mb-2" />
-                      <h3 className="text-lg font-medium text-white mb-1 text-center">Authentication Required</h3>
-                      <p className="text-sm text-gray-300 text-center mb-4">Connect your wallet to view your ranking and earn points.</p>
-                      <Button 
-                        className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white" 
+                      <AlertTriangle
+                        size={32}
+                        className="text-yellow-500 mb-2"
+                      />
+                      <h3 className="text-lg font-medium text-white mb-1 text-center">
+                        Authentication Required
+                      </h3>
+                      <p className="text-sm text-gray-300 text-center mb-4">
+                        Connect your wallet to view your ranking and earn
+                        points.
+                      </p>
+                      <Button
+                        className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white"
                         onClick={() => login()}
                       >
                         <Wallet size={16} className="mr-2" />
@@ -214,24 +275,34 @@ export default function Classement() {
                       </Button>
                     </div>
                   )}
-                  
+
                   {/* Masque pour utilisateur sans Steam */}
                   {isUserConnected && !hasSteamLinked && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
-                      <AlertTriangle size={32} className="text-yellow-500 mb-2" />
-                      <h3 className="text-lg font-medium text-white mb-1 text-center">Steam Account Required</h3>
-                      <p className="text-sm text-gray-300 text-center mb-4">Connect your Steam account to participate in the ranking system.</p>
+                      <AlertTriangle
+                        size={32}
+                        className="text-yellow-500 mb-2"
+                      />
+                      <h3 className="text-lg font-medium text-white mb-1 text-center">
+                        Steam Account Required
+                      </h3>
+                      <p className="text-sm text-gray-300 text-center mb-4">
+                        Connect your Steam account to participate in the ranking
+                        system.
+                      </p>
                       <div className="scale-110">
                         <SteamAuthButton />
                       </div>
                     </div>
                   )}
-                  
+
                   <CardHeader className="bg-muted py-4">
                     <CardTitle className="text-lg flex items-center justify-between">
                       <span>Your Ranking</span>
                       {isUserConnected && hasSteamLinked && currentUser && (
-                        <span className="text-[#5D5FEF] font-bold">#{currentUser.rank || 1}</span>
+                        <span className="text-[#5D5FEF] font-bold">
+                          #{currentUser.rank || 1}
+                        </span>
                       )}
                     </CardTitle>
                   </CardHeader>
@@ -241,22 +312,38 @@ export default function Classement() {
                         <div className="flex items-center gap-4 mb-4">
                           <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0">
                             <img
-                              src={currentUser.steamAvatar || profile?.avatar || "/avatars/logo-black.svg"}
-                              alt={currentUser.steamUser || profile?.username || "User"}
+                              src={
+                                currentUser.steamAvatar ||
+                                profile?.avatar ||
+                                "/avatars/logo-black.svg"
+                              }
+                              alt={
+                                currentUser.steamUser ||
+                                profile?.username ||
+                                "User"
+                              }
                               className="w-full h-full object-cover"
                             />
                           </div>
                           <div>
-                            <h3 className="font-bold">{currentUser.steamUser || profile?.username || "User"}</h3>
+                            <h3 className="font-bold">
+                              {currentUser.steamUser ||
+                                profile?.username ||
+                                "User"}
+                            </h3>
                             <div className="flex items-center gap-1">
                               {getBadgeIcon(getUserBadge(currentUser.points))}
-                              <span className={`text-sm ${getBadgeColor(getUserBadge(currentUser.points))}`}>
+                              <span
+                                className={`text-sm ${getBadgeColor(getUserBadge(currentUser.points))}`}
+                              >
                                 {getUserBadge(currentUser.points)}
                               </span>
                             </div>
                           </div>
                           <div className="ml-auto text-right">
-                            <div className="text-2xl font-bold text-[#5D5FEF]">{currentUser.points}</div>
+                            <div className="text-2xl font-bold text-[#5D5FEF]">
+                              {currentUser.points}
+                            </div>
                             <div className="text-sm text-gray-400">points</div>
                           </div>
                         </div>
@@ -266,10 +353,13 @@ export default function Classement() {
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-400">
-                                Progress to {getNextBadge(getUserBadge(currentUser.points))}
+                                Progress to{" "}
+                                {getNextBadge(getUserBadge(currentUser.points))}
                               </span>
                               <span className="text-[#5D5FEF]">
-                                {currentUser.points}/{currentUser.points + getPointsToNextBadge(currentUser.points)}
+                                {currentUser.points}/
+                                {currentUser.points +
+                                  getPointsToNextBadge(currentUser.points)}
                               </span>
                             </div>
                             <div className="relative h-2 bg-muted rounded-full overflow-hidden">
@@ -281,17 +371,23 @@ export default function Classement() {
                               ></div>
                             </div>
                             <p className="text-sm text-center">
-                              You need <span className="text-[#5D5FEF] font-bold">{getPointsToNextBadge(currentUser.points)} pts</span> to
-                              reach the {getNextBadge(getUserBadge(currentUser.points))} League
+                              You need{" "}
+                              <span className="text-[#5D5FEF] font-bold">
+                                {getPointsToNextBadge(currentUser.points)} pts
+                              </span>{" "}
+                              to reach the{" "}
+                              {getNextBadge(getUserBadge(currentUser.points))}{" "}
+                              League
                             </p>
                           </div>
                         )}
-                        
+
                         {/* Max level message */}
                         {getPointsToNextBadge(currentUser.points) === 0 && (
                           <div className="p-3 bg-[#5D5FEF]/10 border border-[#5D5FEF]/30 rounded-lg text-center">
                             <p className="text-sm">
-                              Congratulations! You've reached the highest league level.
+                              Congratulations! You've reached the highest league
+                              level.
                             </p>
                           </div>
                         )}
@@ -318,62 +414,83 @@ export default function Classement() {
                         </thead>
                         <tbody className="divide-y divide-muted">
                           {/* Afficher les données de l'API si disponibles, sinon utiliser les données mockées */}
-                          {(apiData?.leaderboard || LEADERBOARD).map((player, index) => {
-                            // Déterminer le badge en fonction des points pour les données de l'API
-                            const badge = 'badge' in player ? player.badge : getUserBadge(player.points);
-                            // Déterminer le nom d'utilisateur
-                            const username = 'username' in player ? 
-                              player.username : 
-                              (player.steamUser || `User ${index + 1}`);
-                            // Déterminer l'avatar
-                            const avatar = 'avatar' in player ? 
-                              player.avatar : 
-                              (player.steamAvatar || "/avatars/logo-black.svg");
-                            
-                            return (
-                              <tr key={player.id} className="hover:bg-muted/50 transition-colors">
-                                <td className="py-4 px-6 font-bold">
-                                  {index === 0 ? (
-                                    <span className="text-yellow-400">1</span>
-                                  ) : index === 1 ? (
-                                    <span className="text-gray-300">2</span>
-                                  ) : index === 2 ? (
-                                    <span className="text-amber-600">3</span>
-                                  ) : (
-                                    index + 1
-                                  )}
-                                </td>
-                                <td className="py-4 px-6">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-muted overflow-hidden">
-                                      <img
-                                        src={avatar}
-                                        alt={username}
-                                        className="w-full h-full object-cover"
-                                      />
+                          {(apiData?.leaderboard || LEADERBOARD).map(
+                            (player, index) => {
+                              // Déterminer le badge en fonction des points pour les données de l'API
+                              const badge =
+                                "badge" in player
+                                  ? player.badge
+                                  : getUserBadge(player.points);
+                              // Déterminer le nom d'utilisateur
+                              const username =
+                                "username" in player
+                                  ? player.username
+                                  : player.steamUser || `User ${index + 1}`;
+                              // Déterminer l'avatar
+                              const avatar =
+                                "avatar" in player
+                                  ? player.avatar
+                                  : player.steamAvatar ||
+                                    "/avatars/logo-black.svg";
+
+                              return (
+                                <tr
+                                  key={player.id}
+                                  className="hover:bg-muted/50 transition-colors"
+                                >
+                                  <td className="py-4 px-6 font-bold">
+                                    {index === 0 ? (
+                                      <span className="text-yellow-400">1</span>
+                                    ) : index === 1 ? (
+                                      <span className="text-gray-300">2</span>
+                                    ) : index === 2 ? (
+                                      <span className="text-amber-600">3</span>
+                                    ) : (
+                                      index + 1
+                                    )}
+                                  </td>
+                                  <td className="py-4 px-6">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-full bg-muted overflow-hidden">
+                                        <img
+                                          src={avatar}
+                                          alt={username}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </div>
+                                      <span>{username}</span>
                                     </div>
-                                    <span>{username}</span>
-                                  </div>
-                                </td>
-                                <td className="py-4 px-6">
-                                  <div className="flex items-center gap-1">
-                                    {getBadgeIcon(badge)}
-                                    <span className={`${getBadgeColor(badge)}`}>{badge}</span>
-                                  </div>
-                                </td>
-                                <td className="py-4 px-6 text-right font-bold">{player.points}</td>
-                              </tr>
-                            );
-                          })}
-                          
-                          {/* Message si aucune donnée n'est disponible */}
-                          {(!apiData?.leaderboard && LEADERBOARD.length === 0) && (
-                            <tr>
-                              <td colSpan={4} className="py-8 text-center text-gray-400">
-                                No leaderboard data available
-                              </td>
-                            </tr>
+                                  </td>
+                                  <td className="py-4 px-6">
+                                    <div className="flex items-center gap-1">
+                                      {getBadgeIcon(badge)}
+                                      <span
+                                        className={`${getBadgeColor(badge)}`}
+                                      >
+                                        {badge}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="py-4 px-6 text-right font-bold">
+                                    {player.points}
+                                  </td>
+                                </tr>
+                              );
+                            },
                           )}
+
+                          {/* Message si aucune donnée n'est disponible */}
+                          {!apiData?.leaderboard &&
+                            LEADERBOARD.length === 0 && (
+                              <tr>
+                                <td
+                                  colSpan={4}
+                                  className="py-8 text-center text-gray-400"
+                                >
+                                  No leaderboard data available
+                                </td>
+                              </tr>
+                            )}
                         </tbody>
                       </table>
                     </div>
@@ -416,11 +533,12 @@ export default function Classement() {
                           </div>
                         </div>
 
-                        {apiData?.user && getUserBadge(apiData.user.points) === "Bronze" && (
-                          <div className="py-2 px-3 bg-amber-600/20 rounded-md text-center text-sm">
-                            Your current level
-                          </div>
-                        )}
+                        {apiData?.user &&
+                          getUserBadge(apiData.user.points) === "Bronze" && (
+                            <div className="py-2 px-3 bg-amber-600/20 rounded-md text-center text-sm">
+                              Your current level
+                            </div>
+                          )}
                       </div>
                     </CardContent>
                   </Card>
@@ -455,11 +573,12 @@ export default function Classement() {
                           </div>
                         </div>
 
-                        {apiData?.user && getUserBadge(apiData.user.points) === "Silver" && (
-                          <div className="py-2 px-3 bg-gray-300/20 rounded-md text-center text-sm">
-                            Your current level
-                          </div>
-                        )}
+                        {apiData?.user &&
+                          getUserBadge(apiData.user.points) === "Silver" && (
+                            <div className="py-2 px-3 bg-gray-300/20 rounded-md text-center text-sm">
+                              Your current level
+                            </div>
+                          )}
                       </div>
                     </CardContent>
                   </Card>
@@ -494,11 +613,12 @@ export default function Classement() {
                           </div>
                         </div>
 
-                        {apiData?.user && getUserBadge(apiData.user.points) === "Gold" && (
-                          <div className="py-2 px-3 bg-yellow-400/20 rounded-md text-center text-sm">
-                            Your current level
-                          </div>
-                        )}
+                        {apiData?.user &&
+                          getUserBadge(apiData.user.points) === "Gold" && (
+                            <div className="py-2 px-3 bg-yellow-400/20 rounded-md text-center text-sm">
+                              Your current level
+                            </div>
+                          )}
                       </div>
                     </CardContent>
                   </Card>
@@ -517,5 +637,5 @@ export default function Classement() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }

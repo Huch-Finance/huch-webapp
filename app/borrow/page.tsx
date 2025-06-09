@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, Filter, RotateCcw, Search, ArrowRight, LayoutGrid, List } from "lucide-react"
@@ -21,6 +21,7 @@ export default function Home() {
   const [loanDuration, setLoanDuration] = useState(7) // Loan duration in days
   const loanDurationOptions = [14, 25, 30, 35] // Loan duration options in days
   const [howItWorksOpen, setHowItWorksOpen] = useState(false) // State for the "How it works" dropdown menu
+  const priceUpdateRef = useRef(false)
   
   // State for the borrow confirmation modal
   const [borrowModalOpen, setBorrowModalOpen] = useState(false)
@@ -66,6 +67,17 @@ export default function Home() {
       inventoryLength: inventory?.length || 0
     });
   }, [privyLoading, inventoryLoading, isAuthenticated, inventoryFetched, inventory]);
+  
+  // Mock CS2 skins for example display when user is not connected
+  const mockSkins: SteamItem[] = [
+    // { id: "1", market_hash_name: "AWP | Dragon Lore", basePrice: 1500, rarity: "Covert", imageUrl: "/awp.webp", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 975, steamId: "", stickers: [] },
+    // { id: "2", market_hash_name: "Butterfly Knife | Fade", basePrice: 800, rarity: "★", imageUrl: "/karambit.webp", wear: "Minimal Wear", floatValue: 0.08, liquidationRate: 65, loanOffer: 520, steamId: "", stickers: [] },
+    // { id: "3", market_hash_name: "AK-47 | Fire Serpent", basePrice: 550, rarity: "Covert", imageUrl: "/ak47.webp", wear: "Field-Tested", floatValue: 0.18, liquidationRate: 65, loanOffer: 357.5, steamId: "", stickers: [] },
+    // { id: "4", market_hash_name: "M4A4 | Howl", basePrice: 1200, rarity: "Contraband", imageUrl: "/awp.webp", wear: "Factory New", floatValue: 0.03, liquidationRate: 65, loanOffer: 780, steamId: "", stickers: [] },
+    // { id: "5", market_hash_name: "Karambit | Doppler", basePrice: 650, rarity: "★", imageUrl: "/karambit.webp", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 422.5, steamId: "", stickers: [] },
+    // { id: "6", market_hash_name: "Glock-18 | Fade", basePrice: 300, rarity: "Covert", imageUrl: "/ak47.webp", wear: "Factory New", floatValue: 0.02, liquidationRate: 65, loanOffer: 195, steamId: "", stickers: [] }
+    { id: "1", market_hash_name: "AK-47 | Redline", basePrice: 2500, rarity: "Classified", imageUrl: "/ak47-redline.png", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 975, steamId: "", stickers: [] },
+  ]
   
   // Fonction pour extraire le nom et l'usure d'un skin à partir du market_hash_name
   const extractSkinInfo = (marketHashName: string) => {
@@ -183,14 +195,6 @@ export default function Home() {
       refreshInventory();
     }
   }, [isAuthenticated, inventoryFetched, privyLoading, inventoryLoading, refreshInventory]);
-
-  // Fetch inventory only once on mount if authenticated and not fetched
-  useEffect(() => {
-    if (isAuthenticated && !inventoryFetched && !inventoryLoading) {
-      refreshInventory();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
 
   useEffect(() => {
     const interval = setInterval(() => {

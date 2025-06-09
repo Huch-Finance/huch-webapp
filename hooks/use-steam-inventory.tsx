@@ -32,12 +32,13 @@ export function useSteamInventory() {
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const [inventoryFetched, setInventoryFetched] = useState(false)
+  const [isFetching, setIsFetching] = useState(false)
 
   // Function to fetch the user's Steam inventory
   const fetchInventory = async () => {
-    // Check if the inventory has already been fetched
-    if (inventoryFetched) {
-      console.log("Inventory already fetched, using cache");
+    // Check if the inventory has already been fetched or is currently fetching
+    if (inventoryFetched || isFetching) {
+      console.log("Inventory already fetched or fetch in progress, skipping");
       return;
     }
 
@@ -49,6 +50,7 @@ export function useSteamInventory() {
     }
 
     //console.log("Start fetching inventory for", profile.steamId);
+    setIsFetching(true)
     setIsLoading(true)
     setError(null)
 
@@ -97,6 +99,7 @@ export function useSteamInventory() {
     } finally {
       //console.log("End fetching inventory, isLoading = false");
       setIsLoading(false)
+      setIsFetching(false)
     }
   }
 
@@ -108,12 +111,15 @@ export function useSteamInventory() {
       setInventory([]);
       setLastUpdated(null);
       setIsLoading(false);
+      setInventoryFetched(false);
+      setIsFetching(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, profile?.steamId, profile?.tradeLink])
 
   const forceRefreshInventory = async() => {
     setInventoryFetched(false);
+    setIsFetching(false);
     if (!isAuthenticated || !profile?.id) {
       setError("You must be connected with Steam and have an exchange link to see your inventory")
       setIsLoading(false);

@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import Image from "next/image"
-import { motion } from "framer-motion"
-import { SolanaTransfer } from "@/components/SolanaTransfer"
-import { Footer } from "@/components/organism/footer"
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { SolanaTransfer } from "@/components/SolanaTransfer";
+import { Footer } from "@/components/organism/footer";
 
 export default function Home() {
   return (
@@ -16,7 +16,13 @@ export default function Home() {
           transition={{ duration: 0.5 }}
           className="text-center"
         >
-          <Image src="/awp.webp" alt="AWP Sniper Rifle" width={400} height={400} className="object-contain" />
+          <Image
+            src="/awp.webp"
+            alt="AWP Sniper Rifle"
+            width={400}
+            height={400}
+            className="object-contain"
+          />
         </motion.div>
       </section>
 
@@ -34,7 +40,9 @@ export default function Home() {
               transition={{ duration: 0.5 }}
               className="p-6 bg-white rounded-lg shadow-md"
             >
-              <h3 className="text-xl font-semibold mb-4">Step 1: Connect Wallet</h3>
+              <h3 className="text-xl font-semibold mb-4">
+                Step 1: Connect Wallet
+              </h3>
               <p className="text-gray-600">
                 Connect your wallet to start trading.
               </p>
@@ -46,7 +54,9 @@ export default function Home() {
               transition={{ duration: 0.5 }}
               className="p-6 bg-white rounded-lg shadow-md"
             >
-              <h3 className="text-xl font-semibold mb-4">Step 2: Choose Asset</h3>
+              <h3 className="text-xl font-semibold mb-4">
+                Step 2: Choose Asset
+              </h3>
               <p className="text-gray-600">
                 Select the asset you want to trade.
               </p>
@@ -58,7 +68,9 @@ export default function Home() {
               transition={{ duration: 0.5 }}
               className="p-6 bg-white rounded-lg shadow-md"
             >
-              <h3 className="text-xl font-semibold mb-4 pt-4 overflow-hidden">Step 3: Start Trading</h3>
+              <h3 className="text-xl font-semibold mb-4 pt-4 overflow-hidden">
+                Step 3: Start Trading
+              </h3>
               <p className="text-gray-600">
                 Begin trading with your chosen asset.
               </p>
@@ -68,5 +80,5 @@ export default function Home() {
         </div>
       </section>
     </main>
-  )
+  );
 }
