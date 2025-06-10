@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,9 @@ import TradingViewWidget from "@/components/trade/TradingViewWidget";
 import { Footer } from "@/components/organism/footer";
 
 export default function TradingInterface() {
+  const { profile, isLoading } = useAuth();
+
+  // All hooks must be called before any return/conditional
   const [selectedTab, setSelectedTab] = useState("long");
   const [price, setPrice] = useState("108414");
   const [quantity, setQuantity] = useState("");
@@ -75,6 +79,26 @@ export default function TradingInterface() {
       dislikes: 0,
     },
   ];
+
+  // Now you can safely return conditionally
+  if (isLoading || profile === undefined) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#111] text-white">
+        <h2 className="text-2xl font-bold mb-4">Loading...</h2>
+      </div>
+    );
+  }
+
+  if (!profile?.admin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#111] text-white">
+        <h2 className="text-2xl font-bold mb-4">Coming soon...</h2>
+        <p className="text-[#a1a1c5] text-sm mb-4">
+          Trading will be available soon for all users.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen text-white pt-[20px]">

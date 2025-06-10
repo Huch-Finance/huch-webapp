@@ -215,8 +215,8 @@ export default function Classement() {
   return (
     <div className="min-h-screen flex flex-col text-white">
       <main className="flex-1 flex flex-col items-center justify-center">
-        <section className="pt-24 pb-16 px-4 flex-1">
-          <div className="container mx-auto max-w-4xl">
+        <section className="pt-24 pb-16 px-2 sm:px-4 flex-1 w-full">
+          <div className="mx-auto w-full max-w-[830px]">
             <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">
               <span className="neon-text text-[#5D5FEF]">Huch.</span> Ranking
             </h1>
@@ -506,7 +506,7 @@ export default function Classement() {
                   {/* Bronze Tier */}
                   <Card className="border-amber-600/30 bg-[#1E1E1E] hover:border-amber-600 transition-colors">
                     <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex flex-col items-center gap-2 text-center">
                         <Award className="text-amber-600" />
                         <span>Bronze League</span>
                       </CardTitle>
@@ -518,18 +518,21 @@ export default function Classement() {
                           <p className="text-sm text-gray-400">points</p>
                         </div>
 
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <ChevronUp className="text-[#5D5FEF]" />
-                            <span>Access to standard loans</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <ChevronUp className="text-[#5D5FEF]" />
-                            <span>Standard interest rates</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <ChevronUp className="text-[#5D5FEF]" />
-                            <span>Exclusive badges</span>
+                        {/* Center the block, but left-align the lines */}
+                        <div className="flex flex-col items-center">
+                          <div className="flex flex-col w-max text-left space-y-2">
+                            <div className="flex items-center gap-2">
+                              <ChevronUp className="text-[#5D5FEF]" />
+                              <span>Access to standard loans</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <ChevronUp className="text-[#5D5FEF]" />
+                              <span>Standard interest rates</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <ChevronUp className="text-[#5D5FEF]" />
+                              <span>Exclusive badges</span>
+                            </div>
                           </div>
                         </div>
 
@@ -546,7 +549,7 @@ export default function Classement() {
                   {/* Silver Tier */}
                   <Card className="border-gray-300/30 bg-[#1E1E1E] hover:border-gray-300 transition-colors">
                     <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex flex-col items-center gap-2 text-center">
                         <Medal className="text-gray-300" />
                         <span>Silver League</span>
                       </CardTitle>
@@ -558,18 +561,21 @@ export default function Classement() {
                           <p className="text-sm text-gray-400">points</p>
                         </div>
 
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <ChevronUp className="text-[#5D5FEF]" />
-                            <span>5% discount on interest rates</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <ChevronUp className="text-[#5D5FEF]" />
-                            <span>Access to premium loans</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <ChevronUp className="text-[#5D5FEF]" />
-                            <span>1% cashback on repayments</span>
+                        {/* Center the block, but left-align the lines */}
+                        <div className="flex flex-col items-center">
+                          <div className="flex flex-col w-max text-left space-y-2">
+                            <div className="flex items-center gap-2">
+                              <ChevronUp className="text-[#5D5FEF]" />
+                              <span>5% discount on interest rates</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <ChevronUp className="text-[#5D5FEF]" />
+                              <span>Access to premium loans</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <ChevronUp className="text-[#5D5FEF]" />
+                              <span>1% cashback on repayments</span>
+                            </div>
                           </div>
                         </div>
 
@@ -586,7 +592,7 @@ export default function Classement() {
                   {/* Gold Tier */}
                   <Card className="border-yellow-400/30 bg-[#1E1E1E] hover:border-yellow-400 transition-colors">
                     <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex flex-col items-center gap-2 text-center">
                         <Trophy className="text-yellow-400" />
                         <span>Gold League</span>
                       </CardTitle>
@@ -598,18 +604,21 @@ export default function Classement() {
                           <p className="text-sm text-gray-400">points</p>
                         </div>
 
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <ChevronUp className="text-[#5D5FEF]" />
-                            <span>Free skin every month</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <ChevronUp className="text-[#5D5FEF]" />
-                            <span>10% discount on interest rates</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <ChevronUp className="text-[#5D5FEF]" />
-                            <span>Access to exclusive events</span>
+                        {/* Center the block, but left-align the lines */}
+                        <div className="flex flex-col items-center">
+                          <div className="flex flex-col w-max text-left space-y-2">
+                            <div className="flex items-center gap-2">
+                              <ChevronUp className="text-[#5D5FEF]" />
+                              <span>Free skin every month</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <ChevronUp className="text-[#5D5FEF]" />
+                              <span>10% discount on interest rates</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <ChevronUp className="text-[#5D5FEF]" />
+                              <span>Access to exclusive events</span>
+                            </div>
                           </div>
                         </div>
 
