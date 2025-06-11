@@ -19,9 +19,9 @@ export default function Home() {
   const [gridViewActive, setGridViewActive] = useState(false)
   const [loanPercentage, setLoanPercentage] = useState(100)
   const [loanAmount, setLoanAmount] = useState(0)
-  const [loanDuration, setLoanDuration] = useState(7) // Loan duration in days
-  const loanDurationOptions = [14, 25, 30, 35] // Loan duration options in days
-  const [howItWorksOpen, setHowItWorksOpen] = useState(false) // State for the "How it works" dropdown menu
+  const [loanDuration, setLoanDuration] = useState(7)
+  const loanDurationOptions = [14, 25, 30, 35]
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false)
   const priceUpdateRef = useRef(false)
   
   // Trade link state

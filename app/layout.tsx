@@ -41,7 +41,7 @@ export default function RootLayout({
         {/* <BeamsBackground /> */}
         <PrivyProvider>
           <Navbar />
-          {/* <Sidebar /> */}
+          <Sidebar />
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
