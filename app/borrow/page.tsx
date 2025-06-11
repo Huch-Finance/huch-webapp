@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, Filter, RotateCcw, Search, ArrowRight, LayoutGrid, List } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { ChevronDown, Filter, RotateCcw, Search, ArrowRight, LayoutGrid, List, Info, ExternalLink } from "lucide-react"
 import { BorrowConfirmationModal } from "@/components/borrow/borrow-confirmation-modal"
 import { LoadingOverlay } from "@/components/loading/loading-overlay"
 import { Footer } from "@/components/organism/footer"
@@ -22,6 +23,10 @@ export default function Home() {
   const loanDurationOptions = [14, 25, 30, 35] // Loan duration options in days
   const [howItWorksOpen, setHowItWorksOpen] = useState(false) // State for the "How it works" dropdown menu
   const priceUpdateRef = useRef(false)
+  
+  // Trade link state
+  const [tradeLink, setTradeLink] = useState("")
+  const [savingTradeLink, setSavingTradeLink] = useState(false)
   
   // State for the borrow confirmation modal
   const [borrowModalOpen, setBorrowModalOpen] = useState(false)
@@ -49,7 +54,7 @@ export default function Home() {
   }
   
   // Authentication with Privy
-  const { isAuthenticated, isLoading: privyLoading, login, logout, profile, connectWallet } = useAuth()
+  const { isAuthenticated, isLoading: privyLoading, login, logout, profile, connectWallet, updateSteamId } = useAuth()
   
   // Retrieve the user's Steam inventory
   const { inventory, isLoading: inventoryLoading, error: inventoryError, lastUpdated, refreshInventory, inventoryFetched } = useSteamInventory()
@@ -68,6 +73,67 @@ export default function Home() {
     });
   }, [privyLoading, inventoryLoading, isAuthenticated, inventoryFetched, inventory]);
   
+  const updateInventoryPrices = async () => {
+  console.log('🔍 updateInventoryPrices called with:', { 
+    steamId: profile?.steamId,
+    hasProfile: !!profile 
+  });
+  
+  if (!profile?.steamId) {
+    console.log('❌ No steamId found, skipping price update');
+    return;
+  }
+  console.log('profile.steamId:', profile.steamId);
+  
+  try {
+      console.log('🔄 Updating inventory prices...');
+      const response = await fetch(`http://localhost:3333/inventory/${profile.steamId}/update-prices`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      console.log('📡 Response status:', response.status);
+      const data = await response.json();
+      console.log('📦 Response data:', data);
+      
+      if (data.success) {
+        console.log('✅ Prices updated:', data.data);
+        if (data.data.cached) {
+          console.log(`📦 Prices cached - next update in ${data.data.nextUpdateIn} minutes`);
+        } else if (data.data.updated > 0) {
+          console.log(`🆙 Updated ${data.data.updated} item prices`);
+          // No need to call refreshInventory here - the inventory hook will handle it
+        }
+      } else {
+        console.error('❌ Price update failed:', data.error);
+      }
+    } catch (error) {
+      console.error('❌ Failed to update prices:', error);
+    }
+  };
+
+  useEffect(() => {
+  console.log('🔍 Price update useEffect triggered:', {
+    privyLoading,
+    isAuthenticated,
+    steamId: profile?.steamId,
+    profileExists: !!profile,
+    priceUpdateDone: priceUpdateRef.current
+  });
+  
+  if (!privyLoading && isAuthenticated && profile?.steamId && !priceUpdateRef.current) {
+    console.log("✅ All conditions met, updating prices on page load...");
+    priceUpdateRef.current = true;
+    refreshInventory();
+  } else if (!privyLoading && isAuthenticated && !profile?.steamId) {
+    console.log("⚠️ User authenticated but no Steam ID - need to connect Steam first");
+  } else {
+    console.log("❌ Conditions not met for price update or already updated");
+  }
+}, [isAuthenticated, privyLoading, profile?.steamId]);
+
   // Mock CS2 skins for example display when user is not connected
   const mockSkins: SteamItem[] = [
     // { id: "1", market_hash_name: "AWP | Dragon Lore", basePrice: 1500, rarity: "Covert", imageUrl: "/awp.webp", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 975, steamId: "", stickers: [] },
@@ -188,6 +254,32 @@ export default function Home() {
     refreshInventory();
   };
   
+  // Handle trade link save
+  const handleSaveTradeLink = async () => {
+    if (!tradeLink || !profile?.steamId) {
+      console.log('Missing trade link or steam ID:', { tradeLink, steamId: profile?.steamId });
+      return;
+    }
+    
+    console.log('Saving trade link:', tradeLink, 'for steam ID:', profile.steamId);
+    setSavingTradeLink(true);
+    try {
+      const success = await updateSteamId(profile.steamId, tradeLink);
+      console.log('Trade link save result:', success);
+      if (success) {
+        // Clear the input and refresh inventory
+        setTradeLink("");
+        refreshInventory();
+      } else {
+        console.error("Failed to save trade link");
+      }
+    } catch (error) {
+      console.error("Error saving trade link:", error);
+    } finally {
+      setSavingTradeLink(false);
+    }
+  };
+  
   // Try to fetch the inventory if the user is authenticated but the inventory has not been fetched
   useEffect(() => {
     if (!privyLoading && isAuthenticated && !inventoryFetched && !inventoryLoading) {
@@ -255,7 +347,7 @@ export default function Home() {
   ];
 
   // Si le profil existe mais que l'utilisateur n'est pas connecté avec Steam
-  if (profile && !profile.steamId) {
+  if (profile && !profile.steamId && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#111] text-white">
         <h2 className="text-2xl font-bold mb-4">Connect your Steam account</h2>
@@ -315,82 +407,132 @@ export default function Home() {
                   {/* <p className="text-[#a1a1c5] text-sm mt-1">Lorem ipsum dolor</p> */}
                 </div>
                 <div className="p-3 flex flex-col flex-1 relative z-20">
-                  {/* Skin selector button */}
-                  <Button
-                    className="mb-4 w-full bg-[#6366f1] hover:bg-[#5355d1] text-white font-semibold"
-                    onClick={() => setSkinSelectorOpen(true)}
-                  >
-                    {selectedSkin
-                      ? "Change skin"
-                      : "Select a skin as collateral"}
-                  </Button>
-                  {/* Skin selection display */}
-                  {selectedSkin ? (() => {
-                    const skin = displaySkins.find(s => s.id === selectedSkin)
-                    if (!skin) return null
-                    const { name, wear } = extractSkinInfo(skin.market_hash_name)
-                    return (
-                      <div className="flex items-center gap-4 p-3 bg-[#161e2e] rounded-lg border border-[#23263a] mb-4">
-                        <div className="relative w-16 h-16 overflow-hidden rounded-md flex-shrink-0 bg-[#23263a]">
-                          <Image
-                            src={skin.imageUrl}
-                            alt={name}
-                            fill
-                            className="object-contain p-1"
-                          />
+                  {/* Only show skin selector if user has trade link */}
+                  {profile?.tradeLink && (
+                    <>
+                      {/* Skin selector button */}
+                      <Button
+                        className="mb-4 w-full bg-[#6366f1] hover:bg-[#5355d1] text-white font-semibold"
+                        onClick={() => setSkinSelectorOpen(true)}
+                      >
+                        {selectedSkin
+                          ? "Change skin"
+                          : "Select a skin as collateral"}
+                      </Button>
+                      {/* Skin selection display */}
+                      {selectedSkin ? (() => {
+                        const skin = displaySkins.find(s => s.id === selectedSkin)
+                        if (!skin) return null
+                        const { name, wear } = extractSkinInfo(skin.market_hash_name)
+                        return (
+                          <div className="flex items-center gap-4 p-3 bg-[#161e2e] rounded-lg border border-[#23263a] mb-4">
+                            <div className="relative w-16 h-16 overflow-hidden rounded-md flex-shrink-0 bg-[#23263a]">
+                              <Image
+                                src={skin.imageUrl}
+                                alt={name}
+                                fill
+                                className="object-contain p-1"
+                              />
+                            </div>
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <span className="font-semibold text-white text-base truncate">{name}</span>
+                              <span className="text-xs text-[#a1a1c5]">{wear}</span>
+                              <span className="text-xs text-[#a1a1c5] mt-1">
+                                {skin.liquidationRate}% LTV &ndash; Max ${skin.loanOffer.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })() : (
+                        <div className="text-center text-[#a1a1c5] text-sm mt-6 mb-4">
+                          No skin selected
                         </div>
-                        <div className="flex flex-col flex-1 min-w-0">
-                          <span className="font-semibold text-white text-base truncate">{name}</span>
-                          <span className="text-xs text-[#a1a1c5]">{wear}</span>
-                          <span className="text-xs text-[#a1a1c5] mt-1">
-                            {skin.liquidationRate}% LTV &ndash; Max ${skin.loanOffer.toFixed(2)}
-                          </span>
+                      )}
+                    </>
+                  )}
+                  {/* Inventory list or Trade Link Form */}
+                  <div className="flex-1 overflow-y-auto max-h-[260px]">
+                    {profile?.steamId && !profile?.tradeLink ? (
+                      // Trade Link Form integrated in the inventory area
+                      <div className="h-full flex flex-col justify-center px-2">
+                        <div className="text-center space-y-4">
+                          <div className="flex flex-col items-center gap-2 mb-4">
+                            <div className="w-12 h-12 rounded-full bg-[#161e2e] flex items-center justify-center">
+                              <Info className="w-6 h-6 text-[#6366f1]" />
+                            </div>
+                            <h3 className="text-sm font-semibold text-white">Add Your Trade Link</h3>
+                            <p className="text-xs text-[#a1a1c5] max-w-[250px]">
+                              To access your CS2 inventory, please add your Steam trade link
+                            </p>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <Input
+                              placeholder="https://steamcommunity.com/tradeoffer/new/?partner=..."
+                              value={tradeLink}
+                              onChange={(e) => setTradeLink(e.target.value)}
+                              className="bg-[#161e2e] border-[#23263a] text-xs h-8"
+                            />
+                            
+                            <Button
+                              onClick={handleSaveTradeLink}
+                              disabled={!tradeLink || savingTradeLink}
+                              className="w-full bg-[#6366f1] hover:bg-[#5355d1] text-white font-medium h-8 text-xs"
+                            >
+                              {savingTradeLink ? "Saving..." : "Save Trade Link"}
+                            </Button>
+                            
+                            <a 
+                              href="https://steamcommunity.com/id/me/tradeoffers/privacy#trade_offer_access_url" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-[#a1a1c5] hover:text-[#6366f1] transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Find your trade link
+                            </a>
+                          </div>
                         </div>
                       </div>
-                    )
-                  })() : (
-                    <div className="text-center text-[#a1a1c5] text-sm mt-6 mb-4">
-                      No skin selected
-                    </div>
-                  )}
-                  {/* Inventory list */}
-                  <div className="flex-1 overflow-y-auto max-h-[260px]">
-                    <div className="space-y-1 w-full">
-                      {displaySkins
-                        .sort((a, b) => a.basePrice - b.basePrice)
-                        .map((skin) => {
-                          const { name, wear } = extractSkinInfo(skin.market_hash_name)
-                          const rarity = skin.rarity ||
-                            (skin.market_hash_name.includes('★') ? '★' :
-                            skin.market_hash_name.includes('Covert') ? 'Covert' :
-                            skin.market_hash_name.includes('Contraband') ? 'Contraband' : '')
-                          return (
-                            <div
-                              key={skin.id}
-                              className={`flex items-center gap-3 p-2 hover:bg-[#23263a] transition-colors rounded-md cursor-pointer ${selectedSkin === skin.id ? 'bg-[#23263a] border border-[#6366f1]' : 'border border-transparent'}`}
-                              onClick={() => setSelectedSkin(skin.id)}
-                            >
-                              <div className="relative w-10 h-10 overflow-hidden rounded bg-[#161e2e]">
-                                <Image
-                                  src={skin.imageUrl}
-                                  alt={name}
-                                  fill
-                                  className="object-contain p-1"
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <span className="font-medium text-sm truncate">{name}</span>
-                                <div className="flex items-center gap-1 text-xs text-[#a1a1c5]">
-                                  <span>{wear}</span>
-                                  <span>•</span>
-                                  <span>{skin.liquidationRate}% LTV</span>
+                    ) : (
+                      // Normal inventory list
+                      <div className="space-y-1 w-full">
+                        {displaySkins
+                          .sort((a, b) => a.basePrice - b.basePrice)
+                          .map((skin) => {
+                            const { name, wear } = extractSkinInfo(skin.market_hash_name)
+                            const rarity = skin.rarity ||
+                              (skin.market_hash_name.includes('★') ? '★' :
+                              skin.market_hash_name.includes('Covert') ? 'Covert' :
+                              skin.market_hash_name.includes('Contraband') ? 'Contraband' : '')
+                            return (
+                              <div
+                                key={skin.id}
+                                className={`flex items-center gap-3 p-2 hover:bg-[#23263a] transition-colors rounded-md cursor-pointer ${selectedSkin === skin.id ? 'bg-[#23263a] border border-[#6366f1]' : 'border border-transparent'}`}
+                                onClick={() => setSelectedSkin(skin.id)}
+                              >
+                                <div className="relative w-10 h-10 overflow-hidden rounded bg-[#161e2e]">
+                                  <Image
+                                    src={skin.imageUrl}
+                                    alt={name}
+                                    fill
+                                    className="object-contain p-1"
+                                  />
                                 </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="font-medium text-sm truncate">{name}</span>
+                                  <div className="flex items-center gap-1 text-xs text-[#a1a1c5]">
+                                    <span>{wear}</span>
+                                    <span>•</span>
+                                    <span>{skin.liquidationRate}% LTV</span>
+                                  </div>
+                                </div>
+                                <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(0)}</span>
                               </div>
-                              <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(0)}</span>
-                            </div>
-                          )
-                        })}
-                    </div>
+                            )
+                          })}
+                      </div>
+                    )}
                   </div>
                 </div>
               </Card>

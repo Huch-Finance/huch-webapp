@@ -10,6 +10,7 @@ export function useAuth() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isConfigured, setIsConfigured] = useState(isPrivyConfigured)
   const isRegisteringRef = useRef(false)
+  const hasLoadedUserDataRef = useRef(false)
 
   const { ready, authenticated, user, login, logout, connectWallet } = usePrivy()
   const { wallets } = useWallets()
@@ -84,7 +85,13 @@ export function useAuth() {
   
   // Function to reload user data from the API
   const reloadUserData = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user available for reloading data');
+      return;
+    }
+    
+    console.log('Starting reloadUserData for user:', user.id);
+    
     try {
       const response = await fetch('http://localhost:3333/api/user/', {
         method: 'GET',
@@ -99,15 +106,23 @@ export function useAuth() {
       }
       
       const data = await response.json();
+      console.log('User data received from API:', data);
+      console.log('Detailed user object:', JSON.stringify(data.user, null, 2));
+      
       if (data.user) {
         setProfile(prevProfile => {
-          if (!prevProfile) return null;
+          if (!prevProfile) {
+            console.log('No previous profile to update');
+            return null;
+          }
           
           const updatedProfile = {
             ...prevProfile,
             steamId: data.user.steamId,
             tradeLink: data.user.tradeLink,
-            admin: data.user.admin ?? false, // Toujours mettre à jour admin
+            admin: data.user.admin ?? false,
+            // Preserve wallet if it exists in prevProfile but not in API response
+            wallet: prevProfile.wallet || data.user.wallet,
           };
           if (data.user.profile) {
             if (data.user.profile.steamName) {
@@ -118,9 +133,11 @@ export function useAuth() {
             }
           }
           
-          console.log('Loaded profil from API:', updatedProfile);
+          console.log('Updated profile with API data:', updatedProfile);
           return updatedProfile;
         });
+      } else {
+        console.log('No user data in API response');
       }
     } catch (error) {
       console.error('Error reloading user data:', error);
@@ -136,6 +153,8 @@ export function useAuth() {
     if (!authenticated) {
       setStatus("unauthenticated")
       setProfile(null)
+      hasLoadedUserDataRef.current = false;
+      isRegisteringRef.current = false;
       return
     }
 
@@ -159,29 +178,62 @@ export function useAuth() {
     setProfile(userProfile)
     setStatus("authenticated")
 
-    // Register user in database and retrieve steamId if available
-    if (user && !isRegisteringRef.current) {
+    // Only load user data once per user session
+    if (user && !hasLoadedUserDataRef.current && !isRegisteringRef.current) {
+      console.log('Loading user data for user:', user.id);
       isRegisteringRef.current = true;
+      hasLoadedUserDataRef.current = true;
       
+      // If we have wallets, register and load data
       if (wallets && wallets.length > 0 && wallets[0]?.address) {
+        console.log('Registering user with wallet');
         registerUserInDatabase(user.id, wallets[0].address)
           .then(() => {
-            reloadUserData();
+            return reloadUserData();
           })
           .finally(() => {
             isRegisteringRef.current = false;
           });
-      } else if (typeof window !== 'undefined' && (!wallets || wallets.length === 0)) {
-        // Only reload user data if we don't have wallets yet
+      } else {
+        // Just load user data without registration
+        console.log('Loading user data without wallet registration');
         reloadUserData()
           .finally(() => {
             isRegisteringRef.current = false;
           });
-      } else {
-        isRegisteringRef.current = false;
       }
+    } else if (user && hasLoadedUserDataRef.current) {
+      console.log('User data already loaded, skipping reload');
     }
-  }, [ready, authenticated, user, wallets])
+  }, [ready, authenticated, user])
+
+  // Separate effect to handle wallet registration when wallets become available
+  useEffect(() => {
+    if (
+      ready && 
+      authenticated && 
+      user && 
+      wallets && 
+      wallets.length > 0 && 
+      wallets[0]?.address && 
+      !isRegisteringRef.current && 
+      profile && 
+      !profile.wallet
+    ) {
+      console.log('Wallet became available, registering user with wallet');
+      isRegisteringRef.current = true;
+      
+      registerUserInDatabase(user.id, wallets[0].address)
+        .then(() => {
+          // Update profile with wallet
+          setProfile(prev => prev ? { ...prev, wallet: wallets[0].address } : null);
+          return reloadUserData();
+        })
+        .finally(() => {
+          isRegisteringRef.current = false;
+        });
+    }
+  }, [ready, authenticated, user, wallets, profile?.wallet])
 
   // Function to update user profile
   const updateProfile = async (data: Partial<UserProfile>) => {
@@ -229,12 +281,13 @@ export function useAuth() {
         }
         try {
           const data = await response.json();
+          console.log('updateSteamId API response:', JSON.stringify(data, null, 2));
           if (!data.user || !data.user.steamId) {
             console.error('Steam ID not found in API response');
             return false;
           }
           if (tradeLink && (!data.user.tradeLink || data.user.tradeLink !== tradeLink)) {
-            console.error('Trade link not properly saved in API response');
+            console.error('Trade link not properly saved in API response. Expected:', tradeLink, 'Got:', data.user.tradeLink);
             return false;
           }
           
@@ -284,6 +337,10 @@ export function useAuth() {
     logout();
     setStatus("unauthenticated");
     setProfile(null);
+    // Reset flags
+    isRegisteringRef.current = false;
+    hasLoadedUserDataRef.current = false;
+    
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.delete('steam_connected');
