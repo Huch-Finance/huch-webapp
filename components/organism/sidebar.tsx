@@ -6,6 +6,7 @@ import { Home, CreditCard, Trophy, User, LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { useLogin } from "@privy-io/react-auth";
+import Image from "next/image"; // Add this import
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -18,8 +19,8 @@ export function Sidebar() {
       name: "Dashboard",
       href: "/",
       icon: Home,
-      iconSrc:
-        "https://cdn.builder.io/api/v1/image/assets/TEMP/ef9b89828f190a1474a3f8bca941244fc53d28ba?placeholderIfAbsent=true",
+      iconSrc: "/logo.svg", // Changed to use the Huch logo
+      isLogo: true, // Add this flag
     },
     {
       name: "Borrow",
@@ -57,7 +58,7 @@ export function Sidebar() {
           }}
         />
 
-        <div className="relative z-20 space-y-2.5">
+        <div className="relative z-20 space-y-2.5 group">
           {navigationItems.map((item) => {
             // For the profile item, consider both /profile and /settings as active
             const isProfileActive =
@@ -75,7 +76,7 @@ export function Sidebar() {
                 return (
                   <div
                     key="login"
-                    className="flex overflow-hidden gap-2.5 items-center py-3.5 w-full transition-colors hover:bg-white hover:bg-opacity-5 relative cursor-pointer"
+                    className="flex overflow-hidden gap-2.5 items-center py-3.5 w-full transition-colors relative cursor-pointer group/item"
                     onClick={login}
                   >
                     <div className="flex items-center gap-2.5 ml-4 mr-4">
@@ -102,14 +103,18 @@ export function Sidebar() {
                 >
                   <Link
                     href={item.href}
-                    className="flex overflow-hidden gap-2.5 items-center py-3.5 w-full transition-colors hover:bg-white hover:bg-opacity-5 relative"
+                    className="flex overflow-hidden gap-2.5 items-center py-3.5 w-full transition-colors relative group/item"
                   >
-                    {isActive && (
-                      <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 bg-indigo-500 rounded-r-full shadow-sm h-[36px] w-[8px] z-10" />
-                    )}
+                    {/* Blue indicator - fades when hovering other items */}
+                    <div className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[36px] w-[8px] z-10 transition-all duration-200 ${
+                      isActive 
+                        ? 'bg-indigo-500 opacity-100 group-hover:opacity-40 group-hover/item:!opacity-100' 
+                        : 'bg-indigo-500 opacity-0 group-hover/item:opacity-100'
+                    }`} />
+                    
                     <div className="flex items-center gap-2.5 ml-4 mr-4">
                       <img
-                        src={profile.avatar || item.iconSrc}
+                        src={profile?.avatar || item.iconSrc}
                         className="object-cover shrink-0 w-8 h-8 rounded-full border border-white/10"
                         alt="Profile"
                       />
@@ -118,14 +123,6 @@ export function Sidebar() {
                       </div>
                     </div>
                   </Link>
-                  {/* Invisible bridge */}
-                  <div
-                    // This invisible bridge fills the gap between the profile and submenu
-                    className="absolute left-full top-1/2 -translate-y-1/2 ml-0 h-12 w-6"
-                    style={{ pointerEvents: "auto" }}
-                    onMouseEnter={() => setProfileHover(true)}
-                    onMouseLeave={() => setProfileHover(false)}
-                  />
                   {/* Submenu */}
                   <div
                     className={`
@@ -149,24 +146,28 @@ export function Sidebar() {
                       }}
                     />
                     
-                    <div className="relative z-20">
+                    <div className="relative z-20 group/submenu">
                       <Link
                         href="/profile"
-                        className="flex items-center gap-2 px-2 py-2 rounded hover:bg-white/10 text-white text-sm relative"
+                        className="flex items-center gap-2 px-2 py-2 rounded text-white text-sm relative group/subitem"
                       >
-                        {pathname === "/profile" && (
-                          <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 bg-indigo-500 rounded-r-full shadow-sm h-[24px] w-[4px] z-10" />
-                        )}
+                        <div className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[24px] w-[4px] z-10 transition-all duration-200 ${
+                          pathname === "/profile" 
+                            ? 'bg-indigo-500 opacity-100 group-hover/submenu:opacity-40 group-hover/subitem:!opacity-100' 
+                            : 'bg-indigo-500 opacity-0 group-hover/subitem:opacity-100'
+                        }`} />
                         <User className="w-4 h-4" />
                         Profile
                       </Link>
                       <Link
                         href="/settings"
-                        className="flex items-center gap-2 px-2 py-2 rounded hover:bg-white/10 text-white text-sm relative"
+                        className="flex items-center gap-2 px-2 py-2 rounded text-white text-sm relative group/subitem"
                       >
-                        {pathname === "/settings" && (
-                          <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 bg-indigo-500 rounded-r-full shadow-sm h-[24px] w-[4px] z-10" />
-                        )}
+                        <div className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[24px] w-[4px] z-10 transition-all duration-200 ${
+                          pathname === "/settings" 
+                            ? 'bg-indigo-500 opacity-100 group-hover/submenu:opacity-40 group-hover/subitem:!opacity-100' 
+                            : 'bg-indigo-500 opacity-0 group-hover/subitem:opacity-100'
+                        }`} />
                         <Settings className="w-4 h-4" />
                         Settings
                       </Link>
@@ -188,18 +189,31 @@ export function Sidebar() {
               <Link
                 key={item.name}
                 href={item.href}
-                className="flex overflow-hidden gap-2.5 items-center py-3.5 w-full transition-colors hover:bg-white hover:bg-opacity-5 relative"
+                className="flex overflow-hidden gap-2.5 items-center py-3.5 w-full transition-colors relative group/item"
               >
-                {isActive && (
-                  <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 bg-indigo-500 rounded-r-full shadow-sm h-[36px] w-[8px] z-10" />
-                )}
+                {/* Blue indicator - fades when hovering other items */}
+                <div className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[36px] w-[8px] z-10 transition-all duration-200 ${
+                  isActive 
+                    ? 'bg-indigo-500 opacity-100 group-hover:opacity-40 group-hover/item:!opacity-100' 
+                    : 'bg-indigo-500 opacity-0 group-hover/item:opacity-100'
+                }`} />
 
                 <div className="flex items-center gap-2.5 ml-4 mr-4">
-                  <img
-                    src={item.iconSrc}
-                    className="object-contain shrink-0 w-8 aspect-square"
-                    alt={item.name}
-                  />
+                  {item.isLogo ? (
+                    <Image
+                      src={item.iconSrc}
+                      alt={item.name}
+                      width={32}
+                      height={32}
+                      className="shrink-0"
+                    />
+                  ) : (
+                    <img
+                      src={item.iconSrc}
+                      className="object-contain shrink-0 w-8 aspect-square"
+                      alt={item.name}
+                    />
+                  )}
                   <div className="self-stretch my-auto bg-clip-text text-white whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 ease-in-out">
                     {item.name}
                   </div>
