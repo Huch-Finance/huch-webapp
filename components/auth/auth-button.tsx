@@ -21,7 +21,11 @@ interface UserMetadata {
   username?: string;
 }
 
-export function AuthButton() {
+interface AuthButtonProps {
+  compact?: boolean;
+}
+
+export function AuthButton({ compact = false }: AuthButtonProps) {
   // If Privy is not configured, display a dummy connect button
   const [privyReady, setPrivyReady] = useState(false)
   const { login, logout, authenticated, user, ready } = usePrivy()
@@ -40,9 +44,12 @@ export function AuthButton() {
         onClick={() =>
           alert("Authentication is not configured. Please add NEXT_PUBLIC_PRIVY_APP_ID to your environment variables.")
         }
-        className="bg-gradient-to-br from-gray-100 to-gray-300 text-black font-semibold rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm shadow-md hover:from-gray-200 hover:to-gray-400 transition-all duration-200"
+        className={compact 
+          ? "bg-transparent hover:bg-white hover:bg-opacity-10 rounded-full w-8 h-8 p-0 flex items-center justify-center text-gray-300 hover:text-white transition-all duration-200"
+          : "bg-gradient-to-br from-gray-100 to-gray-300 text-black font-semibold rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm shadow-md hover:from-gray-200 hover:to-gray-400 transition-all duration-200"
+        }
       >
-        Connect
+        {compact ? <User className="w-5 h-5" /> : "Connect"}
       </Button>
     )
   }
@@ -50,8 +57,14 @@ export function AuthButton() {
   // If Privy is loading, display a loading state
   if (!privyReady) {
     return (
-      <Button disabled className="bg-[#2A2A2A] text-gray-400 rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm">
-        Loading...
+      <Button
+        disabled 
+        className={compact 
+          ? "bg-transparent text-gray-400 rounded-full w-8 h-8 p-0 flex items-center justify-center"
+          : "bg-[#2A2A2A] text-gray-400 rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm"
+        }
+      >
+        {compact ? <User className="w-5 h-5" /> : "Loading..."}
       </Button>
     )
   }
@@ -61,9 +74,12 @@ export function AuthButton() {
     return (
       <Button
         onClick={login}
-        className="bg-gradient-to-br from-gray-100 to-gray-300 text-black font-semibold rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm shadow-md hover:from-gray-200 hover:to-gray-400 transition-all duration-200"
+        className={compact 
+          ? "bg-transparent hover:bg-white hover:bg-opacity-10 rounded-full w-8 h-8 p-0 flex items-center justify-center text-gray-300 hover:text-white transition-all duration-200"
+          : "bg-gradient-to-br from-gray-100 to-gray-300 text-black font-semibold rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm shadow-md hover:from-gray-200 hover:to-gray-400 transition-all duration-200"
+        }
       >
-        Connect
+        {compact ? <User className="w-5 h-5" /> : "Connect"}
       </Button>
     )
   }
@@ -93,23 +109,29 @@ export function AuthButton() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <div className="relative group w-full sm:w-auto">
-          <div className="absolute inset-0 -m-2 rounded-full
-            hidden sm:block
-            bg-gray-100
-            opacity-40 filter blur-lg pointer-events-none
-            transition-all duration-300 ease-out
-            group-hover:opacity-60 group-hover:blur-xl group-hover:-m-3"></div>
+          {!compact && (
+            <div className="absolute inset-0 -m-2 rounded-full
+              hidden sm:block
+              bg-gray-100
+              opacity-40 filter blur-lg pointer-events-none
+              transition-all duration-300 ease-out
+              group-hover:opacity-60 group-hover:blur-xl group-hover:-m-3"></div>
+          )}
           <Button
             variant="outline"
-            className="relative z-10 border-none bg-gradient-to-br from-gray-100 to-gray-300 text-black font-semibold rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm flex items-center shadow-md hover:from-gray-200 hover:to-gray-400 transition-all duration-200"
+            className={compact 
+              ? "relative z-10 border-none bg-transparent hover:bg-white hover:bg-opacity-10 rounded-full p-0 w-8 h-8 flex items-center justify-center transition-all duration-200 group-hover:w-auto group-hover:px-3 group-hover:bg-gradient-to-br group-hover:from-gray-100 group-hover:to-gray-300"
+              : "relative z-10 border-none bg-gradient-to-br from-gray-100 to-gray-300 text-black font-semibold rounded-full px-4 py-2 sm:px-3 text-xs sm:text-sm flex items-center shadow-md hover:from-gray-200 hover:to-gray-400 transition-all duration-200"
+            }
           >
             <img
               src={profilePicture}
               alt="Profile"
-              className="w-6 h-6 rounded-full mr-2"
+              className={compact ? "w-8 h-8 rounded-full" : "w-6 h-6 rounded-full mr-2"}
             />
-            <span>{displayName}</span>
-            <ChevronDown size={16} className="ml-2" />
+            <span className={compact ? "hidden group-hover:inline-block group-hover:ml-2 text-black font-semibold" : ""}>{displayName}</span>
+            {!compact && <ChevronDown size={16} className="ml-2" />}
+            {compact && <ChevronDown size={16} className="hidden group-hover:inline-block group-hover:ml-2 text-black" />}
           </Button>
         </div>
       </DropdownMenuTrigger>
