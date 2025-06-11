@@ -12,8 +12,10 @@ import { useAuth } from "@/hooks/use-auth"
 import { SteamAuthButton } from "@/components/auth/steam-auth-button"
 import { useSteamInventory, SteamItem } from "@/hooks/use-steam-inventory"
 import { Card } from "@/components/ui/card"
+import { useToast } from "@/hooks/use-toast"
 
 export default function Home() {
+  const { toast } = useToast()
   const [selectedSkin, setSelectedSkin] = useState<string | null>(null)
   const [skinSelectorOpen, setSkinSelectorOpen] = useState(false)
   const [gridViewActive, setGridViewActive] = useState(false)
@@ -187,55 +189,66 @@ export default function Home() {
       setLoanAmount(0);
     }
   }, [selectedSkin, loanPercentage, displaySkins])
-  
-  // const handleBorrowRequest = async () => {
-  //   if (!profile?.id || !profile?.steamId || !selectedSkin) {
-  //     alert("Missing user or skin info.");
-  //     throw new Error("Missing user or skin info.");
-  //   }
-  //   const skin = displaySkins.find(s => s.id === selectedSkin);
-  //   if (!skin) {
-  //     alert("Skin not found.");
-  //     throw new Error("Skin not found.");
-  //   }
-  //   try {
-  //     const res = await fetch("http://localhost:3333/solana/borrow", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         userId: profile.id,
-  //         steamId: profile.steamId, // <-- Vérification Steam ID ici (commentée)
-  //         items: [skin],
-  //         amount: loanAmount,
-  //         duration: loanDuration,
-  //         skinId: skin.id,
-  //         value: skin.basePrice,
-  //         userWallet: profile.wallet,
-  //       }),
-  //     });
-  //     const data = await res.json();
-  //     if (!res.ok) {
-  //       // Affiche le message d'erreur du backend
-  //       alert("Erreur: " + (data?.error || "Request failed"));
-  //       throw new Error(data?.error || "Request failed");
-  //     }
-  //     console.log("Borrow response:", data);
-  //     setBorrowSuccessful(true);
-  //     return data;
-  //   } catch (err) {
-  //     // Affiche l'erreur JS si jamais
-  //     alert("Error: " + (err instanceof Error ? err.message : err));
-  //     throw err;
-  //   }
-  // };
 
-  // Fonction mock pour la démo
   const handleBorrowRequest = async () => {
-    // Simule un délai pour l'effet démo
-    await new Promise(res => setTimeout(res, 700));
-    setBorrowSuccessful(true);
-    alert("Transaction acceptée ! (démo)");
-    return { success: true };
+    if (!profile?.id || !profile?.steamId || !selectedSkin) {
+      toast({
+        title: "Missing information",
+        description: "Please ensure you're logged in and have selected a skin.",
+        variant: "destructive",
+      });
+      throw new Error("Missing user or skin info.");
+    }
+    const skin = displaySkins.find(s => s.id === selectedSkin);
+    if (!skin) {
+      toast({
+        title: "Skin not found",
+        description: "The selected skin could not be found. Please try again.",
+        variant: "destructive",
+      });
+      throw new Error("Skin not found.");
+    }
+    try {
+      const res = await fetch("http://localhost:3333/solana/borrow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: profile.id,
+          steamId: profile.steamId,
+          items: [skin],
+          amount: loanAmount,
+          duration: loanDuration,
+          skinId: skin.id,
+          value: skin.basePrice,
+          userWallet: profile.wallet,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({
+          title: "Borrow request failed",
+          description: data?.error || "The request failed. Please try again.",
+          variant: "destructive",
+        });
+        throw new Error(data?.error || "Request failed");
+      }
+      console.log("Borrow response:", data);
+      toast({
+        title: "Borrow successful!",
+        description: `You have successfully borrowed $${loanAmount.toFixed(2)} for ${loanDuration} days.`,
+      });
+      setBorrowSuccessful(true);
+      return data;
+    } catch (err) {
+      if (err instanceof Error && !err.message.includes("Missing user") && !err.message.includes("Skin not found")) {
+        toast({
+          title: "Error",
+          description: err.message || "An unexpected error occurred. Please try again.",
+          variant: "destructive",
+        });
+      }
+      throw err;
+    }
   };
 
   const liveTransactions = [
@@ -915,7 +928,7 @@ export default function Home() {
         loanAmount={loanAmount}
         loanDuration={loanDuration}
         extractSkinInfo={extractSkinInfo}
-        onConfirm={handleBorrowRequest} // <-- Utilise la fonction mock
+        onConfirm={handleBorrowRequest}
       />
     <Footer />
     </div>
