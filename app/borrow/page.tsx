@@ -358,33 +358,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col text-white">
-      <main className="flex-1 flex flex-col items-center justify-center">
+      <main className="flex-1 flex flex-col items-center justify-center pt-20 lg:pt-24">
         <LoadingOverlay
           isLoading={isLoading} 
           message="Connecting to your wallet..."
           opacity={0.7}
         />
         <div className="container mx-auto px-4">
-          {/* Live borrows ticker
-          <div className="flex justify-center mb-6 overflow-hidden">
-            <div className="bg-[#111827]/50 backdrop-blur-sm rounded-full px-6 py-1.5 flex items-center gap-2 max-w-full">
-              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-[#6366f1] to-[#22d3ee] animate-pulse"></div>
-              <div className="overflow-hidden w-auto h-5">
-                <div
-                  className="transition-all duration-500 ease-in-out"
-                  style={{ transform: `translateY(-${currentTransaction * 20}px)` }}
-                >
-                  {liveTransactions.map((tx, index) => (
-                    <div key={index} className="h-5 whitespace-nowrap text-sm">
-                      <span className="font-medium text-[#6366f1]">{tx.username}</span> just borrowed{" "}
-                      <span className="font-medium">{tx.amount}</span> with <span className="italic">{tx.skin}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div> */}
-
           {/* Main interface - Simple and elegant header */}
           <div className="max-w-4xl mx-auto">
             <div className="mb-6 text-center">

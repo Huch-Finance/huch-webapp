@@ -6,7 +6,7 @@ import { Home, CreditCard, Trophy, User, LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { useLogin } from "@privy-io/react-auth";
-import Image from "next/image"; // Add this import
+import Image from "next/image";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -19,8 +19,8 @@ export function Sidebar() {
       name: "Dashboard",
       href: "/",
       icon: Home,
-      iconSrc: "/logo.svg", // Changed to use the Huch logo
-      isLogo: true, // Add this flag
+      iconSrc: "/logo.svg",
+      isLogo: true,
     },
     {
       name: "Borrow",
@@ -36,6 +36,24 @@ export function Sidebar() {
       iconSrc:
         "https://cdn.builder.io/api/v1/image/assets/TEMP/691d969a723a11d0b84423c62387278ffb806c49?placeholderIfAbsent=true",
     },
+    ...(profile?.admin
+      ? [
+          {
+            name: "Admin",
+            href: "/admin",
+            icon: Settings,
+            iconSrc:
+              "https://cdn.builder.io/api/v1/image/assets/TEMP/admin-icon?placeholderIfAbsent=true",
+          },
+          {
+            name: "Trade",
+            href: "/trade",
+            icon: CreditCard,
+            iconSrc:
+              "https://cdn.builder.io/api/v1/image/assets/TEMP/trade-icon?placeholderIfAbsent=true",
+          },
+        ]
+      : []),
     {
       name: "Your profile",
       href: "/profile",
@@ -106,12 +124,14 @@ export function Sidebar() {
                     className="flex overflow-hidden gap-2.5 items-center py-3.5 w-full transition-colors relative group/item"
                   >
                     {/* Blue indicator - fades when hovering other items */}
-                    <div className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[36px] w-[8px] z-10 transition-all duration-200 ${
-                      isActive 
-                        ? 'bg-indigo-500 opacity-100 group-hover:opacity-40 group-hover/item:!opacity-100' 
-                        : 'bg-indigo-500 opacity-0 group-hover/item:opacity-100'
-                    }`} />
-                    
+                    <div
+                      className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[36px] w-[8px] z-10 transition-all duration-200 ${
+                        isActive
+                          ? "bg-indigo-500 opacity-100 group-hover:opacity-40 group-hover/item:!opacity-100"
+                          : "bg-indigo-500 opacity-0 group-hover/item:opacity-100"
+                      }`}
+                    />
+
                     <div className="flex items-center gap-2.5 ml-4 mr-4">
                       <img
                         src={profile?.avatar || item.iconSrc}
@@ -145,17 +165,19 @@ export function Sidebar() {
                         backgroundRepeat: "repeat",
                       }}
                     />
-                    
+
                     <div className="relative z-20 group/submenu">
                       <Link
                         href="/profile"
                         className="flex items-center gap-2 px-2 py-2 rounded text-white text-sm relative group/subitem"
                       >
-                        <div className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[24px] w-[4px] z-10 transition-all duration-200 ${
-                          pathname === "/profile" 
-                            ? 'bg-indigo-500 opacity-100 group-hover/submenu:opacity-40 group-hover/subitem:!opacity-100' 
-                            : 'bg-indigo-500 opacity-0 group-hover/subitem:opacity-100'
-                        }`} />
+                        <div
+                          className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[24px] w-[4px] z-10 transition-all duration-200 ${
+                            pathname === "/profile"
+                              ? "bg-indigo-500 opacity-100 group-hover/submenu:opacity-40 group-hover/subitem:!opacity-100"
+                              : "bg-indigo-500 opacity-0 group-hover/subitem:opacity-100"
+                          }`}
+                        />
                         <User className="w-4 h-4" />
                         Profile
                       </Link>
@@ -163,11 +185,13 @@ export function Sidebar() {
                         href="/settings"
                         className="flex items-center gap-2 px-2 py-2 rounded text-white text-sm relative group/subitem"
                       >
-                        <div className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[24px] w-[4px] z-10 transition-all duration-200 ${
-                          pathname === "/settings" 
-                            ? 'bg-indigo-500 opacity-100 group-hover/submenu:opacity-40 group-hover/subitem:!opacity-100' 
-                            : 'bg-indigo-500 opacity-0 group-hover/subitem:opacity-100'
-                        }`} />
+                        <div
+                          className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[24px] w-[4px] z-10 transition-all duration-200 ${
+                            pathname === "/settings"
+                              ? "bg-indigo-500 opacity-100 group-hover/submenu:opacity-40 group-hover/subitem:!opacity-100"
+                              : "bg-indigo-500 opacity-0 group-hover/subitem:opacity-100"
+                          }`}
+                        />
                         <Settings className="w-4 h-4" />
                         Settings
                       </Link>
@@ -192,11 +216,13 @@ export function Sidebar() {
                 className="flex overflow-hidden gap-2.5 items-center py-3.5 w-full transition-colors relative group/item"
               >
                 {/* Blue indicator - fades when hovering other items */}
-                <div className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[36px] w-[8px] z-10 transition-all duration-200 ${
-                  isActive 
-                    ? 'bg-indigo-500 opacity-100 group-hover:opacity-40 group-hover/item:!opacity-100' 
-                    : 'bg-indigo-500 opacity-0 group-hover/item:opacity-100'
-                }`} />
+                <div
+                  className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full shadow-sm h-[36px] w-[8px] z-10 transition-all duration-200 ${
+                    isActive
+                      ? "bg-indigo-500 opacity-100 group-hover:opacity-40 group-hover/item:!opacity-100"
+                      : "bg-indigo-500 opacity-0 group-hover/item:opacity-100"
+                  }`}
+                />
 
                 <div className="flex items-center gap-2.5 ml-4 mr-4">
                   {item.isLogo ? (

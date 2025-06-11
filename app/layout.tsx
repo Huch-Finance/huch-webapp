@@ -5,8 +5,8 @@ import "./globals.css";
 import "./privy-overrides.css";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { PrivyProvider } from "@/components/auth/privy-provider";
-import { Navbar } from "@/components/organism/navbar";
 import { Sidebar } from "@/components/organism/sidebar";
+import { MobileMenu } from "@/components/organism/hamburger";
 import { Footer } from "@/components/organism/footer";
 import { Toaster } from "sonner";
 import { BeamsBackground } from "@/components/bg/beams-background";
@@ -40,8 +40,8 @@ export default function RootLayout({
         />
         {/* <BeamsBackground /> */}
         <PrivyProvider>
-          <Navbar />
           <Sidebar />
+          <MobileMenu />
           <ThemeProvider
             attribute="class"
             defaultTheme="system"

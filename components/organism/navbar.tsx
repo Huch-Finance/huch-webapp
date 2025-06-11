@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import Image from "next/image";
 import { AuthButton } from "@/components/auth/auth-button";
 
+/*
 const AnimatedNavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
   const defaultTextColor = "text-gray-300";
   const hoverTextColor = "text-white";
@@ -66,7 +67,7 @@ export function Navbar() {
       className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center pl-6 pr-6 py-3 backdrop-blur-sm
       ${headerShapeClass} border border-[#FFFFFF] bg-[#0F0F2A] border-opacity-10 bg-opacity-70 w-full max-w-xl sm:max-w-2xl lg:max-w-3xl transition-[border-radius] duration-0 ease-in-out rounded-inherit overflow-hidden`}
     >
-      {/* Overlay grain */}
+      {/* Overlay grain *//*}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-10 opacity-[.05] rounded-inherit w-full h-full"
@@ -131,4 +132,9 @@ export function Navbar() {
       </div>
     </header>
   );
+}
+*/
+
+export function Navbar() {
+  return null;
 }
