@@ -1,15 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Check, Loader2, AlertCircle, ExternalLink } from "lucide-react"
+import { Check, Loader2, AlertCircle } from "lucide-react"
 import { SteamItem } from "@/hooks/use-steam-inventory"
-import { useTradeApi } from "@/hooks/use-trade-api"
-import { TradeStatus, TradeStatusUtils, isTradeAccepted, isTradeTerminated, isTradeProblematic, isTradeRequiringAction } from "@/lib/trade-states"
-import { BorrowCancelModal } from "@/components/borrow/borrow-cancel-modal"
 import { useAuth } from "@/hooks/use-auth"
+import { useLoanApi } from "@/hooks/use-loan-api"
 
 interface BorrowConfirmationModalProps {
   open: boolean
@@ -32,7 +31,9 @@ export function BorrowConfirmationModal({
   extractSkinInfo,
   onConfirm
 }: BorrowConfirmationModalProps) {
-  const { profile } = useAuth();
+  const router = useRouter()
+  const { profile, ensureSolanaWallet } = useAuth();
+  const { createLoan, isLoading: isLoanLoading, error: loanError } = useLoanApi();
 
   const handleOpenChange = (newOpenState: boolean) => {
     if (!newOpenState) {
@@ -42,7 +43,6 @@ export function BorrowConfirmationModal({
         setTransactionComplete(false);
         setTransactionError(null);
         setTransactionMessage(null);
-        setTradeOffer(null);
       }, 300);
     }
     onOpenChange(newOpenState);
@@ -57,61 +57,8 @@ export function BorrowConfirmationModal({
     title: string;
     message: string;
   } | null>(null)
-  const [showCancelModal, setShowCancelModal] = useState(false)
-  const { createTrade, checkTradeStatus, cancelTrade, isLoading: isApiLoading, error: apiError, currentTradeId } = useTradeApi();
-  const [tradeOffer, setTradeOffer] = useState<{
-    tradeId: string;
-    tradeOfferId: string;
-    tradeOfferUrl: string;
-  } | null>(null);
   
-  // Check trade status
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (tradeOffer && isProcessing && processingStep === 2) {
-      interval = setInterval(async () => {
-        const status = await checkTradeStatus(tradeOffer.tradeId);
-        
-        if (status) {
-          if (isTradeAccepted(status.trade.status, status.offerDetails.state) || 
-              status.trade.status === TradeStatus.IN_ESCROW || 
-              status.offerDetails.state === TradeStatus.IN_ESCROW) {
-            setProcessingStep(3);
-            clearInterval(interval);
-            setTimeout(() => {
-              setProcessingStep(4);
-              setTimeout(() => {
-                setTransactionComplete(true);
-                setIsProcessing(false);
-              }, 1500);
-            }, 2000);
-          } else if (isTradeTerminated(status.trade.status, status.offerDetails.state)) {
-            // Trade finished without exchange (cancelled, rejected, expired, etc.)
-            const statusMessage = TradeStatusUtils.getStatusMessage(status.trade.status || status.offerDetails.state);
-            setTransactionError(`The trade offer was ${statusMessage.toLowerCase()}.`);
-            setIsProcessing(false);
-            clearInterval(interval);
-          } else if (isTradeProblematic(status.trade.status, status.offerDetails.state)) {
-            // Trade problematic (invalid, error, etc.)
-            const statusMessage = TradeStatusUtils.getStatusMessage(status.trade.status || status.offerDetails.state);
-            setTransactionError(`There was a problem with the trade: ${statusMessage}.`);
-            setIsProcessing(false);
-            clearInterval(interval);
-          } else if (isTradeRequiringAction(status.trade.status, status.offerDetails.state)) {
-            // Trade requiring action (countered)
-            setTransactionError(TradeStatusUtils.getStatusMessage(TradeStatus.COUNTERED) + ". Please cancel and try again.");
-            setIsProcessing(false);
-            clearInterval(interval);
-          }
-        }
-      }, 5000);
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [tradeOffer, isProcessing, processingStep]);
+  // No longer needed since backend handles the entire flow
   
   // Function to handle the borrowing process
   const handleBorrow = async () => {
@@ -124,48 +71,89 @@ export function BorrowConfirmationModal({
       setTransactionError("Selected skin not found");
       return;
     }
-    // if (!profile?.tradeLink) {
-    //   setTransactionError("Missing Steam trade link. Please add your trade link in your profile.");
-    //   return;
-    // }
+    
+    if (!profile?.wallet) {
+      setTransactionError("Please connect your wallet to receive USDC");
+      return;
+    }
+    
     try {
-      // Pour la démo : tout passe comme si c'était ok
       setIsProcessing(true);
       setTransactionError(null);
-
-      // Simule un délai pour l'effet démo
-      await new Promise(res => setTimeout(res, 1000));
       setProcessingStep(1);
-      await new Promise(res => setTimeout(res, 800));
-      setProcessingStep(2);
-      await new Promise(res => setTimeout(res, 800));
-      setProcessingStep(3);
-      await new Promise(res => setTimeout(res, 800));
-      setProcessingStep(4);
-      await new Promise(res => setTimeout(res, 800));
-      setTransactionComplete(true);
-      setIsProcessing(false);
-
-      // Si tu veux afficher une alerte :
-      // alert("Transaction acceptée ! (démo)");
-
-      // --- Pour la vraie logique, décommente ci-dessous ---
-      // await onConfirm();
-      // setProcessingStep(1);
-      // const tradeResponse = await createTrade(
-      //   selectedSkinData.id,
-      //   `Loan collateral for ${loanAmount.toFixed(2)} USDC`,
-      //   profile.tradeLink
-      // );
-      // if (!tradeResponse) {
-      //   throw new Error("Failed to create trade offer");
-      // }
-      // setTradeOffer({
-      //   tradeId: tradeResponse.tradeId,
-      //   tradeOfferId: tradeResponse.tradeOffer.offerId,
-      //   tradeOfferUrl: tradeResponse.tradeOffer.url
-      // });
-      // setProcessingStep(2);
+      
+      console.log("Starting borrow process with amount:", loanAmount);
+      console.log("Current profile wallet:", profile?.wallet);
+      
+      // S'assurer qu'on a un wallet Solana
+      let solanaAddress = await ensureSolanaWallet();
+      console.log("Solana address from ensureSolanaWallet:", solanaAddress);
+      console.log("Current profile wallet:", profile?.wallet);
+      
+      // Si ensureSolanaWallet n'a pas retourné d'adresse, vérifier si profile.wallet est déjà une adresse Solana
+      if (!solanaAddress && profile?.wallet && !profile.wallet.startsWith('0x')) {
+        // Le wallet dans le profil pourrait déjà être une adresse Solana
+        solanaAddress = profile.wallet;
+        console.log("Using profile wallet as Solana address:", solanaAddress);
+      }
+      
+      // Si on n'a toujours pas de wallet Solana, erreur
+      if (!solanaAddress) {
+        if (profile?.wallet?.startsWith('0x')) {
+          setTransactionError("Please connect a Solana wallet to receive USDC tokens. You currently have an Ethereum wallet connected.");
+        } else {
+          setTransactionError("Please connect a Solana wallet to receive USDC tokens");
+        }
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Use the borrow endpoint that handles both Steam trade AND SPL token transfer
+      // The backend will wait for trade acceptance before sending tokens
+      const loanResponse = await createLoan({
+        items: [selectedSkinData],
+        amount: Math.round(loanAmount), // Round amount to avoid BigInt issues
+        duration: loanDuration,
+        skinId: selectedSkinData.id,
+        value: selectedSkinData.basePrice
+      });
+      
+      if (loanResponse && loanResponse.success) {
+        // Trade créé avec succès - rediriger vers la page trade-process
+        const skinInfo = selectedSkinData ? extractSkinInfo(selectedSkinData.market_hash_name) : null;
+        
+        console.log("Loan response received:", loanResponse);
+        console.log("TradeId:", loanResponse.tradeId, "TradeUrl:", loanResponse.tradeUrl);
+        
+        // Construire les paramètres d'URL
+        const params = new URLSearchParams({
+          tradeId: loanResponse.tradeId || '',
+          tradeUrl: loanResponse.tradeUrl || '',
+          amount: loanAmount.toString(),
+          skinName: skinInfo?.name || '',
+          skinImage: selectedSkinData?.imageUrl || ''
+        });
+        
+        console.log("Redirecting to trade process page with:", params.toString());
+        console.log("Full URL:", `/trade-process?${params.toString()}`);
+        
+        // Fermer le modal et rediriger
+        setIsProcessing(false);
+        onOpenChange(false);
+        onConfirm();
+        
+        // Rediriger vers la page trade-process
+        router.push(`/trade-process?${params.toString()}`);
+      } else {
+        // Si échec mais qu'on a une URL de trade, l'ouvrir quand même
+        if (loanResponse?.tradeUrl) {
+          console.log("Opening trade URL (failed case):", loanResponse.tradeUrl);
+          window.open(loanResponse.tradeUrl, '_blank');
+        }
+        
+        setTransactionError(loanError || loanResponse?.message || "Failed to process borrow request");
+        setIsProcessing(false);
+      }
     } catch (error: any) {
       console.error("Error during the borrowing process:", error);
       setTransactionError(error.message || "An error occurred. Please try again.");
@@ -173,37 +161,6 @@ export function BorrowConfirmationModal({
     }
   };
   
-  // Function to cancel the trade
-  const handleCancelTrade = async () => {
-    if (tradeOffer) {
-      try {
-        setIsProcessing(true);
-        
-        const result = await cancelTrade(tradeOffer.tradeId);
-        
-        if (result && result.success) {
-          setTransactionError(null);
-          setTransactionComplete(false);
-          setIsProcessing(false);
-          setProcessingStep(0);
-          setShowCancelModal(true);
-          onOpenChange(false);
-        } else {
-          setTransactionError(result?.message || 'Failed to cancel the trade offer.');
-          setIsProcessing(false);
-        }
-      } catch (error: any) {
-        console.error('Error canceling trade:', error);
-        setTransactionError(error.message || 'An error occurred while canceling the trade.');
-        setIsProcessing(false);
-      }
-    }
-  };
-  
-  // Function to close the cancel modal
-  const handleCancelModalClose = () => {
-    setShowCancelModal(false);
-  };
 
   return (
     <>
@@ -270,23 +227,18 @@ export function BorrowConfirmationModal({
             <div className="flex flex-col items-center justify-center gap-2">
               <Loader2 className="h-8 w-8 animate-spin text-[#6366f1]" />
               <p className="text-sm font-medium">
-                {processingStep === 1 && "Creating trade offer..."}
+                {processingStep === 1 && "Creating Steam trade and waiting for your acceptance..."}
                 {processingStep === 2 && "Waiting for trade confirmation..."}
                 {processingStep === 3 && "Transferring USDC..."}
                 {processingStep === 4 && "Finalizing loan..."}
               </p>
               
-              {/* Display the trade offer link if available and at step 2 */}
-              {processingStep === 2 && tradeOffer && (
-                <a 
-                  href={tradeOffer.tradeOfferUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-[#6366f1] hover:underline mt-1"
-                >
-                  Open trade offer <ExternalLink className="h-3 w-3" />
-                </a>
+              {processingStep === 1 && (
+                <p className="text-xs text-gray-400 mt-2 text-center max-w-sm">
+                  Please accept the Steam trade offer that will appear in your Steam client. Your USDC will be sent automatically once the trade is confirmed.
+                </p>
               )}
+              
             </div>
             
             <div className="w-full bg-[#1f2937] border border-[#1f2937] h-1 rounded-full overflow-hidden">
@@ -330,22 +282,20 @@ export function BorrowConfirmationModal({
               <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
                 <AlertCircle className="h-8 w-8 text-red-500" />
               </div>
-              <p className="text-center text-sm text-red-400">
-                {transactionError}
-              </p>
+              <div className="text-center">
+                <p className="text-sm text-red-400 mb-2">
+                  {transactionError}
+                </p>
+                {transactionError.includes("wallet") && (
+                  <p className="text-xs text-gray-400">
+                    Make sure you have connected a Solana wallet to receive USDC
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* API error message */}
-        {apiError && !transactionError && (
-          <div className="py-2">
-            <div className="flex items-center gap-2 text-red-400 text-xs">
-              <AlertCircle className="h-4 w-4" />
-              {apiError}
-            </div>
-          </div>
-        )}
         
         {/* Transaction message (success, info, etc.) */}
         {transactionMessage && (
@@ -408,20 +358,7 @@ export function BorrowConfirmationModal({
               );
             }
             
-            // Processing state - Waiting for trade confirmation
-            if (isProcessing && processingStep === 2) {
-              return (
-                <Button 
-                  variant="outline" 
-                  onClick={handleCancelTrade} 
-                  className="border-[#2a3548] text-gray-400 hover:bg-[#1f2937] hover:text-white"
-                >
-                  Cancel Trade
-                </Button>
-              );
-            }
-            
-            // Processing state - Other steps
+            // Processing state - Any step
             if (isProcessing) {
               return <div className="h-10"></div>; // Space reserved to maintain footer height
             }
@@ -449,15 +386,6 @@ export function BorrowConfirmationModal({
         </DialogContent>
       </Dialog>
 
-      
-      
-      {/* Cancel modal */}
-      <BorrowCancelModal 
-        open={showCancelModal}
-        onOpenChange={setShowCancelModal}
-        item={displaySkins.find(skin => skin.market_hash_name === selectedSkin) || null}
-        onClose={handleCancelModalClose}
-      />
     </>
   )
 }

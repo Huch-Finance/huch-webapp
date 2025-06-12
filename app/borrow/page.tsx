@@ -12,10 +12,8 @@ import { useAuth } from "@/hooks/use-auth"
 import { SteamAuthButton } from "@/components/auth/steam-auth-button"
 import { useSteamInventory, SteamItem } from "@/hooks/use-steam-inventory"
 import { Card } from "@/components/ui/card"
-import { useToast } from "@/hooks/use-toast"
 
 export default function Home() {
-  const { toast } = useToast()
   const [selectedSkin, setSelectedSkin] = useState<string | null>(null)
   const [skinSelectorOpen, setSkinSelectorOpen] = useState(false)
   const [gridViewActive, setGridViewActive] = useState(false)
@@ -190,65 +188,11 @@ export default function Home() {
     }
   }, [selectedSkin, loanPercentage, displaySkins])
 
-  const handleBorrowRequest = async () => {
-    if (!profile?.id || !profile?.steamId || !selectedSkin) {
-      toast({
-        title: "Missing information",
-        description: "Please ensure you're logged in and have selected a skin.",
-        variant: "destructive",
-      });
-      throw new Error("Missing user or skin info.");
-    }
-    const skin = displaySkins.find(s => s.id === selectedSkin);
-    if (!skin) {
-      toast({
-        title: "Skin not found",
-        description: "The selected skin could not be found. Please try again.",
-        variant: "destructive",
-      });
-      throw new Error("Skin not found.");
-    }
-    try {
-      const res = await fetch("http://localhost:3333/solana/borrow", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: profile.id,
-          steamId: profile.steamId,
-          items: [skin],
-          amount: loanAmount,
-          duration: loanDuration,
-          skinId: skin.id,
-          value: skin.basePrice,
-          userWallet: profile.wallet,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast({
-          title: "Borrow request failed",
-          description: data?.error || "The request failed. Please try again.",
-          variant: "destructive",
-        });
-        throw new Error(data?.error || "Request failed");
-      }
-      console.log("Borrow response:", data);
-      toast({
-        title: "Borrow successful!",
-        description: `You have successfully borrowed $${loanAmount.toFixed(2)} for ${loanDuration} days.`,
-      });
-      setBorrowSuccessful(true);
-      return data;
-    } catch (err) {
-      if (err instanceof Error && !err.message.includes("Missing user") && !err.message.includes("Skin not found")) {
-        toast({
-          title: "Error",
-          description: err.message || "An unexpected error occurred. Please try again.",
-          variant: "destructive",
-        });
-      }
-      throw err;
-    }
+  const handleBorrowRequest = () => {
+    // This function is now just a placeholder.
+    // The actual loan creation is handled in the BorrowConfirmationModal
+    // after the trade is accepted.
+    setBorrowSuccessful(true);
   };
 
   const liveTransactions = [
@@ -362,7 +306,7 @@ export default function Home() {
   // Si le profil existe mais que l'utilisateur n'est pas connecté avec Steam
   if (profile && !profile.steamId && !isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#111] text-white">
+      <div className="flex flex-col items-center justify-center min-h-screen text-white">
         <h2 className="text-2xl font-bold mb-4">Connect your Steam account</h2>
         <SteamAuthButton />
       </div>

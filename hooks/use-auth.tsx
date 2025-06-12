@@ -1,6 +1,7 @@
 "use client"
 
 import { usePrivy, useWallets } from "@privy-io/react-auth"
+import { useSolanaWallets } from "@privy-io/react-auth/solana"
 import { useEffect, useState, useRef } from "react"
 import type { UserProfile, AuthStatus } from "@/lib/privy"
 import { isPrivyConfigured } from "@/lib/privy"
@@ -12,8 +13,38 @@ export function useAuth() {
   const isRegisteringRef = useRef(false)
   const hasLoadedUserDataRef = useRef(false)
 
-  const { ready, authenticated, user, login, logout, connectWallet } = usePrivy()
+  const { ready, authenticated, user, login, logout, connectWallet, createWallet } = usePrivy()
   const { wallets } = useWallets()
+  const solanaWallets = useSolanaWallets()
+  
+  // Fonction pour s'assurer qu'on a un wallet Solana
+  const ensureSolanaWallet = async () => {
+    if (!authenticated || !user) return null
+    
+    // Utiliser solanaWallets directement depuis le hook Privy
+    if (solanaWallets.wallets.length > 0) {
+      const solanaWallet = solanaWallets.wallets[0]
+      console.log('Solana wallet already exists:', solanaWallet.address)
+      return solanaWallet.address
+    }
+    
+    // Vérifier si l'utilisateur a déjà un embedded wallet (de n'importe quel type)
+    const hasEmbeddedWallet = wallets?.some(wallet => wallet.walletClientType === 'privy')
+    if (hasEmbeddedWallet) {
+      console.log('User already has an embedded wallet, cannot create another one')
+      return null
+    }
+    
+    console.log('No Solana wallet found, creating one...')
+    try {
+      await createWallet({ walletClientType: 'privy', chainType: 'solana' })
+      // Note: le wallet sera disponible dans le prochain render via useSolanaWallets
+      return null
+    } catch (error) {
+      console.error('Failed to create Solana wallet:', error)
+      return null
+    }
+  }
 
   useEffect(() => {
     if (!isConfigured) {
@@ -166,10 +197,28 @@ export function useAuth() {
     }
 
     // User is authenticated, build profile
+    // Debug: afficher tous les wallets disponibles
+    console.log('All available wallets:', wallets?.map(w => ({
+      address: w.address,
+      chainType: w.chainType,
+      walletClientType: w.walletClientType,
+      connectorType: w.connectorType
+    })))
+    
+    // Utiliser directement solanaWallets depuis le hook Privy
+    const solanaWallet = solanaWallets.wallets.length > 0 ? solanaWallets.wallets[0] : null
+    console.log('Found Solana wallet:', solanaWallet)
+    
+    // Si pas de wallet Solana, essayer d'en créer un
+    if (!solanaWallet && wallets && wallets.length > 0) {
+      console.log('No Solana wallet found, will try to create one...')
+      setTimeout(() => ensureSolanaWallet(), 1000)
+    }
+    
     const userProfile: UserProfile = {
       id: user?.id || "",
       email: user?.email?.address,
-      wallet: wallets?.[0]?.address,
+      wallet: solanaWallet?.address || wallets?.[0]?.address,
       steamId: undefined,
       username: undefined,
       admin: adminFromDb || false,
@@ -184,10 +233,11 @@ export function useAuth() {
       isRegisteringRef.current = true;
       hasLoadedUserDataRef.current = true;
       
-      // If we have wallets, register and load data
-      if (wallets && wallets.length > 0 && wallets[0]?.address) {
+      // If we have wallets, register and load data  
+      const solanaAddr = solanaWallets.wallets.length > 0 ? solanaWallets.wallets[0].address : null
+      if (wallets && wallets.length > 0 && (solanaAddr || wallets[0]?.address)) {
         console.log('Registering user with wallet');
-        registerUserInDatabase(user.id, wallets[0].address)
+        registerUserInDatabase(user.id, solanaAddr || wallets[0].address)
           .then(() => {
             return reloadUserData();
           })
@@ -205,17 +255,20 @@ export function useAuth() {
     } else if (user && hasLoadedUserDataRef.current) {
       console.log('User data already loaded, skipping reload');
     }
-  }, [ready, authenticated, user])
+  }, [ready, authenticated, user, solanaWallets.wallets])
 
   // Separate effect to handle wallet registration when wallets become available
   useEffect(() => {
+    const solanaAddr = solanaWallets.wallets.length > 0 ? solanaWallets.wallets[0].address : null
+    const walletToUse = solanaAddr || wallets?.[0]?.address
+    
     if (
       ready && 
       authenticated && 
       user && 
       wallets && 
       wallets.length > 0 && 
-      wallets[0]?.address && 
+      walletToUse && 
       !isRegisteringRef.current && 
       profile && 
       !profile.wallet
@@ -223,17 +276,17 @@ export function useAuth() {
       console.log('Wallet became available, registering user with wallet');
       isRegisteringRef.current = true;
       
-      registerUserInDatabase(user.id, wallets[0].address)
+      registerUserInDatabase(user.id, walletToUse)
         .then(() => {
           // Update profile with wallet
-          setProfile(prev => prev ? { ...prev, wallet: wallets[0].address } : null);
+          setProfile(prev => prev ? { ...prev, wallet: walletToUse } : null);
           return reloadUserData();
         })
         .finally(() => {
           isRegisteringRef.current = false;
         });
     }
-  }, [ready, authenticated, user, wallets, profile?.wallet])
+  }, [ready, authenticated, user, wallets, solanaWallets.wallets, profile?.wallet])
 
   // Function to update user profile
   const updateProfile = async (data: Partial<UserProfile>) => {
@@ -326,6 +379,7 @@ export function useAuth() {
       logout: () => {},
       connectWallet: () => {},
       updateProfile: () => Promise.resolve(false),
+      ensureSolanaWallet: () => Promise.resolve(null),
       isLoading: status === "loading",
       isAuthenticated: false,
     }
@@ -360,6 +414,7 @@ export function useAuth() {
     updateProfile,
     updateSteamId,
     reloadUserData,
+    ensureSolanaWallet,
     isLoading: status === "loading",
     isAuthenticated: status === "authenticated",
   }
