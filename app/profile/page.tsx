@@ -180,6 +180,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen flex flex-col text-white">
+<<<<<<< HEAD
       <main className="flex-1 flex flex-col items-center justify-center">
         <LoadingOverlay 
           isLoading={isLoading} 
@@ -396,6 +397,268 @@ export default function Profile() {
               </Card>
             </div>
           </div>
+=======
+      <main className="flex-1 flex flex-col items-center justify-center w-full px-2 sm:px-0">
+        <LoadingOverlay
+          isLoading={isLoading}
+          message="Loading your profile..."
+          opacity={0.7}
+        />
+        <section className="w-full max-w-2xl mx-auto flex flex-col gap-6 mt-8 mb-8">
+          {/* Profile Card */}
+          <Card className="relative bg-[#0F0F2A]/70 border-[#FFFFFF] border-opacity-10 shadow-md rounded-lg overflow-hidden flex flex-col items-center p-6 pb-2 sm:pb-2">
+            {/* Overlay grain */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
+              style={{
+                backgroundImage: "url('/grainbg.avif')",
+                backgroundRepeat: "repeat",
+              }}
+            />
+
+            {/* Settings icon: top-right of card on desktop (sidebar visible) */}
+            <Link
+              href="/settings"
+              className="hidden lg:block"
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Account Settings"
+                className="absolute top-4 right-4 z-20 text-gray-400 hover:text-white bg-transparent"
+                style={{ width: 52, height: 52 }}
+              >
+                <Settings size={32} />
+              </Button>
+            </Link>
+
+            {/* Profile picture with settings icon: top-right of picture on mobile (sidebar hidden) */}
+            <div className="relative w-24 h-24 mb-2 mt-2">
+              <img
+                src={profile?.avatar || "/avatars/logo-black.svg"}
+                alt="Profile"
+                className="w-full h-full object-cover bg-black rounded-full"
+              />
+              <Link
+                href="/settings"
+                className="block lg:hidden"
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Account Settings"
+                  className="absolute -top-3 -right-5 z-20 text-gray-400 hover:text-white bg-transparent p-1"
+                  // -top-3 moves it a bit higher, -right-5 moves it further right, and size below is increased
+                  style={{ width: 40, height: 40 }}
+                >
+                  <Settings size={24} />
+                </Button>
+              </Link>
+            </div>
+            <CardTitle className="text-lg sm:text-xl font-bold text-center">
+              {profile?.username || "Anonymous"}
+            </CardTitle>
+            <div className="flex items-center gap-1 mb-2">
+              <Award className="text-amber-600" />
+              <span className="text-amber-600 text-sm sm:text-base">New User</span>
+            </div>
+            {/* Responsive stats row: smaller but still horizontal */}
+            <div className="w-full flex flex-row justify-between gap-2 bg-transparent rounded-lg px-2 mb-2 sm:p-3 sm:mb-4">
+              <div className="text-center flex-1 min-w-0">
+                <div className="text-xs sm:text-base text-gray-400 truncate">
+                  Rank
+                </div>
+                <div className="font-bold text-lg sm:text-2xl">#-</div>
+              </div>
+              <div className="text-center flex-1 min-w-0">
+                <div className="text-xs sm:text-base text-gray-400 truncate">
+                  Points
+                </div>
+                <div className="font-bold text-lg sm:text-2xl text-[#5D5FEF]">
+                  0
+                </div>
+              </div>
+              <div className="text-center flex-1 min-w-0">
+                <div className="text-xs sm:text-base text-gray-400 truncate">
+                  Loans
+                </div>
+                <div className="font-bold text-lg sm:text-2xl">0</div>
+              </div>
+            </div>
+            {/* Steam warning overlay (unchanged) */}
+            {!profile?.steamId && (
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
+                <AlertTriangle size={32} className="text-yellow-500 mb-2" />
+                <h3 className="text-lg font-medium text-white mb-1 text-center">
+                  Steam Account Required
+                </h3>
+                <p className="text-sm text-gray-300 text-center mb-4">
+                  Connect your Steam account to access all features.
+                </p>
+                <div className="scale-110">
+                  <SteamAuthButton />
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Tabs Card */}
+          <Card className="relative bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden flex flex-col w-full">
+            {/* Overlay grain */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
+              style={{
+                backgroundImage: "url('/grainbg.avif')",
+                backgroundRepeat: "repeat",
+              }}
+            />
+            <Tabs
+              defaultValue="wallet"
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
+              <CardHeader className="pb-0">
+                <TabsList className="grid grid-cols-3 w-full">
+                  <TabsTrigger
+                    value="wallet"
+                    className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white"
+                  >
+                    <Wallet size={16} className="mr-2" />
+                    Wallet
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="history"
+                    className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white"
+                  >
+                    <History size={16} className="mr-2" />
+                    History
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="badges"
+                    className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white"
+                  >
+                    <Gift size={16} className="mr-2" />
+                    Badges
+                  </TabsTrigger>
+                </TabsList>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <TabsContent value="wallet" className="mt-0 animate-appear">
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* SPL Token Card */}
+                      <Card className="border-muted bg-[#23232a]">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center gap-2">
+                            <img
+                              src="/usdc-logo.png"
+                              alt="USDC"
+                              className="w-5 h-5 rounded-full"
+                            />
+                            <span className="font-medium">USDC</span>
+                            <span className="ml-auto text-xs text-gray-400">
+                              4KNx...vSSj
+                            </span>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">
+                            {splBalance.toFixed(2)} USDC
+                          </div>
+                        </CardContent>
+                      </Card>
+                      {/* Huch Coin Card */}
+                      <Card className="border-muted bg-[#23232a]">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center gap-2">
+                            <img
+                              src="/huch-coin.png"
+                              alt="Huch Coin"
+                              className="w-7 h-7 rounded-full"
+                            />
+                            <span className="font-medium">Huch Point</span>
+                            <span className="ml-auto text-xs text-gray-400">
+                              POINT
+                            </span>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">0 POINT</div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <Button
+                        className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white font-bold"
+                        onClick={() => setIsDepositOpen(true)}
+                      >
+                        <Wallet className="mr-2" />
+                        Deposit SOL
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="border-muted text-gray-400 hover:text-white hover:border-white"
+                        onClick={() => setIsWithdrawOpen(true)}
+                      >
+                        <CreditCard className="mr-2" />
+                        Withdraw SOL
+                      </Button>
+                    </div>
+                    <Card className="p-0 bg-[#18181b] border border-muted">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-2">
+                          <Clock className="text-[#5D5FEF]" />
+                          <span className="font-medium">Connected Wallet</span>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {wallets?.[0] ? (
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Address:</span>
+                              <span className="font-mono text-sm">
+                                {`${wallets[0].address.substring(0, 6)}...${wallets[0].address.substring(
+                                  wallets[0].address.length - 4,
+                                )}`}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Network:</span>
+                              <span className="font-bold">Solana Devnet</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-gray-400">No wallet connected</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+                <TabsContent value="history" className="mt-0 animate-appear">
+                  <Card className="bg-[#18181b] border border-muted">
+                    <CardContent>
+                      <div className="text-center py-8">
+                        <p className="text-gray-400">No transaction history</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                <TabsContent value="badges" className="mt-0 animate-appear">
+                  <Card className="bg-[#18181b] border border-muted">
+                    <CardContent>
+                      <div className="flex items-center justify-center py-8">
+                        <p className="text-gray-400">No badges earned</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </CardContent>
+            </Tabs>
+          </Card>
+>>>>>>> b7ba232 (woip: profile page)
         </section>
 
         {/* Deposit Modal */}
