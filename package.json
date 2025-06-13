@@ -49,7 +49,7 @@
     "@radix-ui/react-toggle": "^1.1.1",
     "@radix-ui/react-toggle-group": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.6",
-    "@solana/spl-token": "0.1.8",
+    "@solana/spl-token": "^0.4.13",
     "@solana/wallet-adapter-react": "^0.15.38",
     "@solana/web3.js": "^1.98.2",
     "@walletconnect/core": "^2.20.2",

@@ -103,6 +103,22 @@ export function useAuth() {
             }
             console.log('Profil updated:', updatedProfile);
             
+            // Persist admin flag and avatar
+            if (typeof window !== "undefined") {
+              if (updatedProfile.admin) {
+                window.localStorage.setItem("admin", "true");
+              } else {
+                window.localStorage.removeItem("admin");
+              }
+              
+              if (updatedProfile.avatar) {
+                window.localStorage.setItem("userAvatar", updatedProfile.avatar);
+              }
+              if (updatedProfile.username) {
+                window.localStorage.setItem("username", updatedProfile.username);
+              }
+            }
+            
             return updatedProfile;
           });
         }
@@ -167,6 +183,23 @@ export function useAuth() {
           }
           
           console.log('Updated profile with API data:', updatedProfile);
+          
+          // Persist admin flag and avatar to prevent flickering on refresh
+          if (typeof window !== "undefined") {
+            if (updatedProfile.admin) {
+              window.localStorage.setItem("admin", "true");
+            } else {
+              window.localStorage.removeItem("admin");
+            }
+            
+            if (updatedProfile.avatar) {
+              window.localStorage.setItem("userAvatar", updatedProfile.avatar);
+            }
+            if (updatedProfile.username) {
+              window.localStorage.setItem("username", updatedProfile.username);
+            }
+          }
+          
           return updatedProfile;
         });
       } else {
@@ -191,11 +224,16 @@ export function useAuth() {
       return
     }
 
-    // Récupère la valeur admin depuis le localStorage si elle existe (optionnel)
+    // Récupère les valeurs depuis le localStorage si elles existent
     let adminFromDb = false;
+    let cachedAvatar: string | null = null;
+    let cachedUsername: string | null = null;
+    
     if (user && typeof window !== "undefined") {
       const adminStr = window.localStorage.getItem("admin");
       if (adminStr === "true") adminFromDb = true;
+      cachedAvatar = window.localStorage.getItem("userAvatar");
+      cachedUsername = window.localStorage.getItem("username");
     }
 
     // User is authenticated, build profile
@@ -222,7 +260,8 @@ export function useAuth() {
       email: user?.email?.address,
       wallet: solanaWallet?.address || wallets?.[0]?.address,
       steamId: undefined,
-      username: undefined,
+      username: cachedUsername || undefined,
+      avatar: cachedAvatar || undefined,
       admin: adminFromDb || false,
     }
 
@@ -398,6 +437,12 @@ export function useAuth() {
     hasLoadedUserDataRef.current = false;
     
     if (typeof window !== 'undefined') {
+      // Clean up localStorage
+      window.localStorage.removeItem('admin');
+      window.localStorage.removeItem('userAvatar');
+      window.localStorage.removeItem('username');
+      window.localStorage.removeItem('steamID');
+      
       const url = new URL(window.location.href);
       url.searchParams.delete('steam_connected');
       url.searchParams.delete('steam_id');

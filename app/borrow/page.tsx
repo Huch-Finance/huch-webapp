@@ -315,7 +315,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col text-white">
-      <main className="flex-1 flex flex-col items-center justify-center pt-20 lg:pt-24">
+      <main className="flex-1 flex flex-col items-center justify-center pt-8 lg:pt-12">
         <LoadingOverlay
           isLoading={isLoading} 
           message="Connecting to your wallet..."
@@ -324,10 +324,10 @@ export default function Home() {
         <div className="container mx-auto px-4">
           {/* Main interface - Simple and elegant header */}
           <div className="max-w-4xl mx-auto">
-            <div className="mb-6 text-center">
-              <h2 className="text-3xl font-bold text-[#E1E1F5] mb-3 font-poppins">Loan Now</h2>
+            <div className="mb-8 text-center">
+              <h2 className="text-3xl font-bold text-[#E1E1F5] font-poppins">Loan Now</h2>
               </div>
-            <div className="flex flex-col md:flex-row gap-[55px] w-full justify-center items-stretch relative">
+            <div className="flex flex-col md:flex-row gap-8 w-full justify-center items-stretch relative">
               {/* Card Collateralize */}
               <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md flex flex-col h-full min-h-[500px] overflow-hidden">
                 {/* Overlay grain */}

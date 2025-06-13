@@ -1,37 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Navbar } from "@/components/organism/navbar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Award,
-  Clock,
-  CreditCard,
-  Gift,
-  History,
-  Trophy,
-  Wallet,
-  Settings,
-  Copy,
-  Check,
   AlertTriangle,
+  ArrowDownLeft,
+  ArrowUpRight,
+  DollarSign,
+  Clock,
+  Wallet,
 } from "lucide-react";
 import { SteamAuthButton } from "@/components/auth/steam-auth-button";
-import Link from "next/link";
 import { Footer } from "@/components/organism/footer";
 import { useAuth } from "@/hooks/use-auth";
+import { useLoanApi } from "@/hooks/use-loan-api";
 import {
   useSolanaWallets,
-  useSendTransaction,
 } from "@privy-io/react-auth/solana";
 import { LoadingOverlay } from "@/components/loading/loading-overlay";
 import {
@@ -46,24 +36,54 @@ import {
   Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
-  Transaction,
-  SystemProgram,
 } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
+interface TradeItem {
+  assetId: string;
+  marketHashName: string;
+  iconUrl: string;
+  value: number;
+}
+
+interface TradeData {
+  id: string;
+  items: TradeItem[];
+  totalValue: number;
+  status: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+interface BorrowRecord {
+  id: string;
+  userId: string;
+  walletAddress: string;
+  borrowId: string;
+  vaultAddress: string;
+  amount: number;
+  tokenMint: string;
+  status: 'pending' | 'active' | 'liquidated';
+  tradeId: string;
+  tradeStatus: string;
+  createdAt: string;
+  updatedAt: string;
+  trade?: TradeData | null;
+}
+
 export default function Profile() {
-  const [activeTab, setActiveTab] = useState("wallet");
-  const [isDepositOpen, setIsDepositOpen] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
   const [solBalance, setSolBalance] = useState<number>(0);
   const [splBalance, setSplBalance] = useState<number>(0);
+  const [loans, setLoans] = useState<BorrowRecord[]>([]);
+  const [isDepositOpen, setIsDepositOpen] = useState(false);
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [isRepayOpen, setIsRepayOpen] = useState(false);
+  const [repayAmount, setRepayAmount] = useState("");
+  const [selectedLoan, setSelectedLoan] = useState<BorrowRecord | null>(null);
+  
   const { profile, isAuthenticated, isLoading } = useAuth();
   const { wallets } = useSolanaWallets();
-  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
-  const [withdrawAddress, setWithdrawAddress] = useState("");
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const { sendTransaction } = useSendTransaction();
+  const { getUserLoans, repayPartialLoan, isLoading: loanLoading } = useLoanApi();
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -83,7 +103,6 @@ export default function Profile() {
     };
 
     fetchBalance();
-    // Refresh balance every 30 seconds
     const interval = setInterval(fetchBalance, 30000);
     return () => clearInterval(interval);
   }, [wallets]);
@@ -121,70 +140,48 @@ export default function Profile() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleCopyAddress = () => {
-    if (wallets?.[0]?.address) {
-      navigator.clipboard.writeText(wallets[0].address);
-      setIsCopied(true);
-      toast.success("Address copied to clipboard");
-      setTimeout(() => setIsCopied(false), 2000);
+  useEffect(() => {
+    const fetchLoans = async () => {
+      if (profile?.id) {
+        const userLoans = await getUserLoans();
+        if (userLoans) {
+          setLoans(userLoans);
+        }
+      }
+    };
+
+    fetchLoans();
+  }, [profile?.id]);
+
+  const handleRepayLoan = async () => {
+    if (!selectedLoan || !repayAmount) return;
+
+    const result = await repayPartialLoan(Number(repayAmount));
+    if (result?.success) {
+      toast.success("Loan repaid successfully!");
+      setIsRepayOpen(false);
+      setRepayAmount("");
+      setSelectedLoan(null);
+      // Refresh loans
+      const userLoans = await getUserLoans();
+      if (userLoans) {
+        setLoans(userLoans);
+      }
+    } else {
+      toast.error("Failed to repay loan");
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-[#5D5FEF]/20 text-[#5D5FEF] border-[#5D5FEF]";
-      case "repaid":
-        return "bg-green-500/20 text-green-500 border-green-500";
-      case "overdue":
-        return "bg-red-500/20 text-red-500 border-red-500";
+        return "bg-green-500/20 text-green-400 border-green-400";
+      case "pending":
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-400";
+      case "liquidated":
+        return "bg-red-500/20 text-red-400 border-red-400";
       default:
         return "bg-gray-500/20 text-gray-400 border-gray-400";
-    }
-  };
-
-  // Withdraw handler
-  const handleWithdraw = async () => {
-    if (!wallets?.[0]?.address || !withdrawAddress || !withdrawAmount) {
-      toast.error("Please fill in all fields.");
-      return;
-    }
-    setIsWithdrawing(true);
-    try {
-      const connection = new Connection(
-        "https://api.devnet.solana.com",
-        "confirmed",
-      );
-      const fromPubkey = new PublicKey(wallets[0].address);
-      const toPubkey = new PublicKey(withdrawAddress);
-      const lamports = Math.floor(Number(withdrawAmount) * LAMPORTS_PER_SOL);
-
-      // Create the transaction
-      const tx = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey,
-          toPubkey,
-          lamports,
-        }),
-      );
-
-      // Fetch the recent blockhash and set it in the transaction
-      const { blockhash } = await connection.getLatestBlockhash("confirmed");
-      tx.recentBlockhash = blockhash;
-      tx.feePayer = fromPubkey;
-
-      // Send the transaction
-      const receipt = await sendTransaction({ transaction: tx, connection });
-      await connection.confirmTransaction(receipt.signature, "confirmed");
-
-      toast.success("Withdrawal successful!");
-      setIsWithdrawOpen(false);
-      setWithdrawAddress("");
-      setWithdrawAmount("");
-    } catch (e) {
-      toast.error("Withdrawal failed: " + (e instanceof Error ? e.message : e));
-    } finally {
-      setIsWithdrawing(false);
     }
   };
 
@@ -202,16 +199,7 @@ export default function Profile() {
               <CardTitle className="text-2xl font-bold mb-2">
                 Please connect your wallet
               </CardTitle>
-              <CardDescription className="text-gray-400 mb-4">
-                You need to connect your wallet to view your profile
-              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white">
-                <Wallet className="mr-2" />
-                Connect Wallet
-              </Button>
-            </CardContent>
           </Card>
         </main>
         <Footer />
@@ -221,277 +209,205 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen flex flex-col text-white">
-      <main className="flex-1 flex flex-col items-center justify-center">
+      <main className="flex-1 container mx-auto px-4 py-12">
         <LoadingOverlay
           isLoading={isLoading}
           message="Loading your profile..."
           opacity={0.7}
         />
-        <section className="pt-16 pb-16 px-2 sm:px-4 flex-1 w-full">
-          <div className="mx-auto w-full max-w-[830px]">
-            <div className="text-left mb-6">
-              <h1 className="text-3xl font-bold text-[#E1E1F5] font-poppins">
-                Dashboard
-              </h1>
+        
+        <div className="max-w-4xl mx-auto">
+        <div className="text-left mb-8">
+          <h1 className="text-3xl font-bold text-[#E1E1F5] font-poppins">
+            Dashboard
+          </h1>
+        </div>
+
+        {/* Profile Header */}
+        <Card className="relative bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden mb-8">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-5 opacity-[.05]"
+            style={{
+              backgroundImage: "url('/grainbg.avif')",
+              backgroundRepeat: "repeat",
+            }}
+          />
+          
+          {!isLoading && !profile?.steamId && (
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
+              <AlertTriangle size={32} className="text-yellow-500 mb-2" />
+              <h3 className="text-lg font-medium text-white mb-1 text-center">
+                Steam Account Required
+              </h3>
+              <p className="text-sm text-gray-300 text-center mb-4">
+                Connect your Steam account to access all features.
+              </p>
+              <div className="scale-110">
+                <SteamAuthButton />
+              </div>
             </div>
-            <div className="flex flex-col md:flex-row gap-10 mb-4 items-stretch justify-center w-full max-w-3xl mx-auto">
-              {/* Profile Card */}
-              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden flex flex-col min-h-[520px]">
-                {/* Overlay grain */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
-                  style={{
-                    backgroundImage: "url('/grainbg.avif')",
-                    backgroundRepeat: "repeat",
-                  }}
-                />
-                {!profile?.steamId && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
-                    <AlertTriangle size={32} className="text-yellow-500 mb-2" />
-                    <h3 className="text-lg font-medium text-white mb-1 text-center">
-                      Steam Account Required
-                    </h3>
-                    <p className="text-sm text-gray-300 text-center mb-4">
-                      Connect your Steam account to access all features.
-                    </p>
-                    <div className="scale-110">
-                      <SteamAuthButton />
-                    </div>
-                  </div>
-                )}
-                <CardHeader className="flex flex-col items-center gap-2">
-                  <div className="w-24 h-24 rounded-full bg-muted overflow-hidden mb-2">
-                    <img
-                      src={profile?.avatar || "/avatars/logo-black.svg"}
-                      alt="Profile"
-                      className="w-full h-full object-cover bg-black"
-                    />
-                  </div>
-                  <CardTitle className="text-xl font-bold">
+          )}
+
+          <CardContent className="p-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 rounded-full overflow-hidden">
+                  <img
+                    src={profile?.avatar || "/avatars/logo-black.svg"}
+                    alt="Profile"
+                    className="w-full h-full object-cover bg-black"
+                  />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">
                     {profile?.username || "Anonymous"}
-                  </CardTitle>
-                  <div className="flex items-center gap-1 mb-2">
-                    <Award className="text-amber-600" />
-                    <span className="text-amber-600">New User</span>
+                  </h2>
+                  <p className="text-gray-400 text-sm">Member since 2024</p>
+                </div>
+              </div>
+
+              <div className="flex gap-8">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white">{splBalance.toFixed(2)}</div>
+                  <div className="text-gray-400 text-sm">USDC Balance</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white">{loans.filter(l => l.status === 'active').length}</div>
+                  <div className="text-gray-400 text-sm">Active Loans</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white">
+                    ${loans.filter(l => l.status === 'active').reduce((sum, loan) => sum + loan.amount, 0).toFixed(2)}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="w-full bg-muted rounded-lg p-3 flex justify-between mb-4">
-                    <div className="text-center">
-                      <div className="text-sm text-gray-400">Rank</div>
-                      <div className="font-bold">#-</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-gray-400">Points</div>
-                      <div className="font-bold text-[#5D5FEF]">0</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm text-gray-400">Loans</div>
-                      <div className="font-bold">0</div>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex flex-col gap-2">
-                    <Link href="/settings">
-                      <Button
-                        variant="outline"
-                        className="w-full border-[#2A2A2A] text-gray-300 hover:text-white"
-                      >
-                        <Settings size={16} className="mr-2" />
-                        Account Settings
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Tabs Card */}
-              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden flex flex-col min-h-[520px]">
-                {/* Overlay grain */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
-                  style={{
-                    backgroundImage: "url('/grainbg.avif')",
-                    backgroundRepeat: "repeat",
-                  }}
-                />
-                <Tabs
-                  defaultValue="wallet"
-                  value={activeTab}
-                  onValueChange={setActiveTab}
-                >
-                  <CardHeader className="pb-0">
-                    <TabsList className="grid grid-cols-3">
-                      <TabsTrigger
-                        value="wallet"
-                        className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white"
-                      >
-                        <Wallet size={16} className="mr-2" />
-                        Wallet
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="history"
-                        className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white"
-                      >
-                        <History size={16} className="mr-2" />
-                        History
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="badges"
-                        className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white"
-                      >
-                        <Gift size={16} className="mr-2" />
-                        Badges
-                      </TabsTrigger>
-                    </TabsList>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <TabsContent value="wallet" className="mt-0 animate-appear">
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Carte SPL Token */}
-                          <Card className="border-muted bg-[#23232a]">
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center gap-2">
-                                <img
-                                  src="/usdc-logo.png" // Place l'image dans public/usdc-logo.png
-                                  alt="USDC"
-                                  className="w-5 h-5 rounded-full"
-                                />
-                                <span className="font-medium">USDC</span>
-                                <span className="ml-auto text-xs text-gray-400">
-                                  4KNx...vSSj
-                                </span>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="text-2xl font-bold">
-                                {splBalance.toFixed(2)} USDC
-                              </div>
-                            </CardContent>
-                          </Card>
-                          {/* Carte Huch Coin */}
-                          <Card className="border-muted bg-[#23232a]">
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center gap-2">
-                                <img
-                                  src="/huch-coin.png" // Place l'image dans public/huch-coin.png
-                                  alt="Huch Coin"
-                                  className="w-7 h-7 rounded-full"
-                                />
-                                <span className="font-medium">Huch Point</span>
-                                <span className="ml-auto text-xs text-gray-400">
-                                  POINT
-                                </span>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="text-2xl font-bold">0 POINT</div>
-                            </CardContent>
-                          </Card>
-                        </div>
-
-                        <div className="flex flex-col gap-3">
-                          <Button
-                            className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white font-bold"
-                            onClick={() => setIsDepositOpen(true)}
-                          >
-                            <Wallet className="mr-2" />
-                            Deposit SOL
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="border-muted text-gray-400 hover:text-white hover:border-white"
-                            onClick={() => setIsWithdrawOpen(true)}
-                          >
-                            <CreditCard className="mr-2" />
-                            Withdraw SOL
-                          </Button>
-                        </div>
-
-                        <Card className="p-0 bg-[#18181b] border border-muted">
-                          <CardHeader className="pb-2">
-                            <div className="flex items-center gap-2">
-                              <Clock className="text-[#5D5FEF]" />
-                              <span className="font-medium">
-                                Connected Wallet
-                              </span>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            {wallets?.[0] ? (
-                              <div className="space-y-2">
-                                <div className="flex justify-between">
-                                  <span className="text-gray-400">
-                                    Address:
-                                  </span>
-                                  <span className="font-mono text-sm">
-                                    {`${wallets[0].address.substring(0, 6)}...${wallets[0].address.substring(
-                                      wallets[0].address.length - 4,
-                                    )}`}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-gray-400">
-                                    Network:
-                                  </span>
-                                  <span className="font-bold">
-                                    Solana Devnet
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-gray-400">
-                                No wallet connected
-                              </p>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent
-                      value="history"
-                      className="mt-0 animate-appear"
-                    >
-                      <Card className="bg-[#18181b] border border-muted">
-                        <CardContent>
-                          <div className="text-center py-8">
-                            <p className="text-gray-400">
-                              No transaction history
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    <TabsContent value="badges" className="mt-0 animate-appear">
-                      <Card className="bg-[#18181b] border border-muted">
-                        <CardContent>
-                          <div className="flex items-center justify-center py-8">
-                            <p className="text-gray-400">No badges earned</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-                  </CardContent>
-                </Tabs>
-              </Card>
+                  <div className="text-gray-400 text-sm">Total Borrowed</div>
+                </div>
+              </div>
             </div>
-          </div>
-        </section>
+
+            <div className="flex gap-4 mt-6">
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                onClick={() => setIsDepositOpen(true)}
+              >
+                <ArrowDownLeft size={16} />
+                Deposit
+              </Button>
+              <Button
+                variant="outline"
+                className="border-gray-600 text-gray-300 hover:text-white hover:border-white flex items-center gap-2"
+                onClick={() => setIsWithdrawOpen(true)}
+              >
+                <ArrowUpRight size={16} />
+                Withdraw
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Active Loans Section */}
+        <Card className="relative bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-5 opacity-[.05]"
+            style={{
+              backgroundImage: "url('/grainbg.avif')",
+              backgroundRepeat: "repeat",
+            }}
+          />
+          
+          <CardHeader>
+            <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
+              <DollarSign size={20} />
+              Active Loans
+            </CardTitle>
+          </CardHeader>
+          
+          <CardContent>
+            {loanLoading ? (
+              <div className="text-center py-8 text-gray-400">Loading loans...</div>
+            ) : loans.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                No active loans found
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {loans.map((loan) => (
+                  <Card key={loan.id} className="bg-[#18181b] border-gray-700">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4">
+                          {loan.trade?.items?.[0] && (
+                            <img 
+                              src={loan.trade.items[0].iconUrl} 
+                              alt={loan.trade.items[0].marketHashName}
+                              className="w-16 h-16 object-contain rounded"
+                            />
+                          )}
+                          <div className="flex flex-col gap-2">
+                            <div>
+                              <div className="font-medium text-white">
+                                ${loan.amount.toFixed(2)} USDC
+                              </div>
+                              {loan.trade?.items?.[0] && (
+                                <div className="text-sm text-gray-300 max-w-[300px] truncate">
+                                  {loan.trade.items[0].marketHashName}
+                                </div>
+                              )}
+                              <div className="text-sm text-gray-400">
+                                ID: {loan.borrowId.slice(0, 8)}...
+                              </div>
+                            </div>
+                            <div className={`px-2 py-1 rounded text-xs border ${getStatusColor(loan.status)} w-fit`}>
+                              {loan.status.toUpperCase()}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <div className="text-sm text-gray-400">Created</div>
+                            <div className="text-sm text-white">
+                              {new Date(loan.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                          
+                          <div className="text-right">
+                            <div className="text-sm text-gray-400">Trade</div>
+                            <div className={`text-sm ${loan.tradeStatus === 'accepted' ? 'text-green-400' : 'text-yellow-400'}`}>
+                              {loan.tradeStatus || 'pending'}
+                            </div>
+                          </div>
+                          
+                          {loan.status === 'active' && (
+                            <Button
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              onClick={() => {
+                                setSelectedLoan(loan);
+                                setIsRepayOpen(true);
+                              }}
+                            >
+                              Repay
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Deposit Modal */}
         <Dialog open={isDepositOpen} onOpenChange={setIsDepositOpen}>
           <DialogContent className="sm:max-w-md bg-[#1E1E1E] border-[#2A2A2A]">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold">
-                Deposit SOL
-              </DialogTitle>
+              <DialogTitle className="text-xl font-bold">Deposit SOL</DialogTitle>
               <DialogDescription className="text-gray-400">
-                Send SOL to your wallet address below. Make sure to use the
-                Solana Devnet network.
+                Send SOL to your wallet address. Use Solana Devnet network.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col items-center space-y-4 py-4">
@@ -504,24 +420,8 @@ export default function Profile() {
                       className="w-48 h-48"
                     />
                   </Card>
-                  <Card className="w-full bg-[#23232a] border border-[#2A2A2A] p-0">
-                    <CardContent className="flex items-center gap-2 p-3">
-                      <code className="text-sm text-gray-300 flex-1 overflow-hidden text-ellipsis">
-                        {wallets[0].address}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-400 hover:text-white"
-                        onClick={handleCopyAddress}
-                      >
-                        {isCopied ? <Check size={16} /> : <Copy size={16} />}
-                      </Button>
-                    </CardContent>
-                  </Card>
                   <div className="text-sm text-gray-400 text-center">
-                    <p>Minimum deposit: 0.1 SOL</p>
-                    <p className="mt-1">Network: Solana Devnet</p>
+                    <p>Network: Solana Devnet</p>
                   </div>
                 </>
               )}
@@ -533,43 +433,53 @@ export default function Profile() {
         <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
           <DialogContent className="sm:max-w-md bg-[#1E1E1E] border-[#2A2A2A]">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold">
-                Withdraw SOL
-              </DialogTitle>
+              <DialogTitle className="text-xl font-bold">Withdraw SOL</DialogTitle>
               <DialogDescription className="text-gray-400">
-                Enter the destination address and amount to send SOL on Solana
-                Devnet.
+                Withdraw functionality coming soon.
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
+
+        {/* Repay Modal */}
+        <Dialog open={isRepayOpen} onOpenChange={setIsRepayOpen}>
+          <DialogContent className="sm:max-w-md bg-[#1E1E1E] border-[#2A2A2A]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold">Repay Loan</DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Enter the amount you want to repay for this loan.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-4 py-4">
-              <input
-                type="text"
-                placeholder="Destination address"
-                className="w-full p-3 rounded-lg bg-[#23232a] text-white border border-[#2A2A2A] focus:outline-none"
-                value={withdrawAddress}
-                onChange={(e) => setWithdrawAddress(e.target.value)}
-                disabled={isWithdrawing}
-              />
+              {selectedLoan && (
+                <div className="p-3 bg-[#23232a] rounded-lg">
+                  <div className="text-sm text-gray-400">Loan Amount</div>
+                  <div className="text-lg font-bold text-white">
+                    ${selectedLoan.amount.toFixed(2)} USDC
+                  </div>
+                </div>
+              )}
               <input
                 type="number"
                 min="0"
-                step="0.0001"
-                placeholder="Amount (SOL)"
+                step="0.01"
+                placeholder="Amount to repay (USDC)"
                 className="w-full p-3 rounded-lg bg-[#23232a] text-white border border-[#2A2A2A] focus:outline-none"
-                value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(e.target.value)}
-                disabled={isWithdrawing}
+                value={repayAmount}
+                onChange={(e) => setRepayAmount(e.target.value)}
+                disabled={loanLoading}
               />
               <Button
                 className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white font-bold w-full mt-2"
-                onClick={handleWithdraw}
-                disabled={isWithdrawing}
+                onClick={handleRepayLoan}
+                disabled={loanLoading || !repayAmount}
               >
-                {isWithdrawing ? "Sending..." : "Send SOL"}
+                {loanLoading ? "Processing..." : "Repay Loan"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </main>
       <Footer />
     </div>
