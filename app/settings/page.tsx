@@ -101,7 +101,9 @@ export default function Settings() {
                 }
 
                 // Recharger les données utilisateur
-                reloadUserData();
+                if (reloadUserData) {
+                  reloadUserData();
+                }
                 return; // Arrêter le polling une fois l'email mis à jour
               } catch (apiError) {
                 console.error("Error calling API:", apiError);
@@ -112,7 +114,9 @@ export default function Settings() {
             } else {
               console.log("Max attempts reached, email not detected");
               // Recharger les données utilisateur une dernière fois
-              reloadUserData();
+              if (reloadUserData) {
+                reloadUserData();
+              }
             }
           } else if (attempts < maxAttempts) {
             // Continuer le polling si le nombre maximum de tentatives n'est pas atteint
@@ -120,7 +124,9 @@ export default function Settings() {
           } else {
             console.log("Max attempts reached, user not available");
             // Recharger les données utilisateur une dernière fois
-            reloadUserData();
+            if (reloadUserData) {
+              reloadUserData();
+            }
           }
         }, pollInterval);
       };

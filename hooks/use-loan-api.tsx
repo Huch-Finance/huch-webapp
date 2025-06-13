@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
+import { useSPLTransactions } from "@/hooks/use-spl-transactions"
 import { SteamItem } from "@/hooks/use-steam-inventory"
 
 interface CreateLoanParams {
@@ -61,6 +62,7 @@ interface RepayResponse {
 
 export function useLoanApi() {
   const { profile } = useAuth()
+  const { repayLoan: splRepayLoan } = useSPLTransactions()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -144,7 +146,66 @@ export function useLoanApi() {
     }
   }
 
-  const repayPartialLoan = async (amount: number): Promise<RepayResponse | null> => {
+  const getBorrowBlockchainState = async (borrowId: string): Promise<any | null> => {
+    if (!profile?.id) {
+      console.log("User not authenticated")
+      return null
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3333/solana/borrow-state/${borrowId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Privy-Id': profile.id
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.log(`Failed to fetch blockchain state for ${borrowId}:`, errorData.error)
+        return null
+      }
+
+      const data = await response.json()
+      return data.blockchainData || null
+    } catch (err) {
+      console.log("Network error when fetching blockchain state:", err)
+      return null
+    }
+  }
+
+  const getBorrowDetails = async (borrowId: string): Promise<any | null> => {
+    if (!profile?.id) {
+      setError("User not authenticated")
+      return null
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3333/solana/borrow-details/${borrowId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Privy-Id': profile.id
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        setError(errorData.error || "Failed to fetch borrow details")
+        return null
+      }
+
+      const data = await response.json()
+      return data.borrow || null
+    } catch (err) {
+      setError("Network error when fetching borrow details")
+      console.error("Error fetching borrow details:", err)
+      return null
+    }
+  }
+
+  const repayPartialLoan = async (amount: number, loanId?: string): Promise<RepayResponse | null> => {
     if (!profile?.id || !profile?.wallet) {
       setError("User not authenticated or missing wallet")
       return null
@@ -154,28 +215,21 @@ export function useLoanApi() {
     setError(null)
 
     try {
-      const response = await fetch('http://localhost:3333/solana/repay-partial', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id
-        },
-        body: JSON.stringify({
-          amount,
-          userWallet: profile.wallet
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        setError(errorData.error || "Failed to repay loan")
+      // Use SPL transaction hook for actual token transfer
+      const result = await splRepayLoan(amount, loanId || 'unknown')
+      
+      if (result.success) {
+        return {
+          success: true,
+          message: `Successfully repaid ${amount} USDC`,
+          signature: result.signature
+        }
+      } else {
+        setError(result.error || "Failed to repay loan")
         return null
       }
-
-      const data: RepayResponse = await response.json()
-      return data
-    } catch (err) {
-      setError("Network error when repaying loan")
+    } catch (err: any) {
+      setError("Error when repaying loan: " + err.message)
       console.error("Error repaying loan:", err)
       return null
     } finally {
@@ -186,6 +240,8 @@ export function useLoanApi() {
   return {
     createLoan,
     getUserLoans,
+    getBorrowDetails,
+    getBorrowBlockchainState,
     repayPartialLoan,
     isLoading,
     error

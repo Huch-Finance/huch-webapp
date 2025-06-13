@@ -258,7 +258,7 @@ export function useAuth() {
     const userProfile: UserProfile = {
       id: user?.id || "",
       email: user?.email?.address,
-      wallet: solanaWallet?.address || wallets?.[0]?.address,
+      wallet: solanaWallet?.address, // Prioriser uniquement Solana wallet
       steamId: undefined,
       username: cachedUsername || undefined,
       avatar: cachedAvatar || undefined,
@@ -274,11 +274,11 @@ export function useAuth() {
       isRegisteringRef.current = true;
       hasLoadedUserDataRef.current = true;
       
-      // If we have wallets, register and load data  
+      // If we have Solana wallets, register and load data  
       const solanaAddr = solanaWallets.wallets.length > 0 ? solanaWallets.wallets[0].address : null
-      if (wallets && wallets.length > 0 && (solanaAddr || wallets[0]?.address)) {
-        console.log('Registering user with wallet');
-        registerUserInDatabase(user.id, solanaAddr || wallets[0].address)
+      if (solanaAddr) {
+        console.log('Registering user with Solana wallet');
+        registerUserInDatabase(user.id, solanaAddr)
           .then(() => {
             return reloadUserData();
           })
@@ -298,36 +298,33 @@ export function useAuth() {
     }
   }, [ready, authenticated, user, solanaWallets.wallets])
 
-  // Separate effect to handle wallet registration when wallets become available
+  // Separate effect to handle wallet registration when Solana wallets become available
   useEffect(() => {
     const solanaAddr = solanaWallets.wallets.length > 0 ? solanaWallets.wallets[0].address : null
-    const walletToUse = solanaAddr || wallets?.[0]?.address
     
     if (
       ready && 
       authenticated && 
       user && 
-      wallets && 
-      wallets.length > 0 && 
-      walletToUse && 
+      solanaAddr && 
       !isRegisteringRef.current && 
       profile && 
       !profile.wallet
     ) {
-      console.log('Wallet became available, registering user with wallet');
+      console.log('Solana wallet became available, registering user');
       isRegisteringRef.current = true;
       
-      registerUserInDatabase(user.id, walletToUse)
+      registerUserInDatabase(user.id, solanaAddr)
         .then(() => {
-          // Update profile with wallet
-          setProfile(prev => prev ? { ...prev, wallet: walletToUse } : null);
+          // Update profile with Solana wallet
+          setProfile(prev => prev ? { ...prev, wallet: solanaAddr } : null);
           return reloadUserData();
         })
         .finally(() => {
           isRegisteringRef.current = false;
         });
     }
-  }, [ready, authenticated, user, wallets, solanaWallets.wallets, profile?.wallet])
+  }, [ready, authenticated, user, solanaWallets.wallets, profile?.wallet])
 
   // Function to update user profile
   const updateProfile = async (data: Partial<UserProfile>) => {
