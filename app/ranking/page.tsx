@@ -21,76 +21,86 @@ import { LoadingOverlay } from "@/components/loading/loading-overlay";
 const LEADERBOARD = [
   {
     id: 1,
-    username: "xXDragonSlayerXx",
+    steamId: "76561198055988469",
+    steamUser: "xXDragonSlayerXx",
     points: 1250,
     badge: "Gold",
-    avatar: "/avatars/crown-pixel.webp",
+    steamAvatar: "/avatars/crown-pixel.webp",
   },
   {
     id: 2,
-    username: "HeadshotQueen",
+    steamId: "76561198055988470",
+    steamUser: "HeadshotQueen",
     points: 1120,
     badge: "Gold",
-    avatar: "/avatars/purple-eye.jpeg",
+    steamAvatar: "/avatars/purple-eye.jpeg",
   },
   {
     id: 3,
-    username: "NinjaDefuser",
+    steamId: "76561198055988471",
+    steamUser: "NinjaDefuser",
     points: 980,
     badge: "Gold",
-    avatar: "/avatars/balaclava.jpeg",
+    steamAvatar: "/avatars/balaclava.jpeg",
   },
   {
     id: 4,
-    username: "AWPmaster2000",
+    steamId: "76561198055988472",
+    steamUser: "AWPmaster2000",
     points: 850,
     badge: "Silver",
-    avatar: "/avatars/rabbit-warrior.png",
+    steamAvatar: "/avatars/rabbit-warrior.png",
   },
   {
     id: 5,
-    username: "FragMachine",
+    steamId: "76561198055988473",
+    steamUser: "FragMachine",
     points: 720,
     badge: "Silver",
-    avatar: "/avatars/psyoch.jpeg",
+    steamAvatar: "/avatars/psyoch.jpeg",
   },
   {
     id: 6,
-    username: "ClutchKing",
+    steamId: "76561198055988474",
+    steamUser: "ClutchKing",
     points: 680,
     badge: "Silver",
-    avatar: "/avatars/totoro.png",
+    steamAvatar: "/avatars/totoro.png",
   },
   {
     id: 7,
-    username: "SprayControl",
+    steamId: "76561198055988475",
+    steamUser: "SprayControl",
     points: 550,
     badge: "Bronze",
-    avatar:
+    steamAvatar:
       "https://preview.redd.it/a-steam-avatar-disappeared-from-my-account-v0-lm50a5y65gse1.png?width=184&format=png&auto=webp&s=749833429c70e19910caf0d993cb56bb54219f1c",
   },
   {
     id: 8,
-    username: "BombPlanter",
+    steamId: "76561198055988476",
+    steamUser: "BombPlanter",
     points: 490,
     badge: "Bronze",
-    avatar:
+    steamAvatar:
       "https://cdn4.iconfinder.com/data/icons/steampunk-vintage-metal-steam/100/steampunk_male_vintage_avatar_metal_steam-512.png",
   },
   {
     id: 9,
-    username: "SmokeThrow",
+    steamId: "76561198055988477",
+    steamUser: "SmokeThrow",
     points: 420,
     badge: "Bronze",
-    avatar:
+    steamAvatar:
       "https://i.pinimg.com/564x/55/1f/ff/551fff636303fb8a696c213736ddc09e.jpg",
   },
   {
     id: 10,
-    username: "FlashBang",
+    steamId: "76561198055988478",
+    steamUser: "FlashBang",
     points: 380,
     badge: "Bronze",
-    avatar:
+    steamAvatar:
       "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f5b8366a-d1b6-4447-b0b0-e1ba61bbb5ad/d8c9e4k-d80c27fa-1eef-43c0-b0d3-c0f87070b6f5.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiJcL2ZcL2Y1YjgzNjZhLWQxYjYtNDQ0Ny1iMGIwLWUxYmE2MWJiYjVhZFwvZDhjOWU0ay1kODBjMjdmYS0xZWVmLTQzYzAtYjBkMy1jMGY4NzA3MGI2ZjUucG5nIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmZpbGUuZG93bmxvYWQiXX0.4p6W32n2zeZauo15oUp--WLTbi-a_LvuRlmPgKH4FTY",
   },
 ];
@@ -132,6 +142,14 @@ export default function Classement() {
         if (response.ok) {
           const data: LeaderboardResponse = await response.json();
           console.log("Leaderboard data:", data);
+          console.log("Leaderboard users:", data.leaderboard?.map(user => ({
+            id: user.id,
+            steamUser: user.steamUser,
+            username: (user as any).username,
+            steamAvatar: user.steamAvatar,
+            points: user.points
+          })));
+          console.log("Current user data:", data.user);
           setApiData(data);
         } else {
           console.error(
@@ -215,11 +233,13 @@ export default function Classement() {
   return (
     <div className="min-h-screen flex flex-col text-white">
       <main className="flex-1 flex flex-col items-center justify-center">
-        <section className="pt-24 pb-16 px-2 sm:px-4 flex-1 w-full">
+        <section className="pt-16 pb-16 px-2 sm:px-4 flex-1 w-full">
           <div className="mx-auto w-full max-w-[830px]">
-            <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">
-              <span className="neon-text text-[#5D5FEF]">Huch.</span> Ranking
-            </h1>
+            <div className="text-left mb-6">
+              <h1 className="text-3xl font-bold text-[#E1E1F5] font-poppins">
+                Ranking
+              </h1>
+            </div>
 
             {/* Tabs */}
             <div className="flex justify-center mb-8">
@@ -251,10 +271,19 @@ export default function Classement() {
             {activeTab === "top10" && (
               <div className="animate-appear">
                 {/* User Progress Card */}
-                <Card className="mb-8 border-muted bg-[#1E1E1E] overflow-hidden relative">
+                <Card className="relative mb-8 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden">
+                  {/* Grain texture overlay */}
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 z-5 opacity-[.05]"
+                    style={{
+                      backgroundImage: "url('/grainbg.avif')",
+                      backgroundRepeat: "repeat",
+                    }}
+                  />
                   {/* Masque pour utilisateur non connecté */}
                   {!isUserConnected && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center rounded-lg p-4">
                       <AlertTriangle
                         size={32}
                         className="text-yellow-500 mb-2"
@@ -278,7 +307,7 @@ export default function Classement() {
 
                   {/* Masque pour utilisateur sans Steam */}
                   {isUserConnected && !hasSteamLinked && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center rounded-lg p-4">
                       <AlertTriangle
                         size={32}
                         className="text-yellow-500 mb-2"
@@ -296,17 +325,19 @@ export default function Classement() {
                     </div>
                   )}
 
-                  <CardHeader className="bg-muted py-4">
-                    <CardTitle className="text-lg flex items-center justify-between">
-                      <span>Your Ranking</span>
-                      {isUserConnected && hasSteamLinked && currentUser && (
-                        <span className="text-[#5D5FEF] font-bold">
-                          #{currentUser.rank || 1}
-                        </span>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
+                  {/* Card content wrapper */}
+                  <div className="relative z-20">
+                    <CardHeader className="bg-muted py-4">
+                      <CardTitle className="text-lg flex items-center justify-between">
+                        <span>Your Ranking</span>
+                        {isUserConnected && hasSteamLinked && currentUser && (
+                          <span className="text-[#5D5FEF] font-bold">
+                            #{currentUser.rank || 1}
+                          </span>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
                     {isUserConnected && hasSteamLinked && currentUser && (
                       <>
                         <div className="flex items-center gap-4 mb-4">
@@ -327,9 +358,7 @@ export default function Classement() {
                           </div>
                           <div>
                             <h3 className="font-bold">
-                              {currentUser.steamUser ||
-                                profile?.username ||
-                                "User"}
+                              {currentUser.steamUser || "Steam User"}
                             </h3>
                             <div className="flex items-center gap-1">
                               {getBadgeIcon(getUserBadge(currentUser.points))}
@@ -393,15 +422,27 @@ export default function Classement() {
                         )}
                       </>
                     )}
-                  </CardContent>
+                    </CardContent>
+                  </div>
                 </Card>
 
                 {/* Leaderboard Table */}
-                <Card className="border-muted bg-[#1E1E1E]">
-                  <CardHeader className="py-4 px-6">
-                    <CardTitle>Top 10 Champions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
+                <Card className="relative bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden">
+                  {/* Grain texture overlay */}
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 z-5 opacity-[.05]"
+                    style={{
+                      backgroundImage: "url('/grainbg.avif')",
+                      backgroundRepeat: "repeat",
+                    }}
+                  />
+                  {/* Card content wrapper */}
+                  <div className="relative z-20">
+                    <CardHeader className="py-4 px-6">
+                      <CardTitle>Top 10 Champions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead className="bg-muted text-left">
@@ -414,18 +455,16 @@ export default function Classement() {
                         </thead>
                         <tbody className="divide-y divide-muted">
                           {/* Afficher les données de l'API si disponibles, sinon utiliser les données mockées */}
-                          {(apiData?.leaderboard || LEADERBOARD).map(
-                            (player, index) => {
+                          {(apiData?.leaderboard || LEADERBOARD)
+                            .filter(player => player.steamId) // Filtrer uniquement les utilisateurs avec Steam
+                            .map((player, index) => {
                               // Déterminer le badge en fonction des points pour les données de l'API
                               const badge =
                                 "badge" in player
                                   ? player.badge
                                   : getUserBadge(player.points);
-                              // Déterminer le nom d'utilisateur
-                              const username =
-                                "username" in player
-                                  ? player.username
-                                  : player.steamUser || `User ${index + 1}`;
+                              // Utiliser prioritairement steamUser depuis la DB
+                              const username = player.steamUser || `Steam User ${index + 1}`;
                               // Déterminer l'avatar
                               const avatar =
                                 "avatar" in player
@@ -480,21 +519,22 @@ export default function Classement() {
                           )}
 
                           {/* Message si aucune donnée n'est disponible */}
-                          {!apiData?.leaderboard &&
-                            LEADERBOARD.length === 0 && (
+                          {(apiData?.leaderboard?.filter(p => p.steamId)?.length === 0 || 
+                            (!apiData?.leaderboard && LEADERBOARD.filter(p => p.steamId).length === 0)) && (
                               <tr>
                                 <td
                                   colSpan={4}
                                   className="py-8 text-center text-gray-400"
                                 >
-                                  No leaderboard data available
+                                  No Steam-connected users in ranking yet
                                 </td>
                               </tr>
                             )}
                         </tbody>
                       </table>
                     </div>
-                  </CardContent>
+                    </CardContent>
+                  </div>
                 </Card>
               </div>
             )}
@@ -504,14 +544,25 @@ export default function Classement() {
               <div className="animate-appear">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Bronze Tier */}
-                  <Card className="border-amber-600/30 bg-[#1E1E1E] hover:border-amber-600 transition-colors">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex flex-col items-center gap-2 text-center">
-                        <Award className="text-amber-600" />
-                        <span>Bronze League</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                  <Card className="relative border-amber-600/30 bg-[#0F0F2A] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden hover:border-amber-600 transition-colors">
+                    {/* Grain texture overlay */}
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 z-5 opacity-[.05]"
+                      style={{
+                        backgroundImage: "url('/grainbg.avif')",
+                        backgroundRepeat: "repeat",
+                      }}
+                    />
+                    {/* Card content wrapper */}
+                    <div className="relative z-20">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="flex flex-col items-center gap-2 text-center">
+                          <Award className="text-amber-600" />
+                          <span>Bronze League</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
                       <div className="space-y-4">
                         <div className="text-center py-2">
                           <span className="text-2xl font-bold">0 - 500</span>
@@ -543,18 +594,30 @@ export default function Classement() {
                             </div>
                           )}
                       </div>
-                    </CardContent>
+                      </CardContent>
+                    </div>
                   </Card>
 
                   {/* Silver Tier */}
-                  <Card className="border-gray-300/30 bg-[#1E1E1E] hover:border-gray-300 transition-colors">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex flex-col items-center gap-2 text-center">
-                        <Medal className="text-gray-300" />
-                        <span>Silver League</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                  <Card className="relative border-gray-300/30 bg-[#0F0F2A] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden hover:border-gray-300 transition-colors">
+                    {/* Grain texture overlay */}
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 z-5 opacity-[.05]"
+                      style={{
+                        backgroundImage: "url('/grainbg.avif')",
+                        backgroundRepeat: "repeat",
+                      }}
+                    />
+                    {/* Card content wrapper */}
+                    <div className="relative z-20">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="flex flex-col items-center gap-2 text-center">
+                          <Medal className="text-gray-300" />
+                          <span>Silver League</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
                       <div className="space-y-4">
                         <div className="text-center py-2">
                           <span className="text-2xl font-bold">500 - 1000</span>
@@ -586,18 +649,30 @@ export default function Classement() {
                             </div>
                           )}
                       </div>
-                    </CardContent>
+                      </CardContent>
+                    </div>
                   </Card>
 
                   {/* Gold Tier */}
-                  <Card className="border-yellow-400/30 bg-[#1E1E1E] hover:border-yellow-400 transition-colors">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex flex-col items-center gap-2 text-center">
-                        <Trophy className="text-yellow-400" />
-                        <span>Gold League</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                  <Card className="relative border-yellow-400/30 bg-[#0F0F2A] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden hover:border-yellow-400 transition-colors">
+                    {/* Grain texture overlay */}
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 z-5 opacity-[.05]"
+                      style={{
+                        backgroundImage: "url('/grainbg.avif')",
+                        backgroundRepeat: "repeat",
+                      }}
+                    />
+                    {/* Card content wrapper */}
+                    <div className="relative z-20">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="flex flex-col items-center gap-2 text-center">
+                          <Trophy className="text-yellow-400" />
+                          <span>Gold League</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
                       <div className="space-y-4">
                         <div className="text-center py-2">
                           <span className="text-2xl font-bold">1000+</span>
@@ -629,7 +704,8 @@ export default function Classement() {
                             </div>
                           )}
                       </div>
-                    </CardContent>
+                      </CardContent>
+                    </div>
                   </Card>
                 </div>
 

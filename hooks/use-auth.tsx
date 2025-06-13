@@ -124,7 +124,7 @@ export function useAuth() {
     console.log('Starting reloadUserData for user:', user.id);
     
     try {
-      const response = await fetch('http://localhost:3333/api/user/', {
+      const response = await fetch('http://localhost:3333/api/user', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -156,11 +156,13 @@ export function useAuth() {
             wallet: prevProfile.wallet || data.user.wallet,
           };
           if (data.user.profile) {
+            console.log('[reloadUserData] User profile data:', data.user.profile);
             if (data.user.profile.steamName) {
               updatedProfile.username = data.user.profile.steamName;
             }
             if (data.user.profile.steamAvatar) {
               updatedProfile.avatar = data.user.profile.steamAvatar;
+              console.log('[reloadUserData] Setting avatar:', data.user.profile.steamAvatar);
             }
           }
           
@@ -312,7 +314,7 @@ export function useAuth() {
     try {
       // Register in the USER API
       try {
-        const response = await fetch('http://localhost:3333/api/user/', {
+        const response = await fetch('http://localhost:3333/api/user', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

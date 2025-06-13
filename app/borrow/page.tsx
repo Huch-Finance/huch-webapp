@@ -303,8 +303,8 @@ export default function Home() {
     { value: 'Battle-Scarred', label: 'Battle-Scarred' },
   ];
 
-  // Si le profil existe mais que l'utilisateur n'est pas connecté avec Steam
-  if (profile && !profile.steamId && !isLoading) {
+  // Si l'utilisateur est authentifié mais n'a pas connecté Steam
+  if (isAuthenticated && profile && !profile.steamId && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-white">
         <h2 className="text-2xl font-bold mb-4">Connect your Steam account</h2>

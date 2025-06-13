@@ -13,6 +13,10 @@ export function Sidebar() {
   const { logout, profile } = useAuth();
   const [profileHover, setProfileHover] = useState(false);
   const { login } = useLogin();
+  
+  // Debug logging
+  console.log('[Sidebar] Profile:', profile);
+  console.log('[Sidebar] Is admin?', profile?.admin);
 
   const navigationItems = [
     {

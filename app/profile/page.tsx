@@ -227,9 +227,14 @@ export default function Profile() {
           message="Loading your profile..."
           opacity={0.7}
         />
-        <section className="flex flex-1 items-center justify-center w-full">
-          <div className="container mx-auto max-w-4xl flex flex-col items-center justify-center">
-            <div className="flex flex-col md:flex-row gap-10 mt-[50px] mb-4 items-stretch justify-center w-full max-w-3xl mx-auto">
+        <section className="pt-16 pb-16 px-2 sm:px-4 flex-1 w-full">
+          <div className="mx-auto w-full max-w-[830px]">
+            <div className="text-left mb-6">
+              <h1 className="text-3xl font-bold text-[#E1E1F5] font-poppins">
+                Dashboard
+              </h1>
+            </div>
+            <div className="flex flex-col md:flex-row gap-10 mb-4 items-stretch justify-center w-full max-w-3xl mx-auto">
               {/* Profile Card */}
               <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden flex flex-col min-h-[520px]">
                 {/* Overlay grain */}
