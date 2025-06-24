@@ -66,10 +66,10 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border font-poppins;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-poppins;
   }
 }
 
@@ -111,4 +111,34 @@
 /* Ajout d'un style pour le main qui crée un dégradé partant du bas */
 main {
   /* background: linear-gradient(to bottom, #0f0f13 0%, #1a1a1f 100%); */
+}
+
+/* Custom scrollbar styles */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #6366f1 #161e2e;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #161e2e;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #6366f1;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #5355d1;
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: #161e2e;
 }

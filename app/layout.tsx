@@ -10,6 +10,7 @@ import { MobileMenu } from "@/components/organism/hamburger";
 import { Footer } from "@/components/organism/footer";
 import { Toaster } from "sonner";
 import { BeamsBackground } from "@/components/bg/beams-background";
+import { ActiveTradeIndicator } from "@/components/trade/active-trade-indicator";
 
 const poppins = Poppins({
   weight: ["400", "500", "600", "700"],
@@ -30,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${poppins.variable} text-white relative`}>
+      <body className={`${poppins.variable} font-poppins text-white relative`}>
         {/* Background image */}
         <img
           src="/background.png"
@@ -42,6 +43,7 @@ export default function RootLayout({
         <PrivyProvider>
           <Sidebar />
           <MobileMenu />
+          <ActiveTradeIndicator />
           <ThemeProvider
             attribute="class"
             defaultTheme="system"

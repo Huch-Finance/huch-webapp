@@ -31,6 +31,16 @@ export function BorrowConfirmationModal({
   extractSkinInfo,
   onConfirm
 }: BorrowConfirmationModalProps) {
+  // Fonction pour calculer le taux d'intérêt
+  const getInterestRate = (duration: number) => {
+    const minDuration = 7
+    const maxDuration = 35
+    const minRate = 25
+    const maxRate = 32
+    
+    const rate = minRate + (maxRate - minRate) * (duration - minDuration) / (maxDuration - minDuration)
+    return Math.round(rate * 10) / 10
+  }
   // Référence pour gérer les changements d'ouverture/fermeture du modal
   const handleOpenChange = (newOpenState: boolean) => {
     // Si le modal se ferme, réinitialiser les états
@@ -259,7 +269,7 @@ export function BorrowConfirmationModal({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Interest</span>
-                <span className="text-sm font-medium">2.5%</span>
+                <span className="text-sm font-medium">{getInterestRate(loanDuration)}%</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Due date</span>
@@ -267,7 +277,7 @@ export function BorrowConfirmationModal({
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-[#2a3548] mt-2">
                 <span className="text-sm font-medium">Total to repay</span>
-                <span className="text-sm font-medium">${(loanAmount * (1 + 0.025 * loanDuration / 7)).toFixed(2)} USDC</span>
+                <span className="text-sm font-medium">${(loanAmount * (1 + getInterestRate(loanDuration) / 100)).toFixed(2)} USDC</span>
               </div>
             </div>
           </div>
@@ -326,7 +336,7 @@ export function BorrowConfirmationModal({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Amount to repay</span>
-                <span className="text-sm font-medium">${(loanAmount * (1 + 0.025 * loanDuration / 7)).toFixed(2)} USDC</span>
+                <span className="text-sm font-medium">${(loanAmount * (1 + getInterestRate(loanDuration) / 100)).toFixed(2)} USDC</span>
               </div>
             </div>
           </div>

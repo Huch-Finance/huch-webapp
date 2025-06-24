@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Footer } from "@/components/organism/footer";
 
+
 export default function AdminPage() {
   const { profile } = useAuth();
   const router = useRouter();
@@ -27,6 +28,9 @@ export default function AdminPage() {
   const [showDoubleConfirmInit, setShowDoubleConfirmInit] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawDestination, setWithdrawDestination] = useState("");
+  const [priceRefreshLoading, setPriceRefreshLoading] = useState(false);
+  const [borrowDebugId, setBorrowDebugId] = useState("");
+  const [borrowDebugLoading, setBorrowDebugLoading] = useState(false);
 
   useEffect(() => {
     // Redirige seulement si profile est non-null et pas admin
@@ -60,6 +64,7 @@ export default function AdminPage() {
     };
     fetchVault();
   }, []);
+
 
   const handleInitializeVault = async () => {
     setLoading(true);
@@ -149,6 +154,54 @@ export default function AdminPage() {
       setMessage("Erreur lors du retrait.");
     }
     setLoading(false);
+  };
+
+  const handleRefreshPrices = async () => {
+    setPriceRefreshLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch("http://localhost:3333/api/admin/refresh-prices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Privy-Id": profile?.id || "",
+        },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(`Prix rafraîchis avec succès ! ${data.itemsUpdated} items mis à jour.`);
+      } else {
+        setMessage(data.error || "Erreur lors du rafraîchissement des prix.");
+      }
+    } catch (e) {
+      setMessage("Erreur lors du rafraîchissement des prix.");
+    }
+    setPriceRefreshLoading(false);
+  };
+
+  const handleDebugBorrowState = async () => {
+    setBorrowDebugLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch("http://localhost:3333/api/admin/debug-borrow-state", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Privy-Id": profile?.id || "",
+        },
+        body: JSON.stringify({ borrowId: borrowDebugId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(`✅ Debug borrow state completed for ${borrowDebugId}. Check the server console for detailed logs.`);
+        setBorrowDebugId("");
+      } else {
+        setMessage(data.error || "Erreur lors du debug du borrow state.");
+      }
+    } catch (e) {
+      setMessage("Erreur lors du debug du borrow state.");
+    }
+    setBorrowDebugLoading(false);
   };
 
   if (profile === undefined || !profile?.admin) {
@@ -263,6 +316,8 @@ export default function AdminPage() {
             <CardContent className="flex flex-col gap-2">
               <Input
                 type="number"
+                step="0.01"
+                min="0"
                 placeholder="Montant"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
@@ -295,6 +350,8 @@ export default function AdminPage() {
             <CardContent className="flex flex-col gap-2">
               <Input
                 type="number"
+                step="0.01"
+                min="0"
                 placeholder="Montant"
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
@@ -318,6 +375,59 @@ export default function AdminPage() {
               </Button>
             </CardContent>
           </Card>
+          {/* Price Refresh Card */}
+          <Card className="bg-[#18181b] border-[#232323] text-white col-span-1">
+            <CardHeader>
+              <CardTitle>Rafraîchir les Prix</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4">
+                <p className="text-sm text-gray-400">
+                  Les prix sont normalement mis à jour automatiquement toutes les 10 minutes. 
+                  Utilisez ce bouton pour forcer une mise à jour immédiate des prix populaires.
+                </p>
+                <Button
+                  onClick={handleRefreshPrices}
+                  disabled={priceRefreshLoading}
+                  className="w-full"
+                  variant="default"
+                >
+                  {priceRefreshLoading ? "Rafraîchissement en cours..." : "Rafraîchir les prix maintenant"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Borrow State Debug Card */}
+          <Card className="bg-[#18181b] border-[#232323] text-white col-span-1">
+            <CardHeader>
+              <CardTitle>Debug Borrow State</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4">
+                <p className="text-sm text-gray-400">
+                  Vérifier l'état d'un borrow dans la blockchain. Les détails complets s'affichent dans la console du serveur backend.
+                </p>
+                <Input
+                  type="text"
+                  placeholder="Borrow ID (ex: w0oic5xHdGj8RfiSLJik)"
+                  value={borrowDebugId}
+                  onChange={(e) => setBorrowDebugId(e.target.value)}
+                  disabled={borrowDebugLoading}
+                  className="bg-[#232323] border-[#232323] text-white"
+                />
+                <Button
+                  onClick={handleDebugBorrowState}
+                  disabled={borrowDebugLoading || !borrowDebugId.trim()}
+                  className="w-full"
+                  variant="default"
+                >
+                  {borrowDebugLoading ? "Debug en cours..." : "Debug Borrow State"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
         </div>
 
         {/* Message */}

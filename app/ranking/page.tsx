@@ -288,10 +288,10 @@ export default function Classement() {
                         size={32}
                         className="text-yellow-500 mb-2"
                       />
-                      <h3 className="text-lg font-medium text-white mb-1 text-center">
+                      <h3 className="text-lg font-medium text-white mb-1 text-center font-poppins">
                         Authentication Required
                       </h3>
-                      <p className="text-sm text-gray-300 text-center mb-4">
+                      <p className="text-sm text-gray-300 text-center mb-4 font-poppins">
                         Connect your wallet to view your ranking and earn
                         points.
                       </p>
@@ -312,10 +312,10 @@ export default function Classement() {
                         size={32}
                         className="text-yellow-500 mb-2"
                       />
-                      <h3 className="text-lg font-medium text-white mb-1 text-center">
+                      <h3 className="text-lg font-medium text-white mb-1 text-center font-poppins">
                         Steam Account Required
                       </h3>
-                      <p className="text-sm text-gray-300 text-center mb-4">
+                      <p className="text-sm text-gray-300 text-center mb-4 font-poppins">
                         Connect your Steam account to participate in the ranking
                         system.
                       </p>
@@ -329,9 +329,9 @@ export default function Classement() {
                   <div className="relative z-20">
                     <CardHeader className="bg-muted py-4">
                       <CardTitle className="text-lg flex items-center justify-between">
-                        <span>Your Ranking</span>
+                        <span className="font-poppins">Your Ranking</span>
                         {isUserConnected && hasSteamLinked && currentUser && (
-                          <span className="text-[#5D5FEF] font-bold">
+                          <span className="text-[#5D5FEF] font-bold font-poppins">
                             #{currentUser.rank || 1}
                           </span>
                         )}
@@ -357,7 +357,7 @@ export default function Classement() {
                             />
                           </div>
                           <div>
-                            <h3 className="font-bold">
+                            <h3 className="font-bold font-poppins">
                               {currentUser.steamUser || "Steam User"}
                             </h3>
                             <div className="flex items-center gap-1">
@@ -370,10 +370,10 @@ export default function Classement() {
                             </div>
                           </div>
                           <div className="ml-auto text-right">
-                            <div className="text-2xl font-bold text-[#5D5FEF]">
+                            <div className="text-2xl font-bold text-[#5D5FEF] font-poppins">
                               {currentUser.points}
                             </div>
-                            <div className="text-sm text-gray-400">points</div>
+                            <div className="text-sm text-gray-400 font-poppins">points</div>
                           </div>
                         </div>
 
@@ -381,11 +381,11 @@ export default function Classement() {
                         {getPointsToNextBadge(currentUser.points) > 0 && (
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-400">
+                              <span className="text-gray-400 font-poppins">
                                 Progress to{" "}
                                 {getNextBadge(getUserBadge(currentUser.points))}
                               </span>
-                              <span className="text-[#5D5FEF]">
+                              <span className="text-[#5D5FEF] font-poppins">
                                 {currentUser.points}/
                                 {currentUser.points +
                                   getPointsToNextBadge(currentUser.points)}
@@ -399,9 +399,9 @@ export default function Classement() {
                                 }}
                               ></div>
                             </div>
-                            <p className="text-sm text-center">
+                            <p className="text-sm text-center font-poppins">
                               You need{" "}
-                              <span className="text-[#5D5FEF] font-bold">
+                              <span className="text-[#5D5FEF] font-bold font-poppins">
                                 {getPointsToNextBadge(currentUser.points)} pts
                               </span>{" "}
                               to reach the{" "}
@@ -414,7 +414,7 @@ export default function Classement() {
                         {/* Max level message */}
                         {getPointsToNextBadge(currentUser.points) === 0 && (
                           <div className="p-3 bg-[#5D5FEF]/10 border border-[#5D5FEF]/30 rounded-lg text-center">
-                            <p className="text-sm">
+                            <p className="text-sm font-poppins">
                               Congratulations! You've reached the highest league
                               level.
                             </p>
@@ -440,17 +440,17 @@ export default function Classement() {
                   {/* Card content wrapper */}
                   <div className="relative z-20">
                     <CardHeader className="py-4 px-6">
-                      <CardTitle>Top 10 Champions</CardTitle>
+                      <CardTitle className="font-poppins">Top 10 Champions</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead className="bg-muted text-left">
                           <tr>
-                            <th className="py-3 px-6">Rank</th>
-                            <th className="py-3 px-6">Player</th>
-                            <th className="py-3 px-6">Badge</th>
-                            <th className="py-3 px-6 text-right">Points</th>
+                            <th className="py-3 px-6 font-poppins">Rank</th>
+                            <th className="py-3 px-6 font-poppins">Player</th>
+                            <th className="py-3 px-6 font-poppins">Badge</th>
+                            <th className="py-3 px-6 text-right font-poppins">Points</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-muted">
@@ -477,7 +477,7 @@ export default function Classement() {
                                   key={player.id}
                                   className="hover:bg-muted/50 transition-colors"
                                 >
-                                  <td className="py-4 px-6 font-bold">
+                                  <td className="py-4 px-6 font-bold font-poppins">
                                     {index === 0 ? (
                                       <span className="text-yellow-400">1</span>
                                     ) : index === 1 ? (
@@ -497,7 +497,7 @@ export default function Classement() {
                                           className="w-full h-full object-cover"
                                         />
                                       </div>
-                                      <span>{username}</span>
+                                      <span className="font-poppins">{username}</span>
                                     </div>
                                   </td>
                                   <td className="py-4 px-6">
@@ -510,7 +510,7 @@ export default function Classement() {
                                       </span>
                                     </div>
                                   </td>
-                                  <td className="py-4 px-6 text-right font-bold">
+                                  <td className="py-4 px-6 text-right font-bold font-poppins">
                                     {player.points}
                                   </td>
                                 </tr>
@@ -524,7 +524,7 @@ export default function Classement() {
                               <tr>
                                 <td
                                   colSpan={4}
-                                  className="py-8 text-center text-gray-400"
+                                  className="py-8 text-center text-gray-400 font-poppins"
                                 >
                                   No Steam-connected users in ranking yet
                                 </td>
@@ -559,14 +559,14 @@ export default function Classement() {
                       <CardHeader className="pb-2">
                         <CardTitle className="flex flex-col items-center gap-2 text-center">
                           <Award className="text-amber-600" />
-                          <span>Bronze League</span>
+                          <span className="font-poppins">Bronze League</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                       <div className="space-y-4">
                         <div className="text-center py-2">
-                          <span className="text-2xl font-bold">0 - 500</span>
-                          <p className="text-sm text-gray-400">points</p>
+                          <span className="text-2xl font-bold font-poppins">0 - 500</span>
+                          <p className="text-sm text-gray-400 font-poppins">points</p>
                         </div>
 
                         {/* Center the block, but left-align the lines */}
@@ -574,22 +574,22 @@ export default function Classement() {
                           <div className="flex flex-col w-max text-left space-y-2">
                             <div className="flex items-center gap-2">
                               <ChevronUp className="text-[#5D5FEF]" />
-                              <span>Access to standard loans</span>
+                              <span className="font-poppins">Access to standard loans</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <ChevronUp className="text-[#5D5FEF]" />
-                              <span>Standard interest rates</span>
+                              <span className="font-poppins">Standard interest rates</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <ChevronUp className="text-[#5D5FEF]" />
-                              <span>Exclusive badges</span>
+                              <span className="font-poppins">Exclusive badges</span>
                             </div>
                           </div>
                         </div>
 
                         {apiData?.user &&
                           getUserBadge(apiData.user.points) === "Bronze" && (
-                            <div className="py-2 px-3 bg-amber-600/20 rounded-md text-center text-sm">
+                            <div className="py-2 px-3 bg-amber-600/20 rounded-md text-center text-sm font-poppins">
                               Your current level
                             </div>
                           )}
@@ -614,14 +614,14 @@ export default function Classement() {
                       <CardHeader className="pb-2">
                         <CardTitle className="flex flex-col items-center gap-2 text-center">
                           <Medal className="text-gray-300" />
-                          <span>Silver League</span>
+                          <span className="font-poppins">Silver League</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                       <div className="space-y-4">
                         <div className="text-center py-2">
-                          <span className="text-2xl font-bold">500 - 1000</span>
-                          <p className="text-sm text-gray-400">points</p>
+                          <span className="text-2xl font-bold font-poppins">500 - 1000</span>
+                          <p className="text-sm text-gray-400 font-poppins">points</p>
                         </div>
 
                         {/* Center the block, but left-align the lines */}
@@ -629,22 +629,22 @@ export default function Classement() {
                           <div className="flex flex-col w-max text-left space-y-2">
                             <div className="flex items-center gap-2">
                               <ChevronUp className="text-[#5D5FEF]" />
-                              <span>5% discount on interest rates</span>
+                              <span className="font-poppins">5% discount on interest rates</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <ChevronUp className="text-[#5D5FEF]" />
-                              <span>Access to premium loans</span>
+                              <span className="font-poppins">Access to premium loans</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <ChevronUp className="text-[#5D5FEF]" />
-                              <span>1% cashback on repayments</span>
+                              <span className="font-poppins">1% cashback on repayments</span>
                             </div>
                           </div>
                         </div>
 
                         {apiData?.user &&
                           getUserBadge(apiData.user.points) === "Silver" && (
-                            <div className="py-2 px-3 bg-gray-300/20 rounded-md text-center text-sm">
+                            <div className="py-2 px-3 bg-gray-300/20 rounded-md text-center text-sm font-poppins">
                               Your current level
                             </div>
                           )}
@@ -669,14 +669,14 @@ export default function Classement() {
                       <CardHeader className="pb-2">
                         <CardTitle className="flex flex-col items-center gap-2 text-center">
                           <Trophy className="text-yellow-400" />
-                          <span>Gold League</span>
+                          <span className="font-poppins">Gold League</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                       <div className="space-y-4">
                         <div className="text-center py-2">
-                          <span className="text-2xl font-bold">1000+</span>
-                          <p className="text-sm text-gray-400">points</p>
+                          <span className="text-2xl font-bold font-poppins">1000+</span>
+                          <p className="text-sm text-gray-400 font-poppins">points</p>
                         </div>
 
                         {/* Center the block, but left-align the lines */}
@@ -684,22 +684,22 @@ export default function Classement() {
                           <div className="flex flex-col w-max text-left space-y-2">
                             <div className="flex items-center gap-2">
                               <ChevronUp className="text-[#5D5FEF]" />
-                              <span>Free skin every month</span>
+                              <span className="font-poppins">Free skin every month</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <ChevronUp className="text-[#5D5FEF]" />
-                              <span>10% discount on interest rates</span>
+                              <span className="font-poppins">10% discount on interest rates</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <ChevronUp className="text-[#5D5FEF]" />
-                              <span>Access to exclusive events</span>
+                              <span className="font-poppins">Access to exclusive events</span>
                             </div>
                           </div>
                         </div>
 
                         {apiData?.user &&
                           getUserBadge(apiData.user.points) === "Gold" && (
-                            <div className="py-2 px-3 bg-yellow-400/20 rounded-md text-center text-sm">
+                            <div className="py-2 px-3 bg-yellow-400/20 rounded-md text-center text-sm font-poppins">
                               Your current level
                             </div>
                           )}
@@ -710,7 +710,7 @@ export default function Classement() {
                 </div>
 
                 <div className="mt-8 text-center">
-                  <Button className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white font-bold">
+                  <Button className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white font-bold font-poppins">
                     <Trophy className="mr-2" />
                     Borrow to earn points
                   </Button>

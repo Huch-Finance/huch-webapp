@@ -14,6 +14,17 @@ interface CreateLoanParams {
   tradeId?: string
 }
 
+// Function to calculate interest rate (same as in borrow-confirmation-modal)
+const getInterestRate = (duration: number) => {
+  const minDuration = 7;
+  const maxDuration = 35;
+  const minRate = 25;
+  const maxRate = 32;
+  
+  const rate = minRate + (maxRate - minRate) * (duration - minDuration) / (maxDuration - minDuration);
+  return Math.round(rate * 10) / 10; // Round to 1 decimal
+};
+
 interface LoanResponse {
   success: boolean
   message: string
@@ -76,6 +87,10 @@ export function useLoanApi() {
     setError(null)
 
     try {
+      // Calculate total amount to repay with interest
+      const interestRate = getInterestRate(params.duration);
+      const totalAmountToRepay = params.amount * (1 + interestRate / 100);
+
       const response = await fetch('http://localhost:3333/solana/borrow', {
         method: 'POST',
         headers: {
@@ -86,10 +101,12 @@ export function useLoanApi() {
           steamId: profile.steamId,
           items: params.items,
           amount: params.amount,
+          totalAmountToRepay: totalAmountToRepay, // Send total amount with interest
           duration: params.duration,
           skinId: params.skinId,
           value: params.value,
-          userWallet: profile.wallet
+          userWallet: profile.wallet,
+          interestRate: interestRate
         })
       })
 
@@ -237,12 +254,108 @@ export function useLoanApi() {
     }
   }
 
+  const getLoanExpiration = async (borrowId: string): Promise<any | null> => {
+    if (!profile?.id) {
+      setError("User not authenticated")
+      return null
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3333/solana/loan-expiration/${borrowId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Privy-Id': profile.id
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        setError(errorData.error || "Failed to fetch loan expiration")
+        return null
+      }
+
+      const data = await response.json()
+      return data.expiration || null
+    } catch (err) {
+      setError("Network error when fetching loan expiration")
+      console.error("Error fetching loan expiration:", err)
+      return null
+    }
+  }
+
+  const liquidateLoan = async (borrowId: string): Promise<boolean> => {
+    if (!profile?.id) {
+      setError("User not authenticated")
+      return false
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`http://localhost:3333/solana/liquidate/${borrowId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Privy-Id': profile.id
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        setError(errorData.error || "Failed to liquidate loan")
+        return false
+      }
+
+      return true
+    } catch (err) {
+      setError("Network error when liquidating loan")
+      console.error("Error liquidating loan:", err)
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const checkAllLiquidations = async (): Promise<boolean> => {
+    if (!profile?.id) {
+      setError("User not authenticated")
+      return false
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3333/solana/check-liquidations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Privy-Id': profile.id
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        setError(errorData.error || "Failed to check liquidations")
+        return false
+      }
+
+      return true
+    } catch (err) {
+      setError("Network error when checking liquidations")
+      console.error("Error checking liquidations:", err)
+      return false
+    }
+  }
+
   return {
     createLoan,
     getUserLoans,
     getBorrowDetails,
     getBorrowBlockchainState,
     repayPartialLoan,
+    getLoanExpiration,
+    liquidateLoan,
+    checkAllLiquidations,
     isLoading,
     error
   }

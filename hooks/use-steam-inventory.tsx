@@ -18,12 +18,13 @@ export type SteamItem = {
 }
 
 export interface SteamInventoryResponse {
-  inventory: {
-    items: SteamItem[]
-  } | SteamItem[]
+  inventory: SteamItem[]
   lastUpdated: string
   fromCache?: boolean
 }
+
+// Cache duration in milliseconds (5 minutes)
+const CACHE_DURATION = 5 * 60 * 1000;
 
 export function useSteamInventory() {
   const { profile, isAuthenticated } = useAuth()
@@ -33,12 +34,26 @@ export function useSteamInventory() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const [inventoryFetched, setInventoryFetched] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
+  const [lastFetchKey, setLastFetchKey] = useState<string | null>(null)
+  const [lastFetchTime, setLastFetchTime] = useState<number | null>(null)
 
   // Function to fetch the user's Steam inventory
-  const fetchInventory = async () => {
-    // Check if the inventory has already been fetched or is currently fetching
-    if (inventoryFetched || isFetching) {
-      console.log("Inventory already fetched or fetch in progress, skipping");
+  const fetchInventory = async (forceRefresh: boolean = false) => {
+    // Create a unique key for this user's inventory fetch
+    const currentFetchKey = `${profile?.id}-${profile?.steamId}`;
+    
+    // Check if cache is still valid
+    const now = Date.now();
+    const cacheValid = lastFetchTime && (now - lastFetchTime) < CACHE_DURATION;
+    
+    // Check if we're already fetching or if we've already fetched for this user within cache duration
+    if (!forceRefresh && (isFetching || (inventoryFetched && lastFetchKey === currentFetchKey && cacheValid))) {
+      console.log("Inventory cached and still valid or fetch in progress, skipping", {
+        isFetching,
+        inventoryFetched,
+        cacheValid,
+        timeSinceLastFetch: lastFetchTime ? now - lastFetchTime : 'never'
+      });
       return;
     }
 
@@ -69,21 +84,15 @@ export function useSteamInventory() {
       }
 
       const data: SteamInventoryResponse = await response.json()
+      console.log("Raw API response:", data);
+      console.log("From cache:", data.fromCache || false);
       
-      // Extract inventory items based on the response structure
-      let inventoryItems: SteamItem[] = [];
-      if (data.inventory) {
-        if ('items' in data.inventory) {
-          inventoryItems = data.inventory.items;
-          console.log("Format d'API détecté: inventory.items[]");
-        } else if (Array.isArray(data.inventory)) {
-          inventoryItems = data.inventory;
-          console.log("Format d'API détecté: inventory[]");
-        }
-      }
+      // Extract inventory items from API response
+      // The API returns { inventory: SteamItem[] }
+      const inventoryItems: SteamItem[] = Array.isArray(data.inventory) ? data.inventory : [];
       
-      //console.log("Inventory fetched successfully:", inventoryItems.length, "skins");
-      //console.log("Inventory content:", inventoryItems);
+      console.log("Inventory fetched successfully:", inventoryItems.length, "skins");
+      console.log("First few items:", inventoryItems.slice(0, 3));
       if (inventoryItems.length === 0) {
         console.warn("API returned an empty inventory!");
       }
@@ -93,11 +102,16 @@ export function useSteamInventory() {
       setInventory(inventoryItems)
       setLastUpdated(data.lastUpdated)
       setInventoryFetched(true);
+      setLastFetchKey(currentFetchKey);
+      setLastFetchTime(Date.now());
     } catch (error) {
-      //console.error("Error fetching inventory:", error)
-      setError(error instanceof Error ? error.message : "An error occurred")
+      console.error("Error fetching inventory:", error)
+      const errorMessage = error instanceof Error ? error.message : "An error occurred while fetching your inventory"
+      setError(errorMessage)
+      setInventory([])
+      setLastUpdated(null)
+      setInventoryFetched(false)
     } finally {
-      //console.log("End fetching inventory, isLoading = false");
       setIsLoading(false)
       setIsFetching(false)
     }
@@ -105,28 +119,36 @@ export function useSteamInventory() {
 
   // Function to fetch inventory when the profile is loaded and the user has a steamId and tradeLink
   useEffect(() => {
+    const currentFetchKey = `${profile?.id}-${profile?.steamId}`;
+    
     if (isAuthenticated && profile?.steamId && profile?.tradeLink) {
-      fetchInventory();
+      // Only fetch if we haven't fetched for this specific user yet
+      if (!inventoryFetched || lastFetchKey !== currentFetchKey) {
+        fetchInventory();
+      }
     } else {
       setInventory([]);
       setLastUpdated(null);
       setIsLoading(false);
       setInventoryFetched(false);
       setIsFetching(false);
+      setLastFetchKey(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, profile?.steamId, profile?.tradeLink])
 
   const forceRefreshInventory = async() => {
-    setInventoryFetched(false);
-    setIsFetching(false);
     if (!isAuthenticated || !profile?.id) {
       setError("You must be connected with Steam and have an exchange link to see your inventory")
       setIsLoading(false);
       return
     }
+    
+    setIsLoading(true);
+    setError(null);
+    
     try{
-      console.log('id:', profile.id);
+      console.log('Refreshing inventory for user:', profile.id);
       const response = await fetch('http://localhost:3333/api/user/inventory/refresh', {
         method: 'POST',
         headers: {
@@ -134,13 +156,33 @@ export function useSteamInventory() {
           'X-Privy-Id': profile.id
         }
       })
+      
       if (!response.ok) {
-        throw new Error(`Error refreshing inventory: ${await response.text()}`)
+        const errorData = await response.json();
+        
+        if (response.status === 429) {
+          // Rate limited
+          console.log('Inventory refresh rate limited:', errorData.retryAfter);
+          setError(`Please wait ${errorData.retryAfter} seconds before refreshing again`);
+          return;
+        }
+        
+        throw new Error(errorData.error || `Error refreshing inventory`)
       }
-      fetchInventory();
+      
+      // Refresh successful, now fetch the updated inventory with force refresh
+      await fetchInventory(true);
     } catch (error) {
       console.error("Error refreshing inventory:", error)
+      setError(error instanceof Error ? error.message : "Failed to refresh inventory")
+      setIsLoading(false)
     }
+  };
+
+  const refreshPrices = async() => {
+    // Since we removed the price refresh endpoint, just refresh the entire inventory
+    await forceRefreshInventory();
+    return true;
   };
   
   return {
@@ -149,6 +191,7 @@ export function useSteamInventory() {
     error,
     lastUpdated,
     refreshInventory: forceRefreshInventory,
+    refreshPrices,
     inventoryFetched
   }
 }

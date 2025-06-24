@@ -24,7 +24,10 @@ import { useLoanApi } from "@/hooks/use-loan-api";
 import { useSPLTransactions } from "@/hooks/use-spl-transactions";
 import {
   useSolanaWallets,
+  usePrivyWagmi,
 } from "@privy-io/react-auth/solana";
+import { usePrivyWagmi as usePrivyWagmiEth } from "@privy-io/react-auth";
+import { useWallets } from "@privy-io/react-auth";
 import { LoadingOverlay } from "@/components/loading/loading-overlay";
 import {
   Dialog,
@@ -34,6 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { LoanExpirationInfo } from "@/components/loan/loan-expiration-info";
 import {
   Connection,
   LAMPORTS_PER_SOL,
@@ -56,6 +60,9 @@ interface TradeData {
   status: string;
   createdAt: string;
   completedAt?: string;
+  escrowEndDate?: string;
+  escrowDays?: number;
+  comment?: string;
 }
 
 interface BorrowRecord {
@@ -85,6 +92,8 @@ interface BorrowWithTimeInfo extends BorrowRecord {
   hoursRemaining?: number;
   totalRepaid?: number;
   remainingAmount?: number;
+  totalToRepay?: number;
+  interestRate?: number;
 }
 
 export default function Profile() {
@@ -96,6 +105,10 @@ export default function Profile() {
   const [isRepayOpen, setIsRepayOpen] = useState(false);
   const [repayAmount, setRepayAmount] = useState("");
   const [selectedLoan, setSelectedLoan] = useState<BorrowWithTimeInfo | null>(null);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawAddress, setWithdrawAddress] = useState("");
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [loanFilter, setLoanFilter] = useState<'all' | 'active' | 'fully_repaid' | 'liquidated' | 'pending'>('all');
   
   // Cache pour éviter les appels répétés
   const [enrichmentCache, setEnrichmentCache] = useState<Map<string, any>>(new Map());
@@ -103,6 +116,7 @@ export default function Profile() {
   
   const { profile, isAuthenticated, isLoading, ensureSolanaWallet, reloadUserData } = useAuth();
   const { wallets } = useSolanaWallets();
+  const { wallets: allWallets } = useWallets();
   const { getUserLoans, getBorrowDetails, getBorrowBlockchainState, repayPartialLoan, isLoading: loanLoading } = useLoanApi();
   const { testUSDCTransfer, isLoading: splLoading } = useSPLTransactions();
 
@@ -127,6 +141,17 @@ export default function Profile() {
       daysRemaining,
       hoursRemaining
     };
+  };
+
+  // Fonction pour calculer le taux d'intérêt (même logique que dans borrow-confirmation-modal)
+  const getInterestRate = (duration: number) => {
+    const minDuration = 7;
+    const maxDuration = 35;
+    const minRate = 25;
+    const maxRate = 32;
+    
+    const rate = minRate + (maxRate - minRate) * (duration - minDuration) / (maxDuration - minDuration);
+    return Math.round(rate * 10) / 10; // Round to 1 decimal
   };
 
   // Fonction pour enrichir les emprunts avec les données blockchain
@@ -154,27 +179,48 @@ export default function Profile() {
           let amountRepaid: number = 0;
           let totalRepaid: number = 0;
           let remainingAmount: number = 0;
+          let totalToRepayCalculated: number;
+          let interestRate: number;
           
           if (borrowDetails) {
             // Utiliser les données blockchain réelles (directement formatées par le backend)
             startTime = borrowDetails.startTime;
-            duration = borrowDetails.duration;
+            // Convert duration from days to seconds (blockchain stores in days)
+            duration = borrowDetails.duration * 24 * 60 * 60;
             amountRepaid = borrowDetails.amountRepaid; // Raw value in smallest units
             totalRepaid = borrowDetails.amountRepaidReadable; // Converted to readable
-            remainingAmount = borrowDetails.remainingAmount; // Already calculated
             
-            console.log(`💎 Loan ${loan.id} blockchain data:`, {
+            // Calculate total amount to repay (loan + interest)
+            const durationInDays = borrowDetails.duration;
+            interestRate = getInterestRate(durationInDays);
+            totalToRepayCalculated = loan.amount * (1 + interestRate / 100);
+            
+            // Calculate remaining amount based on total to repay, not just loan amount
+            remainingAmount = Math.max(0, totalToRepayCalculated - totalRepaid);
+            
+            console.log(`Loan ${loan.id} blockchain data:`, {
               amountBorrowedReadable: borrowDetails.amountBorrowedReadable,
               amountRepaidReadable: borrowDetails.amountRepaidReadable,
-              remainingAmount: borrowDetails.remainingAmount
+              totalToRepay: totalToRepayCalculated,
+              remainingAmount: remainingAmount,
+              interestRate: interestRate,
+              startTime: borrowDetails.startTime,
+              durationDays: borrowDetails.duration,
+              durationSeconds: duration,
+              currentTime: Math.floor(Date.now() / 1000)
             });
           } else {
             // Fallback sur les données estimées
             startTime = Math.floor(new Date(loan.createdAt).getTime() / 1000);
             duration = 30 * 24 * 60 * 60; // 30 jours en secondes (valeur par défaut)
-            remainingAmount = loan.amount; // Assume nothing repaid if no blockchain data
             
-            console.log(`⚠️ Loan ${loan.id} using fallback data (no blockchain state found)`);
+            // Calculate total to repay with interest
+            const durationInDays = 30; // Default duration
+            interestRate = getInterestRate(durationInDays);
+            totalToRepayCalculated = loan.amount * (1 + interestRate / 100);
+            remainingAmount = totalToRepayCalculated; // Assume nothing repaid if no blockchain data
+            
+            console.log(`Loan ${loan.id} using fallback data (no blockchain state found)`);
           }
           
           const timeInfo = calculateTimeRemaining(startTime, duration);
@@ -186,25 +232,32 @@ export default function Profile() {
             amountRepaid,
             totalRepaid,
             remainingAmount,
+            totalToRepay: totalToRepayCalculated,
+            interestRate,
             ...timeInfo
           } as BorrowWithTimeInfo;
         } catch (error) {
           console.error('Error enriching loan with time data:', error);
           // Fallback en cas d'erreur
           const createdTime = Math.floor(new Date(loan.createdAt).getTime() / 1000);
-          const duration = 30 * 24 * 60 * 60;
-          const timeInfo = calculateTimeRemaining(createdTime, duration);
+          const fallbackDuration = 30 * 24 * 60 * 60;
+          const timeInfo = calculateTimeRemaining(createdTime, fallbackDuration);
           
-          // Fallback: no blockchain data available, assume nothing repaid
-          const totalRepaid = 0;
-          const remainingAmount = loan.amount;
+          // Fallback: calculate total to repay with interest
+          const durationInDays = 30; // Default duration
+          const fallbackInterestRate = getInterestRate(durationInDays);
+          const fallbackTotalToRepay = loan.amount * (1 + fallbackInterestRate / 100);
+          const fallbackTotalRepaid = 0;
+          const fallbackRemainingAmount = fallbackTotalToRepay;
 
           return {
             ...loan,
             startTime: createdTime,
-            duration,
-            totalRepaid,
-            remainingAmount,
+            duration: fallbackDuration,
+            totalRepaid: fallbackTotalRepaid,
+            remainingAmount: fallbackRemainingAmount,
+            totalToRepay: fallbackTotalToRepay,
+            interestRate: fallbackInterestRate,
             ...timeInfo
           } as BorrowWithTimeInfo;
         }
@@ -352,22 +405,22 @@ export default function Profile() {
         toast.success(`Loan repaid successfully! ${result.signature ? `Tx: ${result.signature.slice(0, 8)}...` : ''}`);
         
         // Just close the modal and clear form - blockchain data will be fetched fresh
-        toast.success('🎉 Repayment sent to blockchain!');
+        toast.success('Repayment sent to blockchain!');
         
         setIsRepayOpen(false);
         setRepayAmount("");
         setSelectedLoan(null);
         
-        // Force refresh blockchain data (clear cache and refetch)
-        setTimeout(async () => {
-          console.log('🔄 Refreshing blockchain data after repayment...');
+        // Force refresh blockchain data immediately and periodically
+        const refreshLoanData = async () => {
+          console.log('Refreshing blockchain data after repayment...');
           setEnrichmentCache(new Map()); // Clear cache to force fresh blockchain data
           
           const userLoans = await getUserLoans();
           if (userLoans) {
-            console.log('📦 Fetched loans from server:', userLoans.length);
+            console.log('Fetched loans from server:', userLoans.length);
             const enrichedLoans = await enrichLoansWithTimeData(userLoans);
-            console.log('⚡ Enriched loans with fresh blockchain data:', enrichedLoans.map(l => ({
+            console.log('Enriched loans with fresh blockchain data:', enrichedLoans.map(l => ({
               id: l.id,
               amount: l.amount,
               totalRepaid: l.totalRepaid,
@@ -376,7 +429,20 @@ export default function Profile() {
             })));
             setLoans(enrichedLoans);
           }
-        }, 3000); // Wait a bit longer for blockchain confirmation
+        };
+
+        // Refresh immediately
+        await refreshLoanData();
+        
+        // Refresh again after 5 seconds for blockchain confirmation
+        setTimeout(async () => {
+          await refreshLoanData();
+        }, 5000);
+        
+        // Refresh one more time after 15 seconds to ensure all data is updated
+        setTimeout(async () => {
+          await refreshLoanData();
+        }, 15000);
         
       } else {
         console.error('Repayment failed:', result);
@@ -394,6 +460,50 @@ export default function Profile() {
       const maxAmount = selectedLoan.remainingAmount || selectedLoan.amount;
       setRepayAmount(maxAmount.toFixed(2));
     }
+  };
+
+  // Function to handle withdraw
+  const handleWithdraw = async () => {
+    if (!withdrawAmount || !withdrawAddress) {
+      toast.error("Please enter amount and address");
+      return;
+    }
+
+    const amount = parseFloat(withdrawAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    if (amount > splBalance) {
+      toast.error("Insufficient balance");
+      return;
+    }
+
+    setWithdrawLoading(true);
+    try {
+      // For now, use a simple USDC transfer
+      const result = await testUSDCTransfer(amount, withdrawAddress);
+      
+      if (result.success) {
+        toast.success(`Successfully withdrawn ${amount} USDC!`);
+        setIsWithdrawOpen(false);
+        setWithdrawAmount("");
+        setWithdrawAddress("");
+      } else {
+        toast.error(`Withdraw failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Withdraw error:", error);
+      toast.error("Withdraw failed");
+    } finally {
+      setWithdrawLoading(false);
+    }
+  };
+
+  // Function to set max withdraw amount
+  const handleSetMaxWithdrawAmount = () => {
+    setWithdrawAmount(splBalance.toFixed(2));
   };
 
   // Force update wallet to Solana
@@ -428,7 +538,7 @@ export default function Profile() {
   };
 
   const getStatusColor = (loan: BorrowWithTimeInfo) => {
-    if (loan.status === 'fully_repaid') {
+    if (loan.status === 'fully_repaid' || (loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01)) {
       return "bg-blue-500/20 text-blue-400 border-blue-400";
     }
     
@@ -469,7 +579,7 @@ export default function Profile() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#111] text-white">
+      <div className="min-h-screen flex flex-col bg-[#111] text-white font-poppins">
         <main className="flex-1 flex flex-col items-center justify-center">
           <LoadingOverlay
             isLoading={isLoading}
@@ -478,7 +588,7 @@ export default function Profile() {
           />
           <Card className="bg-[#1E1E1E] border-[#2A2A2A] p-8 flex flex-col items-center">
             <CardHeader>
-              <CardTitle className="text-2xl font-bold mb-2">
+              <CardTitle className="text-2xl font-bold mb-2 font-poppins">
                 Please connect your wallet
               </CardTitle>
             </CardHeader>
@@ -490,23 +600,23 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col text-white">
-      <main className="flex-1 container mx-auto px-4 py-12">
+    <div className="min-h-screen flex flex-col text-white font-poppins">
+      <main className="flex-1 container mx-auto px-4 py-6 sm:py-8 lg:py-12">
         <LoadingOverlay
           isLoading={isLoading}
           message="Loading your profile..."
           opacity={0.7}
         />
         
-        <div className="max-w-4xl mx-auto">
-        <div className="text-left mb-8">
-          <h1 className="text-3xl font-bold text-[#E1E1F5] font-poppins">
+        <div className="max-w-5xl mx-auto">
+        <div className="text-left mb-6 sm:mb-8 font-poppins">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#E1E1F5] font-poppins">
             Dashboard
           </h1>
         </div>
 
         {/* Profile Header */}
-        <Card className="relative bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden mb-8">
+        <Card className="relative bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden mb-6 sm:mb-8">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 z-5 opacity-[.05]"
@@ -516,13 +626,13 @@ export default function Profile() {
             }}
           />
           
-          {!isLoading && !profile?.steamId && (
+          {isAuthenticated && !isLoading && !profile?.steamId && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
               <AlertTriangle size={32} className="text-yellow-500 mb-2" />
-              <h3 className="text-lg font-medium text-white mb-1 text-center">
+              <h3 className="text-lg font-medium text-white mb-1 text-center font-poppins">
                 Steam Account Required
               </h3>
-              <p className="text-sm text-gray-300 text-center mb-4">
+              <p className="text-sm text-gray-300 text-center mb-4 font-poppins">
                 Connect your Steam account to access all features.
               </p>
               <div className="scale-110">
@@ -531,45 +641,45 @@ export default function Profile() {
             </div>
           )}
 
-          <CardContent className="p-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                <div className="w-16 h-16 rounded-full overflow-hidden">
+          <CardContent className="p-4 sm:p-6 lg:p-8">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="flex items-center gap-4 sm:gap-6">
+                <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
                   <img
                     src={profile?.avatar || "/avatars/logo-black.svg"}
                     alt="Profile"
                     className="w-full h-full object-cover bg-black"
                   />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-white">
+                <div className="min-w-0">
+                  <h2 className="text-xl sm:text-2xl font-bold text-white truncate font-poppins">
                     {profile?.username || "Anonymous"}
                   </h2>
-                  <p className="text-gray-400 text-sm">Member since 2024</p>
+                  <p className="text-gray-400 text-sm font-poppins">Member since 2024</p>
                 </div>
               </div>
 
-              <div className="flex gap-8">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white">{splBalance.toFixed(2)}</div>
-                  <div className="text-gray-400 text-sm">USDC Balance</div>
+              <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8 lg:flex">
+                <div className="text-center font-poppins">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white font-poppins">${splBalance.toFixed(2)}</div>
+                  <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">USDC Balance</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white">{loans.filter(l => l.status === 'active').length}</div>
-                  <div className="text-gray-400 text-sm">Active Loans</div>
+                <div className="text-center font-poppins">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white font-poppins">{loans.filter(l => l.status === 'active').length}</div>
+                  <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">Active Loans</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white">
+                <div className="text-center font-poppins">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white font-poppins">
                     ${loans.filter(l => l.status === 'active').reduce((sum, loan) => sum + loan.amount, 0).toFixed(2)}
                   </div>
-                  <div className="text-gray-400 text-sm">Total Borrowed</div>
+                  <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">Total Borrowed</div>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-4 mt-6">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6">
               <Button
-                className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 w-full sm:w-auto font-poppins"
                 onClick={() => setIsDepositOpen(true)}
               >
                 <ArrowDownLeft size={16} />
@@ -577,7 +687,7 @@ export default function Profile() {
               </Button>
               <Button
                 variant="outline"
-                className="border-gray-600 text-gray-300 hover:text-white hover:border-white flex items-center gap-2"
+                className="border-gray-600 text-gray-300 hover:text-white hover:border-white flex items-center justify-center gap-2 w-full sm:w-auto font-poppins"
                 onClick={() => setIsWithdrawOpen(true)}
               >
                 <ArrowUpRight size={16} />
@@ -586,6 +696,128 @@ export default function Profile() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Pending Trade Section */}
+        {loans.some(loan => loan.tradeStatus === 'pending' || loan.tradeStatus === 'created' || loan.tradeStatus === 'in_escrow' || loan.tradeStatus === 'escrow_pending') && (
+          <Card className="relative bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden mb-4 sm:mb-6">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-5 opacity-[.05]"
+              style={{
+                backgroundImage: "url('/grainbg.avif')",
+                backgroundRepeat: "repeat",
+              }}
+            />
+            
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-white flex items-center gap-2 font-poppins">
+                <AlertTriangle className="text-yellow-500" size={20} />
+                Pending Trades & Escrow
+              </CardTitle>
+            </CardHeader>
+            
+            <CardContent>
+              <div className="space-y-4">
+                {loans.filter(loan => loan.tradeStatus === 'pending' || loan.tradeStatus === 'created' || loan.tradeStatus === 'in_escrow' || loan.tradeStatus === 'escrow_pending').map((loan) => (
+                  <Card 
+                    key={loan.id} 
+                    className={`bg-[#18181b] border-yellow-600/50 transition-colors ${
+                      loan.tradeStatus === 'in_escrow' || loan.tradeStatus === 'escrow_pending' || loan.tradeStatus === 'expired' || loan.tradeStatus === 'canceled' || loan.tradeStatus === 'declined'
+                        ? 'opacity-75' 
+                        : ''
+                    }`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                          {loan.trade?.items?.[0] && (
+                            <img
+                              src={loan.trade.items[0].iconUrl}
+                              alt={loan.trade.items[0].marketHashName}
+                              className="w-12 h-12 sm:w-16 sm:h-16 object-contain flex-shrink-0"
+                            />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-white font-medium font-poppins">
+                              ${loan.amount.toFixed(2)} USDC Loan
+                            </p>
+                            {loan.trade?.items?.[0] && (
+                              <p className="text-sm text-gray-400 truncate font-poppins">
+                                {loan.trade.items[0].marketHashName}
+                              </p>
+                            )}
+                            {loan.tradeStatus === 'in_escrow' ? (
+                              <div className="space-y-1">
+                                <p className="text-xs text-orange-500 font-medium font-poppins">
+                                  TRADE IN LOCKDOWN (15 DAYS)
+                                </p>
+                                <p className="text-xs text-gray-400 font-poppins">
+                                  Items are secured by Steam escrow system
+                                </p>
+                                <p className="text-xs text-gray-500 font-poppins">
+                                  This trade cannot be modified during lockdown period
+                                </p>
+                              </div>
+                            ) : loan.tradeStatus === 'escrow_pending' ? (
+                              <div className="space-y-1">
+                                <p className="text-xs text-blue-500 font-medium font-poppins">
+                                  ESCROW ACCEPTED - WAITING FOR STEAM
+                                </p>
+                                <p className="text-xs text-gray-400 font-poppins">
+                                  Loan will activate when items are transferred
+                                </p>
+                                {loan.trade?.escrowEndDate && (
+                                  <p className="text-xs text-gray-500 font-poppins">
+                                    Expected: {new Date(loan.trade.escrowEndDate).toLocaleDateString()}
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-yellow-500 mt-1 font-poppins">
+                                Please accept the Steam trade to activate your loan
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {loan.tradeStatus === 'in_escrow' ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="text-sm text-orange-400 font-medium flex items-center gap-1 font-poppins">
+                              LOCKED
+                            </div>
+                            <div className="text-xs text-gray-500 font-poppins">
+                              15-day Steam escrow
+                            </div>
+                          </div>
+                        ) : loan.tradeStatus === 'escrow_pending' ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="text-sm text-blue-400 font-medium flex items-center gap-1 font-poppins">
+                              <Clock size={16} />
+                              WAITING
+                            </div>
+                            <div className="text-xs text-gray-500 font-poppins">
+                              Steam transfer pending
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto font-poppins"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Open Steam trade page
+                              window.open('https://steamcommunity.com/my/tradeoffers/', '_blank');
+                            }}
+                          >
+                            Go to Steam Trades
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Active Loans Section */}
         <Card className="relative bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden">
@@ -599,10 +831,42 @@ export default function Profile() {
           />
           
           <CardHeader>
-            <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
-              <DollarSign size={20} />
-              Active Loans
-            </CardTitle>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <CardTitle className="text-xl font-bold text-white font-poppins">
+                Loans
+              </CardTitle>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'all', label: 'All', count: loans.length },
+                  { key: 'active', label: 'Active', count: loans.filter(l => l.status === 'active' && !(l.remainingAmount !== undefined && l.remainingAmount <= 0.01)).length },
+                  { key: 'fully_repaid', label: 'Repaid', count: loans.filter(l => l.status === 'fully_repaid' || (l.remainingAmount !== undefined && l.remainingAmount <= 0.01)).length },
+                  { key: 'liquidated', label: 'Liquidated', count: loans.filter(l => l.status === 'liquidated').length },
+                  { key: 'pending', label: 'Pending', count: loans.filter(l => l.status === 'pending').length },
+                ].map((filter) => (
+                  <button
+                    key={filter.key}
+                    className={`relative px-3 py-1.5 rounded-lg text-sm font-medium border backdrop-blur-md transition-all duration-300 hover:scale-105 font-poppins ${
+                      loanFilter === filter.key
+                        ? 'bg-white/15 border-white/30 text-white shadow-lg'
+                        : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-gray-300 hover:text-white'
+                    }`}
+                    onClick={() => setLoanFilter(filter.key as any)}
+                  >
+                    <span className="relative z-10">{filter.label}</span>
+                    {filter.count > 0 && (
+                      <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-poppins ${
+                        loanFilter === filter.key
+                          ? 'bg-white/20 text-white'
+                          : 'bg-white/10 text-gray-400'
+                      }`}>
+                        {filter.count}
+                      </span>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent rounded-lg opacity-0 hover:opacity-100 transition-opacity duration-300" />
+                  </button>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           
           <CardContent>
@@ -610,125 +874,156 @@ export default function Profile() {
               <div className="text-center py-8 text-gray-400">Loading loans...</div>
             ) : loans.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
-                No active loans found
+                No loans found
               </div>
             ) : (
-              <div className="space-y-4">
-                {loans.map((loan) => (
-                  <Card key={loan.id} className="bg-[#18181b] border-gray-700">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-4">
+              <div className="space-y-6">
+                {loans
+                  .filter((loan) => {
+                    if (loanFilter === 'all') return true;
+                    if (loanFilter === 'active') return loan.status === 'active' && !(loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01);
+                    if (loanFilter === 'fully_repaid') return loan.status === 'fully_repaid' || (loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01);
+                    if (loanFilter === 'liquidated') return loan.status === 'liquidated';
+                    if (loanFilter === 'pending') return loan.status === 'pending';
+                    return false;
+                  })
+                  .map((loan) => (
+                  <Card 
+                    key={loan.id} 
+                    className={`group relative overflow-hidden backdrop-blur-md border transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
+                      loan.tradeStatus === 'in_escrow' || loan.tradeStatus === 'escrow_pending'
+                        ? 'bg-orange-900/10 border-orange-500/30 hover:border-orange-500/40'
+                        : 'bg-blue-950/15 hover:bg-blue-950/20 border-blue-400/20 hover:border-blue-400/30'
+                    }`}
+                  >
+                    {/* Glass effect overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    <CardContent className="relative p-4 sm:p-6">
+                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 lg:gap-6">
+                        <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
                           {loan.trade?.items?.[0] && (
-                            <img 
-                              src={loan.trade.items[0].iconUrl} 
-                              alt={loan.trade.items[0].marketHashName}
-                              className="w-16 h-16 object-contain rounded"
-                            />
+                            <div className="relative group/image flex-shrink-0">
+                              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-lg blur-sm opacity-0 group-hover/image:opacity-100 transition-opacity duration-300" />
+                              <img 
+                                src={loan.trade.items[0].iconUrl} 
+                                alt={loan.trade.items[0].marketHashName}
+                                className="relative w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-lg border border-white/10 bg-black/20 backdrop-blur-sm p-1"
+                              />
+                            </div>
                           )}
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-2 min-w-0 flex-1">
                             <div>
-                              <div className="flex items-center gap-2">
-                                <div className="font-medium text-white">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                                <div className="font-semibold text-lg sm:text-xl bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent font-poppins">
                                   ${loan.amount.toFixed(2)} USDC
                                 </div>
-                                {loan.totalRepaid !== undefined && loan.totalRepaid > 0 && (
-                                  <div className="text-xs text-green-400">
-                                    ({(loan.totalRepaid / loan.amount * 100).toFixed(1)}% repaid)
+                                {loan.interestRate !== undefined && (
+                                  <div className="px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded-md text-xs text-amber-300 font-medium w-fit font-poppins">
+                                    {loan.interestRate}% APR
                                   </div>
                                 )}
                               </div>
-                              {/* Show remaining amount */}
-                              {loan.remainingAmount !== undefined && (
-                                <div className="text-sm">
-                                  <span className="text-gray-400">Remaining: </span>
-                                  <span className={loan.remainingAmount > 0 ? "text-red-400 font-medium" : "text-green-400 font-medium"}>
-                                    ${loan.remainingAmount.toFixed(2)} USDC
+                              {/* Show total to repay */}
+                              {loan.totalToRepay !== undefined && (
+                                <div className="text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 font-poppins">
+                                  <span className="text-gray-400 font-poppins">Total to repay:</span>
+                                  <span className="text-yellow-300 font-semibold bg-yellow-400/10 px-2 py-1 rounded border border-yellow-400/20 w-fit font-poppins">
+                                    ${loan.totalToRepay.toFixed(2)} USDC
                                   </span>
                                 </div>
                               )}
+                              {/* Show remaining amount */}
+                              {loan.remainingAmount !== undefined && (
+                                <div className="text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 font-poppins">
+                                  <span className="text-gray-400 font-poppins">Remaining:</span>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`font-semibold px-2 py-1 rounded border w-fit font-poppins ${loan.remainingAmount > 0 
+                                      ? "text-red-300 bg-red-400/10 border-red-400/20" 
+                                      : "text-green-300 bg-green-400/10 border-green-400/20"
+                                    }`}>
+                                      ${loan.remainingAmount.toFixed(2)} USDC
+                                    </span>
+                                    {loan.totalRepaid !== undefined && loan.totalRepaid > 0 && loan.totalToRepay && (
+                                      <span className="text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded border border-green-400/20 w-fit font-poppins">
+                                        {(loan.totalRepaid / loan.totalToRepay * 100).toFixed(1)}% repaid
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                               {loan.trade?.items?.[0] && (
-                                <div className="text-sm text-gray-300 max-w-[300px] truncate">
+                                <div className="text-sm text-gray-300 max-w-[300px] truncate font-poppins">
                                   {loan.trade.items[0].marketHashName}
                                 </div>
                               )}
-                              <div className="text-sm text-gray-400">
+                              <div className="text-sm text-gray-400 font-poppins">
                                 ID: {loan.borrowId.slice(0, 8)}...
                               </div>
-                              {loan.totalRepaid !== undefined && loan.totalRepaid > 0 && (
-                                <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1">
+                              {loan.totalRepaid !== undefined && loan.totalRepaid > 0 && loan.totalToRepay && (
+                                <div className="relative w-full bg-gray-800/50 border border-gray-700/50 rounded-full h-2 mt-2 overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-gray-800/20 to-gray-700/20" />
                                   <div 
-                                    className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
+                                    className="relative h-full bg-gradient-to-r from-green-500 via-emerald-400 to-cyan-400 rounded-full transition-all duration-700 ease-out shadow-lg shadow-green-500/25"
                                     style={{
-                                      width: `${Math.min(100, loan.totalRepaid / loan.amount * 100)}%`
+                                      width: `${Math.min(100, loan.totalRepaid / loan.totalToRepay * 100)}%`
                                     }}
                                   />
                                 </div>
                               )}
                             </div>
-                            <div className="flex gap-2">
-                              <div className={`px-2 py-1 rounded text-xs border ${getStatusColor(loan)} w-fit`}>
-                                {loan.isExpired && loan.status === 'active' ? 'EXPIRED' : 
-                                 loan.status === 'fully_repaid' ? 'FULLY REPAID' : 
+                            <div className="flex flex-wrap gap-2">
+                              <div className={`px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-sm font-poppins ${getStatusColor(loan)} w-fit shadow-lg`}>
+                                {loan.status === 'fully_repaid' || loan.status === 'repaid' ? 'REPAID' :
+                                 loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01 ? '100% PAID' :
+                                 loan.isExpired && loan.status === 'active' ? 'EXPIRED' : 
                                  loan.status.toUpperCase()}
                               </div>
-                              {loan.status === 'active' && (
-                                <div className={`px-2 py-1 rounded text-xs ${getTimeColor(loan)} bg-gray-800/50 w-fit flex items-center gap-1`}>
+                              {loan.status === 'active' && !(loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01) && (
+                                <div className={`px-3 py-1.5 rounded-lg text-xs font-medium font-poppins ${getTimeColor(loan)} bg-gray-900/50 backdrop-blur-sm border border-gray-600/30 w-fit flex items-center gap-1.5 shadow-lg`}>
                                   {loan.isExpired ? (
-                                    <AlertTriangleIcon size={12} />
+                                    <AlertTriangleIcon size={12} className="animate-pulse" />
                                   ) : loan.daysRemaining !== undefined && loan.daysRemaining <= 1 ? (
-                                    <AlertTriangleIcon size={12} />
+                                    <AlertTriangleIcon size={12} className="animate-pulse" />
                                   ) : (
                                     <Clock size={12} />
                                   )}
                                   {formatTimeRemaining(loan)}
                                 </div>
                               )}
+                              <LoanExpirationInfo borrowId={loan.id} privyId={profile?.id} />
                             </div>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="text-sm text-gray-400">Created</div>
-                            <div className="text-sm text-white">
+                        <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-end xl:items-center gap-3 sm:gap-4 lg:gap-2 xl:gap-4 lg:min-w-0 xl:min-w-fit">
+                          <div className="text-left sm:text-right lg:text-left xl:text-right font-poppins">
+                            <div className="text-sm text-gray-400 font-poppins">Created</div>
+                            <div className="text-sm text-white whitespace-nowrap font-poppins">
                               {new Date(loan.createdAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                          
-                          <div className="text-right">
-                            <div className="text-sm text-gray-400">Blockchain Data</div>
-                            <div className="text-xs text-blue-400">
-                              Repaid: ${loan.amountRepaid ? (loan.amountRepaid / 1000000).toFixed(2) : '0.00'}
-                            </div>
-                            <div className="text-xs text-blue-400">
-                              Remaining: ${loan.remainingAmount?.toFixed(2) || '0.00'}
-                            </div>
-                          </div>
-                          
-                          <div className="text-right">
-                            <div className="text-sm text-gray-400">Trade</div>
-                            <div className={`text-sm ${loan.tradeStatus === 'accepted' ? 'text-green-400' : 'text-yellow-400'}`}>
-                              {loan.tradeStatus || 'pending'}
                             </div>
                           </div>
                           
                           {loan.status === 'active' && loan.remainingAmount && loan.remainingAmount > 0.01 && (
                             <Button
                               size="sm"
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                              onClick={() => {
+                              className="relative bg-white/10 hover:bg-white/15 text-white font-medium px-4 sm:px-6 py-2 rounded-lg border border-white/20 hover:border-white/30 shadow-lg backdrop-blur-md transition-all duration-300 hover:shadow-xl hover:scale-105 w-full sm:w-auto font-poppins"
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setSelectedLoan(loan);
                                 setIsRepayOpen(true);
                               }}
                             >
-                              Repay
+                              <span className="relative z-10">Repay</span>
+                              <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent rounded-lg opacity-0 hover:opacity-100 transition-opacity duration-300" />
                             </Button>
                           )}
                           
-                          {loan.status === 'fully_repaid' && (
-                            <div className="text-sm text-blue-400 font-medium">
-                              ✅ Fully Repaid
+                          {(loan.status === 'fully_repaid' || (loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01)) && (
+                            <div className="text-left sm:text-right lg:text-left xl:text-right font-poppins">
+                              <div className="text-sm text-blue-400 font-medium whitespace-nowrap font-poppins">
+                                Fully Repaid
+                              </div>
                             </div>
                           )}
                         </div>
@@ -736,6 +1031,18 @@ export default function Profile() {
                     </CardContent>
                   </Card>
                 ))}
+                {loans.filter((loan) => {
+                  if (loanFilter === 'all') return true;
+                  if (loanFilter === 'active') return loan.status === 'active' && !(loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01);
+                  if (loanFilter === 'fully_repaid') return loan.status === 'fully_repaid' || (loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01);
+                  if (loanFilter === 'liquidated') return loan.status === 'liquidated';
+                  if (loanFilter === 'pending') return loan.status === 'pending';
+                  return false;
+                }).length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    No {loanFilter === 'all' ? 'loans' : loanFilter.replace('_', ' ')} found
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -743,10 +1050,10 @@ export default function Profile() {
 
         {/* Deposit Modal */}
         <Dialog open={isDepositOpen} onOpenChange={setIsDepositOpen}>
-          <DialogContent className="sm:max-w-md bg-[#1E1E1E] border-[#2A2A2A]">
+          <DialogContent className="sm:max-w-md bg-blue-950/20 backdrop-blur-md border-blue-400/30">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold">Deposit SOL</DialogTitle>
-              <DialogDescription className="text-gray-400">
+              <DialogTitle className="text-xl font-bold font-poppins">Deposit SOL</DialogTitle>
+              <DialogDescription className="text-gray-400 font-poppins">
                 Send SOL to your wallet address. Use Solana Devnet network.
               </DialogDescription>
             </DialogHeader>
@@ -760,17 +1067,17 @@ export default function Profile() {
                       className="w-48 h-48"
                     />
                   </Card>
-                  <div className="text-sm text-gray-400 text-center space-y-2">
+                  <div className="text-sm text-gray-400 text-center space-y-2 font-poppins">
                     <p>Network: Solana Devnet</p>
-                    <div className="bg-[#23232a] p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">Solana Address:</p>
-                      <p className="text-sm text-white font-mono break-all">
+                    <div className="bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1 font-poppins">Solana Address:</p>
+                      <p className="text-sm text-white font-poppins break-all">
                         {wallets[0].address}
                       </p>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="mt-2 h-8 text-xs"
+                        className="mt-2 h-8 text-xs font-poppins"
                         onClick={() => {
                           navigator.clipboard.writeText(wallets[0].address);
                           toast.success("Address copied to clipboard!");
@@ -788,45 +1095,104 @@ export default function Profile() {
 
         {/* Withdraw Modal */}
         <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
-          <DialogContent className="sm:max-w-md bg-[#1E1E1E] border-[#2A2A2A]">
+          <DialogContent className="sm:max-w-md bg-blue-950/20 backdrop-blur-md border-blue-400/30">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold">Withdraw SOL</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Withdraw functionality coming soon.
+              <DialogTitle className="text-xl font-bold font-poppins">Withdraw USDC</DialogTitle>
+              <DialogDescription className="text-gray-400 font-poppins">
+                Withdraw your USDC to any Solana address.
               </DialogDescription>
             </DialogHeader>
+            <div className="flex flex-col gap-4 py-4">
+              <div className="p-3 bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-lg">
+                <div className="text-sm text-gray-400 font-poppins">Available Balance</div>
+                <div className="text-lg font-bold text-white font-poppins">
+                  ${splBalance.toFixed(2)} USDC
+                </div>
+              </div>
+              
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  max={splBalance}
+                  placeholder="Amount to withdraw (USDC)"
+                  className="w-full p-3 pr-16 rounded-lg bg-blue-950/30 backdrop-blur-sm text-white border border-blue-400/20 focus:border-blue-400/40 focus:outline-none font-poppins"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  disabled={withdrawLoading}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 px-2 text-xs border-gray-500 text-gray-300 hover:text-white hover:border-white font-poppins"
+                  onClick={handleSetMaxWithdrawAmount}
+                  disabled={withdrawLoading}
+                >
+                  MAX
+                </Button>
+              </div>
+
+              <input
+                type="text"
+                placeholder="Destination Solana address"
+                className="w-full p-3 rounded-lg bg-blue-950/30 backdrop-blur-sm text-white border border-blue-400/20 focus:border-blue-400/40 focus:outline-none font-poppins"
+                value={withdrawAddress}
+                onChange={(e) => setWithdrawAddress(e.target.value)}
+                disabled={withdrawLoading}
+              />
+              
+              <Button
+                className="bg-blue-600/20 hover:bg-blue-600/30 backdrop-blur-md border border-blue-400/30 hover:border-blue-400/50 text-white font-bold w-full mt-2 transition-all duration-300 font-poppins"
+                onClick={handleWithdraw}
+                disabled={withdrawLoading || !withdrawAmount || !withdrawAddress}
+              >
+                {withdrawLoading ? "Processing..." : "Withdraw USDC"}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
 
         {/* Repay Modal */}
         <Dialog open={isRepayOpen} onOpenChange={setIsRepayOpen}>
-          <DialogContent className="sm:max-w-md bg-[#1E1E1E] border-[#2A2A2A]">
+          <DialogContent className="sm:max-w-md bg-blue-950/20 backdrop-blur-md border-blue-400/30">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold">Repay Loan</DialogTitle>
-              <DialogDescription className="text-gray-400">
+              <DialogTitle className="text-xl font-bold font-poppins">Repay Loan</DialogTitle>
+              <DialogDescription className="text-gray-400 font-poppins">
                 Enter the amount you want to repay for this loan.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-4 py-4">
               {selectedLoan && (
                 <>
-                  <div className="p-3 bg-[#23232a] rounded-lg">
-                    <div className="text-sm text-gray-400">Loan Amount</div>
-                    <div className="text-lg font-bold text-white">
+                  <div className="p-3 bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-lg">
+                    <div className="text-sm text-gray-400 font-poppins">Loan Details</div>
+                    <div className="text-lg font-bold text-white font-poppins">
                       ${selectedLoan.amount.toFixed(2)} USDC
+                      {selectedLoan.interestRate !== undefined && (
+                        <span className="text-sm text-gray-400 font-normal ml-2 font-poppins">
+                          ({selectedLoan.interestRate}% interest)
+                        </span>
+                      )}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      ID: {selectedLoan.id}
-                    </div>
+                    {selectedLoan.totalToRepay !== undefined && (
+                      <div className="text-sm text-yellow-400 mt-1 font-poppins">
+                        Total to repay: ${selectedLoan.totalToRepay.toFixed(2)} USDC
+                      </div>
+                    )}
                     {selectedLoan.remainingAmount !== undefined && (
-                      <div className="text-sm text-blue-400 mt-1">
+                      <div className="text-sm text-blue-400 mt-1 font-poppins">
                         Remaining: ${selectedLoan.remainingAmount.toFixed(2)} USDC
                       </div>
                     )}
+                    <div className="text-xs text-gray-500 mt-1 font-poppins">
+                      ID: {selectedLoan.id}
+                    </div>
                   </div>
                   
                   {/* Debug info */}
-                  <div className="p-2 bg-gray-800 rounded text-xs text-gray-300">
+                  <div className="p-2 bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded text-xs text-gray-300 font-poppins">
                     <div>Debug: Wallet connected: {wallets?.[0]?.address ? 'Yes' : 'No'}</div>
                     <div>SPL Loading: {splLoading ? 'Yes' : 'No'}</div>
                     <div>Loan Loading: {loanLoading ? 'Yes' : 'No'}</div>
@@ -840,7 +1206,7 @@ export default function Profile() {
                   step="0.01"
                   max={selectedLoan?.remainingAmount || selectedLoan?.amount}
                   placeholder="Amount to repay (USDC)"
-                  className="w-full p-3 pr-16 rounded-lg bg-[#23232a] text-white border border-[#2A2A2A] focus:outline-none"
+                  className="w-full p-3 pr-16 rounded-lg bg-blue-950/30 backdrop-blur-sm text-white border border-blue-400/20 focus:border-blue-400/40 focus:outline-none font-poppins"
                   value={repayAmount}
                   onChange={(e) => setRepayAmount(e.target.value)}
                   disabled={loanLoading}
@@ -849,7 +1215,7 @@ export default function Profile() {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 px-2 text-xs border-gray-500 text-gray-300 hover:text-white hover:border-white"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 px-2 text-xs border-gray-500 text-gray-300 hover:text-white hover:border-white font-poppins"
                   onClick={handleSetMaxRepayAmount}
                   disabled={loanLoading}
                 >
@@ -860,7 +1226,7 @@ export default function Profile() {
               {/* Debug button */}
               <Button
                 variant="outline"
-                className="border-gray-600 text-gray-300 hover:text-white hover:border-white"
+                className="border-gray-600 text-gray-300 hover:text-white hover:border-white font-poppins"
                 onClick={() => {
                   console.log('Debug repay state:', {
                     selectedLoan,
@@ -876,7 +1242,7 @@ export default function Profile() {
               </Button>
               
               <Button
-                className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white font-bold w-full mt-2"
+                className="bg-blue-600/20 hover:bg-blue-600/30 backdrop-blur-md border border-blue-400/30 hover:border-blue-400/50 text-white font-bold w-full mt-2 transition-all duration-300 font-poppins"
                 onClick={handleRepayLoan}
                 disabled={loanLoading || !repayAmount}
               >

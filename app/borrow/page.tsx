@@ -20,7 +20,20 @@ export default function Home() {
   const [loanPercentage, setLoanPercentage] = useState(100)
   const [loanAmount, setLoanAmount] = useState(0)
   const [loanDuration, setLoanDuration] = useState(7)
-  const loanDurationOptions = [14, 25, 30, 35]
+  const loanDurationOptions = [7, 14, 25, 30]
+  
+  // Fonction pour calculer le taux d'intérêt en fonction de la durée
+  const getInterestRate = (duration: number) => {
+    // 7 jours = 25%, 30 jours = 32%
+    // Interpolation linéaire : rate = 25 + (32 - 25) * (duration - 7) / (30 - 7)
+    const minDuration = 7
+    const maxDuration = 30
+    const minRate = 25
+    const maxRate = 32
+    
+    const rate = minRate + (maxRate - minRate) * (duration - minDuration) / (maxDuration - minDuration)
+    return Math.round(rate * 10) / 10 // Arrondir à 1 décimale
+  }
   const [howItWorksOpen, setHowItWorksOpen] = useState(false)
   const priceUpdateRef = useRef(false)
   
@@ -57,10 +70,21 @@ export default function Home() {
   const { isAuthenticated, isLoading: privyLoading, login, logout, profile, connectWallet, updateSteamId } = useAuth()
   
   // Retrieve the user's Steam inventory
-  const { inventory, isLoading: inventoryLoading, error: inventoryError, lastUpdated, refreshInventory, inventoryFetched } = useSteamInventory()
+  const { inventory, isLoading: inventoryLoading, error: inventoryError, lastUpdated, refreshInventory, refreshPrices, inventoryFetched } = useSteamInventory()
   
   // Global loading state (Privy + user data)
   const isLoading = privyLoading || inventoryLoading;
+
+  // Initialise displaySkins à []
+  const [displaySkins, setDisplaySkins] = useState<SteamItem[]>([]);
+  
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterRarity, setFilterRarity] = useState<string>('all');
+  const [filterWear, setFilterWear] = useState<string>('all');
+  const [filterPriceMin, setFilterPriceMin] = useState<number>(0);
+  const [filterPriceMax, setFilterPriceMax] = useState<number>(10000);
+  const [showFilters, setShowFilters] = useState<boolean>(false);
 
   // Debug logs
   useEffect(() => {
@@ -69,9 +93,17 @@ export default function Home() {
       inventoryLoading,
       isAuthenticated,
       inventoryFetched,
-      inventoryLength: inventory?.length || 0
+      inventoryLength: inventory?.length || 0,
+      displaySkinsLength: displaySkins?.length || 0,
+      profileSteamId: profile?.steamId,
+      profileTradeLink: profile?.tradeLink,
+      inventoryError,
+      inventoryData: inventory,
+      filterPriceMin,
+      filterPriceMax,
+      "items with price < 50": inventory?.filter(item => item.basePrice < 50).length || 0
     });
-  }, [privyLoading, inventoryLoading, isAuthenticated, inventoryFetched, inventory]);
+  }, [privyLoading, inventoryLoading, isAuthenticated, inventoryFetched, inventory, displaySkins, profile?.steamId, profile?.tradeLink, inventoryError, filterPriceMin, filterPriceMax]);
   
   const updateInventoryPrices = async () => {
   console.log('🔍 updateInventoryPrices called with:', { 
@@ -114,25 +146,7 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-  console.log('🔍 Price update useEffect triggered:', {
-    privyLoading,
-    isAuthenticated,
-    steamId: profile?.steamId,
-    profileExists: !!profile,
-    priceUpdateDone: priceUpdateRef.current
-  });
-  
-  if (!privyLoading && isAuthenticated && profile?.steamId && !priceUpdateRef.current) {
-    console.log("✅ All conditions met, updating prices on page load...");
-    priceUpdateRef.current = true;
-    refreshInventory();
-  } else if (!privyLoading && isAuthenticated && !profile?.steamId) {
-    console.log("⚠️ User authenticated but no Steam ID - need to connect Steam first");
-  } else {
-    console.log("❌ Conditions not met for price update or already updated");
-  }
-}, [isAuthenticated, privyLoading, profile?.steamId]);
+  // Removed price update useEffect - inventory fetching is already handled in the hook
 
   // Mock CS2 skins for example display when user is not connected
   const mockSkins: SteamItem[] = [
@@ -162,14 +176,18 @@ export default function Home() {
     }
   }
 
-  // Initialise displaySkins à []
-  const [displaySkins, setDisplaySkins] = useState<SteamItem[]>([]);
-
   // Mets à jour displaySkins uniquement avec les vrais items
   useEffect(() => {
     if (isAuthenticated && inventory && Array.isArray(inventory) && inventory.length > 0) {
+      console.log("Setting displaySkins with", inventory.length, "items");
+      console.log("Sample inventory items:", inventory.slice(0, 3));
       setDisplaySkins(inventory);
     } else {
+      console.log("Not setting displaySkins - conditions not met", {
+        isAuthenticated,
+        inventoryIsArray: Array.isArray(inventory),
+        inventoryLength: inventory?.length || 0
+      });
       setDisplaySkins([]);
     }
   }, [isAuthenticated, inventory, inventoryFetched]);
@@ -205,10 +223,15 @@ export default function Home() {
 
   const [currentTransaction, setCurrentTransaction] = useState(0)
 
-  // Manually refresh the inventory if needed
-  const handleRefreshInventory = () => {
-    console.log("Manual inventory refresh");
-    refreshInventory();
+  // Manually refresh the inventory prices
+  const handleRefreshInventory = async () => {
+    console.log("Manual price refresh");
+    const success = await refreshPrices();
+    if (success) {
+      console.log("Prices refreshed successfully");
+    } else {
+      console.log("Price refresh failed or rate limited");
+    }
   };
   
   // Handle trade link save
@@ -237,13 +260,7 @@ export default function Home() {
     }
   };
   
-  // Try to fetch the inventory if the user is authenticated but the inventory has not been fetched
-  useEffect(() => {
-    if (!privyLoading && isAuthenticated && !inventoryFetched && !inventoryLoading) {
-      console.log("Authenticated but inventory not fetched, attempt to fetch...");
-      refreshInventory();
-    }
-  }, [isAuthenticated, inventoryFetched, privyLoading, inventoryLoading, refreshInventory]);
+  // Removed duplicate useEffect - inventory fetching is already handled in the hook
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -252,13 +269,6 @@ export default function Home() {
 
     return () => clearInterval(interval)
   }, [liveTransactions.length])
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterRarity, setFilterRarity] = useState<string>('all');
-  const [filterWear, setFilterWear] = useState<string>('all');
-  const [filterPriceMin, setFilterPriceMin] = useState<number>(0);
-  const [filterPriceMax, setFilterPriceMax] = useState<number>(10000);
-  const [showFilters, setShowFilters] = useState<boolean>(false);
   
   // Reusable filtering function for both views
   const filterSkins = (skin: any) => {
@@ -273,7 +283,7 @@ export default function Home() {
     const { wear } = extractSkinInfo(skin.market_hash_name);
     const wearMap = { 'Factory New': 'FN', 'Minimal Wear': 'MW', 'Field-Tested': 'FT', 'Well-Worn': 'WW', 'Battle-Scarred': 'BS' };
     const wearMatch = filterWear === 'all' ? true : 
-      wear === wearMap[filterWear as keyof typeof wearMap];
+      wear === filterWear;
     
     // Filter by price
     const priceMatch = skin.basePrice >= filterPriceMin && skin.basePrice <= filterPriceMax;
@@ -388,7 +398,7 @@ export default function Home() {
                     </>
                   )}
                   {/* Inventory list or Trade Link Form */}
-                  <div className="flex-1 overflow-y-auto max-h-[260px]">
+                  <div className="flex-1 overflow-y-auto max-h-[260px] custom-scrollbar">
                     {profile?.steamId && !profile?.tradeLink ? (
                       // Trade Link Form integrated in the inventory area
                       <div className="h-full flex flex-col justify-center px-2">
@@ -434,9 +444,18 @@ export default function Home() {
                     ) : (
                       // Normal inventory list
                       <div className="space-y-1 w-full">
-                        {displaySkins
-                          .sort((a, b) => a.basePrice - b.basePrice)
-                          .map((skin) => {
+                        {displaySkins.length === 0 ? (
+                          <div className="text-center py-4">
+                            <p className="text-sm text-[#a1a1c5]">
+                              {inventoryLoading ? "Loading inventory..." : 
+                               inventoryError ? `Error: ${inventoryError}` :
+                               "No items found in inventory"}
+                            </p>
+                          </div>
+                        ) : (
+                          displaySkins
+                            .sort((a, b) => b.basePrice - a.basePrice)
+                            .map((skin) => {
                             const { name, wear } = extractSkinInfo(skin.market_hash_name)
                             const rarity = skin.rarity ||
                               (skin.market_hash_name.includes('★') ? '★' :
@@ -467,7 +486,8 @@ export default function Home() {
                                 <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(0)}</span>
                               </div>
                             )
-                          })}
+                          })
+                        )}
                       </div>
                     )}
                   </div>
@@ -535,7 +555,7 @@ export default function Home() {
                   <div className="flex flex-col items-center mb-4 w-full">
                     <label className="text-xs text-[#a1a1c5] mb-1">Duration</label>
                     <div className="flex gap-2 w-full justify-center">
-                      {[7, ...loanDurationOptions].map(option => (
+                      {loanDurationOptions.map(option => (
                         <Button
                           key={option}
                           size="sm"
@@ -547,6 +567,10 @@ export default function Home() {
                           {option}d
                         </Button>
                       ))}
+                    </div>
+                    {/* Affichage du taux d'intérêt */}
+                    <div className="mt-2 text-xs text-[#a1a1c5]">
+                      Interest rate: <span className="text-white font-medium">{getInterestRate(loanDuration)}%</span>
                     </div>
                   </div>
                   {/* How it works */}
@@ -581,14 +605,14 @@ export default function Home() {
         {/* Skin selector modal */}
         {skinSelectorOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSkinSelectorOpen(false)}>
-            <div className={`bg-[#1f2937] border border-[#2a3548] rounded-lg shadow-lg overflow-hidden w-full max-w-[95vw] ${gridViewActive ? 'md:max-w-[800px]' : 'md:max-w-[500px]'}`} onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-between items-center p-2 border-b border-[#2a3548]">
+            <div className={`bg-blue-950/20 backdrop-blur-md border border-blue-400/30 rounded-lg shadow-lg overflow-hidden w-full max-w-[95vw] ${gridViewActive ? 'md:max-w-[800px]' : 'md:max-w-[500px]'}`} onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center p-2 border-b border-blue-400/20">
                 <h3 className="text-xs font-medium">Select a skin</h3>
                 <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0 rounded-full hover:bg-[#2a3548] flex items-center justify-center"
+                    className="h-6 w-6 p-0 rounded-full hover:bg-blue-950/30 flex items-center justify-center"
                     onClick={() => setGridViewActive(!gridViewActive)}
                     title={gridViewActive ? "List view" : "Grid view"}
                   >
@@ -599,7 +623,7 @@ export default function Home() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0 rounded-full hover:bg-[#2a3548] flex items-center justify-center"
+                    className="h-6 w-6 p-0 rounded-full hover:bg-blue-950/30 flex items-center justify-center"
                     onClick={() => {
                       handleRefreshInventory();
                       // Optionally, you can show a toast or loading indicator here
@@ -612,7 +636,7 @@ export default function Home() {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="h-6 w-6 p-0 rounded-full hover:bg-[#2a3548]" 
+                    className="h-6 w-6 p-0 rounded-full hover:bg-blue-950/30" 
                     onClick={() => setSkinSelectorOpen(false)}
                   >
                     <span className="sr-only">Close</span>
@@ -623,22 +647,23 @@ export default function Home() {
                   </Button>
                 </div>
               </div>
-              <div className="p-2 border-b border-[#2a3548]">
+              <div className="p-2 border-b border-blue-400/20">
                 <div className="flex gap-2 items-center">
                   <div className="relative flex-grow">
                     <Search className="h-3 w-3 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input 
                       type="text" 
                       placeholder="Search skins..."
-                      className="w-full bg-[#161e2e] border border-[#2a3548] rounded-md py-1 pl-7 pr-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
+                      className="w-full bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-md py-1 pl-7 pr-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400/40"
                       autoFocus
+                      value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
                   <Button 
                     variant="outline" 
                     size="sm"
-                    className="bg-[#1f2937] border-[#2a3548] hover:bg-[#2a3548] h-6 px-2 text-xs flex items-center gap-1"
+                    className="bg-blue-950/30 backdrop-blur-sm border-blue-400/20 hover:bg-blue-950/40 h-6 px-2 text-xs flex items-center gap-1"
                     onClick={() => setShowFilters(!showFilters)}
                   >
                     <Filter className="h-3 w-3" />
@@ -648,12 +673,12 @@ export default function Home() {
                 
                 {/* Filter panel */}
                 {showFilters && (
-                  <div className="mt-2 p-3 bg-[#161e2e] border border-[#2a3548] rounded-md space-y-3 animate-fadeIn">
+                  <div className="mt-2 p-3 bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-md space-y-3 animate-fadeIn">
                     {/* Rarity filter */}
                     <div className="space-y-1">
                       <label className="text-xs text-gray-400">Rarity</label>
                       <select
-                        className="w-full bg-[#1f2937] border border-[#2a3548] rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
+                        className="w-full bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400/40"
                         value={filterRarity}
                         onChange={(e) => setFilterRarity(e.target.value)}
                       >
@@ -669,7 +694,7 @@ export default function Home() {
                     <div className="space-y-1">
                       <label className="text-xs text-gray-400">Wear</label>
                       <select
-                        className="w-full bg-[#1f2937] border border-[#2a3548] rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
+                        className="w-full bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400/40"
                         value={filterWear}
                         onChange={(e) => setFilterWear(e.target.value)}
                       >
@@ -683,24 +708,26 @@ export default function Home() {
                     
                     {/* Price filter */}
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-400">Price Range ($50 - $10,000)</label>
+                      <label className="text-xs text-gray-400">Price Range ($0 - $10,000)</label>
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
                           min="0"
                           max="10000"
+                          step="0.01"
                           value={filterPriceMin}
-                          onChange={(e) => setFilterPriceMin(Math.max(50, Math.min(filterPriceMax, parseInt(e.target.value) || 0)))}
-                          className="w-full bg-[#1f2937] border border-[#2a3548] rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
+                          onChange={(e) => setFilterPriceMin(Math.max(0, Math.min(filterPriceMax, parseFloat(e.target.value) || 0)))}
+                          className="w-full bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400/40"
                         />
                         <span className="text-xs text-gray-400">to</span>
                         <input
                           type="number"
                           min="0"
                           max="10000"
+                          step="0.01"
                           value={filterPriceMax}
-                          onChange={(e) => setFilterPriceMax(Math.max(filterPriceMin, Math.min(10000, parseInt(e.target.value) || 10000)))}
-                          className="w-full bg-[#1f2937] border border-[#2a3548] rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#6366f1]"
+                          onChange={(e) => setFilterPriceMax(Math.max(filterPriceMin, Math.min(10000, parseFloat(e.target.value) || 10000)))}
+                          className="w-full bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-md py-1 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400/40"
                         />
                       </div>
                     </div>
@@ -709,7 +736,7 @@ export default function Home() {
                     <div className="flex justify-end">
                       <Button
                         size="sm"
-                        className="bg-[#6366f1] hover:bg-[#5355d1] text-xs py-1 px-3"
+                        className="bg-blue-600/20 hover:bg-blue-600/30 backdrop-blur-md border border-blue-400/30 hover:border-blue-400/50 text-xs py-1 px-3"
                         onClick={() => setShowFilters(false)}
                       >
                         Apply Filters
@@ -718,13 +745,13 @@ export default function Home() {
                   </div>
                 )}
               </div>
-              <div className="p-2 max-h-[500px] overflow-y-auto">
+              <div className="p-2 max-h-[500px] overflow-y-auto custom-scrollbar">
                 {/* Message si aucun skin ne correspond aux critères */}
                 {displaySkins.filter(filterSkins).length === 0 && (
                   <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
                     <div className="text-3xl mb-3">😢</div>
                     <h3 className="text-sm font-medium mb-1">No matching skins found</h3>
-                    <p className="text-xs text-gray-400">We couldn't find any skins matching your criteria. Try adjusting your filters or price range ($50-$10,000).</p>
+                    <p className="text-xs text-gray-400">We couldn't find any skins matching your criteria. Try adjusting your filters or price range ($0-$10,000).</p>
                   </div>
                 )}
                 
@@ -733,7 +760,7 @@ export default function Home() {
                   <div className="space-y-1 w-full">
                     {displaySkins
                       .filter(filterSkins)
-                      .sort((a, b) => a.basePrice - b.basePrice)
+                      .sort((a, b) => b.basePrice - a.basePrice)
                       .map((skin) => {
                         // Extract the name and wear of the skin
                         const { name, wear } = extractSkinInfo(skin.market_hash_name)
@@ -747,13 +774,13 @@ export default function Home() {
                         return (
                           <div 
                             key={skin.id} 
-                            className={`flex items-center gap-4 p-3 hover:bg-[#2a3548] transition-colors rounded-md cursor-pointer ${selectedSkin === skin.id ? 'bg-[#2a3548] border border-[#3a4558]' : 'border border-transparent'}`}
+                            className={`flex items-center gap-4 p-3 hover:bg-blue-950/30 backdrop-blur-sm transition-colors rounded-md cursor-pointer ${selectedSkin === skin.id ? 'bg-blue-950/30 border border-blue-400/40' : 'border border-transparent'}`}
                             onClick={() => {
                               setSelectedSkin(skin.id);
                               setSkinSelectorOpen(false);
                             }}
                           >
-                            <div className="relative w-16 h-16 overflow-hidden rounded-md flex-shrink-0 bg-[#161e2e]">
+                            <div className="relative w-16 h-16 overflow-hidden rounded-md flex-shrink-0 bg-blue-950/30 backdrop-blur-sm">
                               <Image
                                 src={skin.imageUrl}
                                 alt={name}
@@ -764,7 +791,7 @@ export default function Home() {
                             <div className="flex-grow min-w-0">
                               <div className="flex justify-between items-start">
                                 <h4 className="text-sm font-medium truncate">{name}</h4>
-                                <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(2)}</span>
+                                <span className="text-xs font-medium bg-blue-950/30 backdrop-blur-sm px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(2)}</span>
                               </div>
                               <div className="flex items-center gap-1 mt-1.5">
                                 <span className="text-[10px] text-gray-400">{rarity || 'Normal'}</span>
@@ -783,7 +810,7 @@ export default function Home() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {displaySkins
                       .filter(filterSkins)
-                      .sort((a, b) => a.basePrice - b.basePrice)
+                      .sort((a, b) => b.basePrice - a.basePrice)
                       .map((skin) => {
                         // Extract the name and wear of the skin
                         const { name, wear } = extractSkinInfo(skin.market_hash_name)
@@ -797,13 +824,13 @@ export default function Home() {
                         return (
                           <div 
                             key={skin.id} 
-                            className={`flex flex-col p-3 hover:bg-[#2a3548] transition-colors rounded-md cursor-pointer border border-transparent ${selectedSkin === skin.id ? 'bg-[#2a3548] border-[#3a4558]' : ''}`}
+                            className={`flex flex-col p-3 hover:bg-blue-950/30 backdrop-blur-sm transition-colors rounded-md cursor-pointer border border-transparent ${selectedSkin === skin.id ? 'bg-blue-950/30 border-blue-400/40' : ''}`}
                             onClick={() => {
                               setSelectedSkin(skin.id);
                               setSkinSelectorOpen(false);
                             }}
                           >
-                            <div className="relative w-full h-32 overflow-hidden rounded-md flex-shrink-0 mb-2 bg-[#161e2e] group-hover:scale-105 transition-transform">
+                            <div className="relative w-full h-32 overflow-hidden rounded-md flex-shrink-0 mb-2 bg-blue-950/30 backdrop-blur-sm group-hover:scale-105 transition-transform">
                               <Image
                                 src={skin.imageUrl}
                                 alt={name}
@@ -830,7 +857,7 @@ export default function Home() {
                                   <span className="text-[10px] text-gray-400">•</span>
                                   <span className="text-[10px] text-gray-400">{wear}</span>
                                 </div>
-                                <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(2)}</span>
+                                <span className="text-xs font-medium bg-blue-950/30 backdrop-blur-sm px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(2)}</span>
                               </div>
                             </div>
                           </div>

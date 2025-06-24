@@ -31,6 +31,16 @@ export function BorrowConfirmationModal({
   extractSkinInfo,
   onConfirm
 }: BorrowConfirmationModalProps) {
+  // Fonction pour calculer le taux d'intérêt
+  const getInterestRate = (duration: number) => {
+    const minDuration = 7
+    const maxDuration = 35
+    const minRate = 25
+    const maxRate = 32
+    
+    const rate = minRate + (maxRate - minRate) * (duration - minDuration) / (maxDuration - minDuration)
+    return Math.round(rate * 10) / 10
+  }
   const router = useRouter()
   const { profile, ensureSolanaWallet } = useAuth();
   const { createLoan, isLoading: isLoanLoading, error: loanError } = useLoanApi();
@@ -112,7 +122,7 @@ export function BorrowConfirmationModal({
       // The backend will wait for trade acceptance before sending tokens
       const loanResponse = await createLoan({
         items: [selectedSkinData],
-        amount: Math.round(loanAmount), // Round amount to avoid BigInt issues
+        amount: Number(loanAmount.toFixed(2)), // Allow 2 decimal places
         duration: loanDuration,
         skinId: selectedSkinData.id,
         value: selectedSkinData.basePrice
@@ -165,7 +175,7 @@ export function BorrowConfirmationModal({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[425px] bg-[#0f1420] border border-[#1f2937]">
+        <DialogContent className="sm:max-w-[425px] bg-blue-950/20 backdrop-blur-md border-blue-400/30">
           <DialogHeader>
             <DialogTitle className="text-center">{transactionComplete ? "Loan Confirmed" : "Confirm Loan"}</DialogTitle>
             <DialogDescription className="text-center">
@@ -176,7 +186,7 @@ export function BorrowConfirmationModal({
         {!transactionComplete && !transactionError && !isProcessing && (
           <div className="space-y-4">
             {/* Skin details */}
-            <div className="bg-[#1f2937] border border-[#1f2937] rounded-lg p-3 flex items-center gap-3">
+            <div className="bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-lg p-3 flex items-center gap-3">
               <div className="w-12 h-12 rounded-md overflow-hidden relative">
                 <Image 
                   src={displaySkins.find(skin => skin.id === selectedSkin)?.imageUrl || ''}
@@ -196,7 +206,7 @@ export function BorrowConfirmationModal({
             </div>
             
             {/* Loan details */}
-            <div className="bg-[#1f2937] border border-[#1f2937] rounded-lg p-3 space-y-2">
+            <div className="bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-lg p-3 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Loan amount</span>
                 <span className="text-sm font-medium">${loanAmount.toFixed(2)} USDC</span>
@@ -207,15 +217,15 @@ export function BorrowConfirmationModal({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Interest</span>
-                <span className="text-sm font-medium">2.5%</span>
+                <span className="text-sm font-medium">{getInterestRate(loanDuration)}%</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Due date</span>
                 <span className="text-sm font-medium">{new Date(Date.now() + loanDuration * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
               </div>
-              <div className="flex justify-between items-center pt-2 border-t border-[#2a3548] mt-2">
+              <div className="flex justify-between items-center pt-2 border-t border-blue-400/20 mt-2">
                 <span className="text-sm font-medium">Total to repay</span>
-                <span className="text-sm font-medium">${(loanAmount * (1 + 0.025 * loanDuration / 7)).toFixed(2)} USDC</span>
+                <span className="text-sm font-medium">${(loanAmount * (1 + getInterestRate(loanDuration) / 100)).toFixed(2)} USDC</span>
               </div>
             </div>
           </div>
@@ -241,7 +251,7 @@ export function BorrowConfirmationModal({
               
             </div>
             
-            <div className="w-full bg-[#1f2937] border border-[#1f2937] h-1 rounded-full overflow-hidden">
+            <div className="w-full bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 h-1 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-[#6366f1] to-[#22d3ee] transition-all duration-300" 
                 style={{ width: `${(processingStep / 4) * 100}%` }}
@@ -262,14 +272,14 @@ export function BorrowConfirmationModal({
               </p>
             </div>
             
-            <div className="bg-[#1f2937] rounded-lg p-3 space-y-2">
+            <div className="bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-lg p-3 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Due date</span>
                 <span className="text-sm font-medium">{new Date(Date.now() + loanDuration * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Amount to repay</span>
-                <span className="text-sm font-medium">${(loanAmount * (1 + 0.025 * loanDuration / 7)).toFixed(2)} USDC</span>
+                <span className="text-sm font-medium">${(loanAmount * (1 + getInterestRate(loanDuration) / 100)).toFixed(2)} USDC</span>
               </div>
             </div>
           </div>
@@ -329,7 +339,7 @@ export function BorrowConfirmationModal({
                   <Button 
                     variant="outline" 
                     onClick={() => onOpenChange(false)} 
-                    className="border-[#2a3548] text-gray-400 hover:bg-[#1f2937] hover:text-white"
+                    className="border-blue-400/20 text-gray-400 hover:bg-blue-950/30 hover:text-white"
                   >
                     Cancel
                   </Button>
@@ -338,7 +348,7 @@ export function BorrowConfirmationModal({
                       setTransactionError(null);
                       handleBorrow();
                     }} 
-                    className="bg-gradient-to-r from-[#6366f1] to-[#22d3ee] hover:from-[#4f46e5] hover:to-[#0ea5e9]"
+                    className="bg-blue-600/20 hover:bg-blue-600/30 backdrop-blur-md border border-blue-400/30 hover:border-blue-400/50 text-white"
                   >
                     Try Again
                   </Button>
@@ -351,7 +361,7 @@ export function BorrowConfirmationModal({
               return (
                 <Button 
                   onClick={() => onOpenChange(false)} 
-                  className="bg-gradient-to-r from-[#6366f1] to-[#22d3ee] hover:from-[#4f46e5] hover:to-[#0ea5e9]"
+                  className="bg-blue-600/20 hover:bg-blue-600/30 backdrop-blur-md border border-blue-400/30 hover:border-blue-400/50 text-white"
                 >
                   Close
                 </Button>
@@ -369,13 +379,13 @@ export function BorrowConfirmationModal({
                 <Button 
                   variant="outline" 
                   onClick={() => onOpenChange(false)} 
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-border-[#2a3548] text-gray-400 hover:bg-[#1f2937] hover:text-white"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border-blue-400/20 text-gray-400 hover:bg-blue-950/30 hover:text-white"
                 >
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleBorrow} 
-                  className="bg-gradient-to-r from-[#6366f1] to-[#22d3ee] hover:from-[#4f46e5] hover:to-[#0ea5e9]"
+                  className="bg-blue-600/20 hover:bg-blue-600/30 backdrop-blur-md border border-blue-400/30 hover:border-blue-400/50 text-white"
                 >
                   Confirm Loan
                 </Button>

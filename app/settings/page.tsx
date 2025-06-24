@@ -660,7 +660,7 @@ export default function Settings() {
                         <div className="flex items-center gap-2">
                           <Input
                             value={walletAddress || "No wallet connected"}
-                            className="bg-[#1E1E1E] border-[#2A2A2A] font-mono text-sm"
+                            className="bg-[#1E1E1E] border-[#2A2A2A] font-poppins text-sm"
                             readOnly
                           />
                           {!walletAddress && (
