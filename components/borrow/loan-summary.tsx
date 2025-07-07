@@ -52,7 +52,7 @@ export function LoanSummary({
                     <DollarSign size={18} className="text-[#5D5FEF]" />
                   </div>
                   <div className="text-sm text-gray-400">Loan</div>
-                  <div className="font-bold text-[#5D5FEF]">{loanAmount} $</div>
+                  <div className="font-bold text-[#5D5FEF]">{loanAmount.toFixed(2)} $</div>
                 </div>
 
                 <div className="bg-[#2A2A2A] p-3 rounded-lg">
@@ -130,19 +130,19 @@ export function LoanSummary({
                     <div className="flex-1 min-w-0">
                       <p className="text-xs truncate">{skin.name}</p>
                     </div>
-                    <span className="text-xs text-[#5D5FEF]">{skin.value} $</span>
+                    <span className="text-xs text-[#5D5FEF]">{skin.value.toFixed(2)} $</span>
                   </div>
                 ))}
               </div>
 
               <div className="flex justify-between py-2 border-b border-[#2A2A2A]">
                 <span className="text-gray-400">Total collateral value</span>
-                <span className="font-medium">{totalSkinValue} $</span>
+                <span className="font-medium">{totalSkinValue.toFixed(2)} $</span>
               </div>
 
               <div className="flex justify-between py-2 border-b border-[#2A2A2A]">
                 <span className="text-gray-400">Loan amount</span>
-                <span className="font-medium text-[#5D5FEF]">{loanAmount} $</span>
+                <span className="font-medium text-[#5D5FEF]">{loanAmount.toFixed(2)} $</span>
               </div>
 
               <div className="flex justify-between py-2 border-b border-[#2A2A2A]">
@@ -152,12 +152,12 @@ export function LoanSummary({
 
               <div className="flex justify-between py-2 border-b border-[#2A2A2A]">
                 <span className="text-gray-400">Interest amount</span>
-                <span className="font-medium">{repaymentAmount - loanAmount} $</span>
+                <span className="font-medium">{(repaymentAmount - loanAmount).toFixed(2)} $</span>
               </div>
 
               <div className="flex justify-between py-2 border-b border-[#2A2A2A]">
                 <span className="text-gray-400">Total to repay</span>
-                <span className="font-bold text-[#5D5FEF]">{repaymentAmount} $</span>
+                <span className="font-bold text-[#5D5FEF]">{repaymentAmount.toFixed(2)} $</span>
               </div>
             </div>
 

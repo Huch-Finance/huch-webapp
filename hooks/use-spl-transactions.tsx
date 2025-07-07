@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js"
+import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js"
 import { getAssociatedTokenAddress } from "@solana/spl-token"
 import { useSolanaWallets, useSignTransaction } from "@privy-io/react-auth/solana"
 import { useAuth } from "@/hooks/use-auth"
@@ -12,6 +12,7 @@ import {
   getTransactionStatus,
   getUSDCMint 
 } from "@/lib/solana-utils"
+import { getSolanaConnection } from "@/lib/solana-connection"
 
 interface TransactionResult {
   success: boolean
@@ -26,10 +27,8 @@ export function useSPLTransactions() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const connection = new Connection(
-    "https://api.devnet.solana.com",
-    "confirmed"
-  )
+  // Use centralized connection to prevent WebSocket errors
+  const connection = getSolanaConnection()
 
   /**
    * Send USDC to another address
@@ -51,7 +50,7 @@ export function useSPLTransactions() {
     try {
       const recipient = new PublicKey(recipientAddress)
       const signature = await sendSPLToken(
-        connection,
+        null, // Connection parameter deprecated
         wallets[0],
         recipient,
         amount,

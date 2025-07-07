@@ -483,7 +483,7 @@ export default function Home() {
                                     <span>{skin.liquidationRate}% LTV</span>
                                   </div>
                                 </div>
-                                <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(0)}</span>
+                                <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(2)}</span>
                               </div>
                             )
                           })

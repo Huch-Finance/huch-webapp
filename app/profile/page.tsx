@@ -37,14 +37,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LoanExpirationInfo } from "@/components/loan/loan-expiration-info";
+import { LoanSummary } from "@/components/loan/loan-summary";
 import {
-  Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
 } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { getUSDCBalance } from "@/lib/solana-utils";
+import { getSolanaConnection } from "@/lib/solana-connection";
 
 interface TradeItem {
   assetId: string;
@@ -109,6 +109,8 @@ export default function Profile() {
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [loanFilter, setLoanFilter] = useState<'all' | 'active' | 'fully_repaid' | 'liquidated' | 'pending'>('all');
+  const [initialLoansLoaded, setInitialLoansLoaded] = useState(false);
+  const [userDataLoaded, setUserDataLoaded] = useState(false);
   
   // Cache pour éviter les appels répétés
   const [enrichmentCache, setEnrichmentCache] = useState<Map<string, any>>(new Map());
@@ -224,6 +226,12 @@ export default function Profile() {
           }
           
           const timeInfo = calculateTimeRemaining(startTime, duration);
+          
+          // Si le prêt est actif et créé récemment (moins de 24h), ne pas le marquer comme expiré
+          const isRecentlyCreated = (Date.now() - new Date(loan.createdAt).getTime()) < 24 * 60 * 60 * 1000;
+          const adjustedTimeInfo = isRecentlyCreated && loan.status === 'active' 
+            ? { ...timeInfo, isExpired: false }
+            : timeInfo;
 
           return {
             ...loan,
@@ -234,7 +242,7 @@ export default function Profile() {
             remainingAmount,
             totalToRepay: totalToRepayCalculated,
             interestRate,
-            ...timeInfo
+            ...adjustedTimeInfo
           } as BorrowWithTimeInfo;
         } catch (error) {
           console.error('Error enriching loan with time data:', error);
@@ -242,6 +250,12 @@ export default function Profile() {
           const createdTime = Math.floor(new Date(loan.createdAt).getTime() / 1000);
           const fallbackDuration = 30 * 24 * 60 * 60;
           const timeInfo = calculateTimeRemaining(createdTime, fallbackDuration);
+          
+          // Si le prêt est actif et créé récemment (moins de 24h), ne pas le marquer comme expiré
+          const isRecentlyCreated = (Date.now() - new Date(loan.createdAt).getTime()) < 24 * 60 * 60 * 1000;
+          const adjustedTimeInfo = isRecentlyCreated && loan.status === 'active' 
+            ? { ...timeInfo, isExpired: false }
+            : timeInfo;
           
           // Fallback: calculate total to repay with interest
           const durationInDays = 30; // Default duration
@@ -258,7 +272,7 @@ export default function Profile() {
             remainingAmount: fallbackRemainingAmount,
             totalToRepay: fallbackTotalToRepay,
             interestRate: fallbackInterestRate,
-            ...timeInfo
+            ...adjustedTimeInfo
           } as BorrowWithTimeInfo;
         }
       })
@@ -271,10 +285,7 @@ export default function Profile() {
     const fetchBalance = async () => {
       if (wallets?.[0]?.address) {
         try {
-          const connection = new Connection(
-            "https://api.devnet.solana.com",
-            "confirmed",
-          );
+          const connection = getSolanaConnection();
           const publicKey = new PublicKey(wallets[0].address);
           const balance = await connection.getBalance(publicKey);
           setSolBalance(balance / LAMPORTS_PER_SOL);
@@ -325,11 +336,25 @@ export default function Profile() {
           const enrichedLoans = await enrichLoansWithTimeData(userLoans);
           setLoans(enrichedLoans);
         }
+        setInitialLoansLoaded(true);
       }
     };
 
     fetchLoans();
   }, [profile?.id, wallets]);
+
+  // Monitor when user data is fully loaded
+  useEffect(() => {
+    if (isAuthenticated && !isLoading && profile?.id) {
+      // Add a small delay to ensure all data is loaded from localStorage and API
+      const timer = setTimeout(() => {
+        setUserDataLoaded(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setUserDataLoaded(false);
+    }
+  }, [isAuthenticated, isLoading, profile?.id]);
 
   // Mettre à jour les temps restants toutes les minutes
   useEffect(() => {
@@ -482,6 +507,10 @@ export default function Profile() {
 
     setWithdrawLoading(true);
     try {
+      // Test connection first to prevent WebSocket errors
+      const connection = getSolanaConnection();
+      await connection.getSlot(); // Quick connection test
+      
       // For now, use a simple USDC transfer
       const result = await testUSDCTransfer(amount, withdrawAddress);
       
@@ -491,11 +520,29 @@ export default function Profile() {
         setWithdrawAmount("");
         setWithdrawAddress("");
       } else {
-        toast.error(`Withdraw failed: ${result.error}`);
+        const errorMsg = result.error || "Unknown error";
+        console.error("Withdraw failed:", errorMsg);
+        
+        // Handle specific WebSocket errors
+        if (errorMsg.includes('ws error') || errorMsg.includes('websocket')) {
+          toast.error("Network connection issue. Please try again.");
+        } else if (errorMsg.includes('insufficient funds')) {
+          toast.error("Insufficient balance for transaction.");
+        } else {
+          toast.error(`Withdraw failed: ${errorMsg}`);
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Withdraw error:", error);
-      toast.error("Withdraw failed");
+      
+      // Handle different types of errors
+      if (error.message?.includes('ws error') || error.message?.includes('websocket')) {
+        toast.error("Network connection issue. Please check your internet and try again.");
+      } else if (error.message?.includes('Solana RPC failed')) {
+        toast.error("Solana network issue. Please try again in a moment.");
+      } else {
+        toast.error(`Withdraw failed: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setWithdrawLoading(false);
     }
@@ -626,7 +673,7 @@ export default function Profile() {
             }}
           />
           
-          {isAuthenticated && !isLoading && !profile?.steamId && (
+          {isAuthenticated && !isLoading && !profile?.steamId && userDataLoaded && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg p-4">
               <AlertTriangle size={32} className="text-yellow-500 mb-2" />
               <h3 className="text-lg font-medium text-white mb-1 text-center font-poppins">
@@ -870,167 +917,34 @@ export default function Profile() {
           </CardHeader>
           
           <CardContent>
-            {loanLoading ? (
-              <div className="text-center py-8 text-gray-400">Loading loans...</div>
+            {loanLoading || (!initialLoansLoaded && profile?.id) ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                <div className="text-gray-400 font-poppins">Loading loans...</div>
+              </div>
             ) : loans.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
                 No loans found
               </div>
             ) : (
               <div className="space-y-6">
-                {loans
-                  .filter((loan) => {
+                <LoanSummary 
+                  loans={loans.filter((loan) => {
                     if (loanFilter === 'all') return true;
                     if (loanFilter === 'active') return loan.status === 'active' && !(loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01);
                     if (loanFilter === 'fully_repaid') return loan.status === 'fully_repaid' || (loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01);
                     if (loanFilter === 'liquidated') return loan.status === 'liquidated';
                     if (loanFilter === 'pending') return loan.status === 'pending';
                     return false;
-                  })
-                  .map((loan) => (
-                  <Card 
-                    key={loan.id} 
-                    className={`group relative overflow-hidden backdrop-blur-md border transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
-                      loan.tradeStatus === 'in_escrow' || loan.tradeStatus === 'escrow_pending'
-                        ? 'bg-orange-900/10 border-orange-500/30 hover:border-orange-500/40'
-                        : 'bg-blue-950/15 hover:bg-blue-950/20 border-blue-400/20 hover:border-blue-400/30'
-                    }`}
-                  >
-                    {/* Glass effect overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    
-                    <CardContent className="relative p-4 sm:p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 lg:gap-6">
-                        <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
-                          {loan.trade?.items?.[0] && (
-                            <div className="relative group/image flex-shrink-0">
-                              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 rounded-lg blur-sm opacity-0 group-hover/image:opacity-100 transition-opacity duration-300" />
-                              <img 
-                                src={loan.trade.items[0].iconUrl} 
-                                alt={loan.trade.items[0].marketHashName}
-                                className="relative w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-lg border border-white/10 bg-black/20 backdrop-blur-sm p-1"
-                              />
-                            </div>
-                          )}
-                          <div className="flex flex-col gap-2 min-w-0 flex-1">
-                            <div>
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                                <div className="font-semibold text-lg sm:text-xl bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent font-poppins">
-                                  ${loan.amount.toFixed(2)} USDC
-                                </div>
-                                {loan.interestRate !== undefined && (
-                                  <div className="px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded-md text-xs text-amber-300 font-medium w-fit font-poppins">
-                                    {loan.interestRate}% APR
-                                  </div>
-                                )}
-                              </div>
-                              {/* Show total to repay */}
-                              {loan.totalToRepay !== undefined && (
-                                <div className="text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 font-poppins">
-                                  <span className="text-gray-400 font-poppins">Total to repay:</span>
-                                  <span className="text-yellow-300 font-semibold bg-yellow-400/10 px-2 py-1 rounded border border-yellow-400/20 w-fit font-poppins">
-                                    ${loan.totalToRepay.toFixed(2)} USDC
-                                  </span>
-                                </div>
-                              )}
-                              {/* Show remaining amount */}
-                              {loan.remainingAmount !== undefined && (
-                                <div className="text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 font-poppins">
-                                  <span className="text-gray-400 font-poppins">Remaining:</span>
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className={`font-semibold px-2 py-1 rounded border w-fit font-poppins ${loan.remainingAmount > 0 
-                                      ? "text-red-300 bg-red-400/10 border-red-400/20" 
-                                      : "text-green-300 bg-green-400/10 border-green-400/20"
-                                    }`}>
-                                      ${loan.remainingAmount.toFixed(2)} USDC
-                                    </span>
-                                    {loan.totalRepaid !== undefined && loan.totalRepaid > 0 && loan.totalToRepay && (
-                                      <span className="text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded border border-green-400/20 w-fit font-poppins">
-                                        {(loan.totalRepaid / loan.totalToRepay * 100).toFixed(1)}% repaid
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                              {loan.trade?.items?.[0] && (
-                                <div className="text-sm text-gray-300 max-w-[300px] truncate font-poppins">
-                                  {loan.trade.items[0].marketHashName}
-                                </div>
-                              )}
-                              <div className="text-sm text-gray-400 font-poppins">
-                                ID: {loan.borrowId.slice(0, 8)}...
-                              </div>
-                              {loan.totalRepaid !== undefined && loan.totalRepaid > 0 && loan.totalToRepay && (
-                                <div className="relative w-full bg-gray-800/50 border border-gray-700/50 rounded-full h-2 mt-2 overflow-hidden">
-                                  <div className="absolute inset-0 bg-gradient-to-r from-gray-800/20 to-gray-700/20" />
-                                  <div 
-                                    className="relative h-full bg-gradient-to-r from-green-500 via-emerald-400 to-cyan-400 rounded-full transition-all duration-700 ease-out shadow-lg shadow-green-500/25"
-                                    style={{
-                                      width: `${Math.min(100, loan.totalRepaid / loan.totalToRepay * 100)}%`
-                                    }}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <div className={`px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-sm font-poppins ${getStatusColor(loan)} w-fit shadow-lg`}>
-                                {loan.status === 'fully_repaid' || loan.status === 'repaid' ? 'REPAID' :
-                                 loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01 ? '100% PAID' :
-                                 loan.isExpired && loan.status === 'active' ? 'EXPIRED' : 
-                                 loan.status.toUpperCase()}
-                              </div>
-                              {loan.status === 'active' && !(loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01) && (
-                                <div className={`px-3 py-1.5 rounded-lg text-xs font-medium font-poppins ${getTimeColor(loan)} bg-gray-900/50 backdrop-blur-sm border border-gray-600/30 w-fit flex items-center gap-1.5 shadow-lg`}>
-                                  {loan.isExpired ? (
-                                    <AlertTriangleIcon size={12} className="animate-pulse" />
-                                  ) : loan.daysRemaining !== undefined && loan.daysRemaining <= 1 ? (
-                                    <AlertTriangleIcon size={12} className="animate-pulse" />
-                                  ) : (
-                                    <Clock size={12} />
-                                  )}
-                                  {formatTimeRemaining(loan)}
-                                </div>
-                              )}
-                              <LoanExpirationInfo borrowId={loan.id} privyId={profile?.id} />
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-end xl:items-center gap-3 sm:gap-4 lg:gap-2 xl:gap-4 lg:min-w-0 xl:min-w-fit">
-                          <div className="text-left sm:text-right lg:text-left xl:text-right font-poppins">
-                            <div className="text-sm text-gray-400 font-poppins">Created</div>
-                            <div className="text-sm text-white whitespace-nowrap font-poppins">
-                              {new Date(loan.createdAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                          
-                          {loan.status === 'active' && loan.remainingAmount && loan.remainingAmount > 0.01 && (
-                            <Button
-                              size="sm"
-                              className="relative bg-white/10 hover:bg-white/15 text-white font-medium px-4 sm:px-6 py-2 rounded-lg border border-white/20 hover:border-white/30 shadow-lg backdrop-blur-md transition-all duration-300 hover:shadow-xl hover:scale-105 w-full sm:w-auto font-poppins"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedLoan(loan);
-                                setIsRepayOpen(true);
-                              }}
-                            >
-                              <span className="relative z-10">Repay</span>
-                              <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent rounded-lg opacity-0 hover:opacity-100 transition-opacity duration-300" />
-                            </Button>
-                          )}
-                          
-                          {(loan.status === 'fully_repaid' || (loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01)) && (
-                            <div className="text-left sm:text-right lg:text-left xl:text-right font-poppins">
-                              <div className="text-sm text-blue-400 font-medium whitespace-nowrap font-poppins">
-                                Fully Repaid
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                  })}
+                  onRepayClick={(loan) => {
+                    setSelectedLoan(loan);
+                    setIsRepayOpen(true);
+                  }}
+                  getStatusColor={getStatusColor}
+                  getTimeColor={getTimeColor}
+                  formatTimeRemaining={formatTimeRemaining}
+                />
                 {loans.filter((loan) => {
                   if (loanFilter === 'all') return true;
                   if (loanFilter === 'active') return loan.status === 'active' && !(loan.remainingAmount !== undefined && loan.remainingAmount <= 0.01);
@@ -1166,6 +1080,20 @@ export default function Profile() {
             <div className="flex flex-col gap-4 py-4">
               {selectedLoan && (
                 <>
+                  {selectedLoan.isExpired && (
+                    <div className="p-3 bg-red-900/20 backdrop-blur-sm border border-red-500/30 rounded-lg flex items-center gap-3">
+                      <AlertTriangleIcon className="text-red-400 w-5 h-5 flex-shrink-0" />
+                      <div>
+                        <div className="text-sm font-semibold text-red-400 font-poppins">
+                          This loan has expired
+                        </div>
+                        <div className="text-xs text-red-400/80 font-poppins">
+                          Expired loans cannot be repaid and may be subject to liquidation.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="p-3 bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-lg">
                     <div className="text-sm text-gray-400 font-poppins">Loan Details</div>
                     <div className="text-lg font-bold text-white font-poppins">
@@ -1206,18 +1134,18 @@ export default function Profile() {
                   step="0.01"
                   max={selectedLoan?.remainingAmount || selectedLoan?.amount}
                   placeholder="Amount to repay (USDC)"
-                  className="w-full p-3 pr-16 rounded-lg bg-blue-950/30 backdrop-blur-sm text-white border border-blue-400/20 focus:border-blue-400/40 focus:outline-none font-poppins"
+                  className="w-full p-3 pr-16 rounded-lg bg-blue-950/30 backdrop-blur-sm text-white border border-blue-400/20 focus:border-blue-400/40 focus:outline-none font-poppins disabled:opacity-50 disabled:cursor-not-allowed"
                   value={repayAmount}
                   onChange={(e) => setRepayAmount(e.target.value)}
-                  disabled={loanLoading}
+                  disabled={loanLoading || selectedLoan?.isExpired}
                 />
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 px-2 text-xs border-gray-500 text-gray-300 hover:text-white hover:border-white font-poppins"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 px-2 text-xs border-gray-500 text-gray-300 hover:text-white hover:border-white font-poppins disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleSetMaxRepayAmount}
-                  disabled={loanLoading}
+                  disabled={loanLoading || selectedLoan?.isExpired}
                 >
                   MAX
                 </Button>
@@ -1242,9 +1170,9 @@ export default function Profile() {
               </Button>
               
               <Button
-                className="bg-blue-600/20 hover:bg-blue-600/30 backdrop-blur-md border border-blue-400/30 hover:border-blue-400/50 text-white font-bold w-full mt-2 transition-all duration-300 font-poppins"
+                className="bg-blue-600/20 hover:bg-blue-600/30 backdrop-blur-md border border-blue-400/30 hover:border-blue-400/50 text-white font-bold w-full mt-2 transition-all duration-300 font-poppins disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600/20"
                 onClick={handleRepayLoan}
-                disabled={loanLoading || !repayAmount}
+                disabled={loanLoading || !repayAmount || selectedLoan?.isExpired}
               >
                 {loanLoading ? "Processing..." : "Repay Loan"}
               </Button>

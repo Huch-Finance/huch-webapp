@@ -41,7 +41,7 @@ export function SelectedSkinsSummary({ skins, onRemove, className = "" }: Select
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{skin.name}</p>
-                <p className="text-[#5D5FEF] text-xs">{skin.value} $</p>
+                <p className="text-[#5D5FEF] text-xs">{skin.value.toFixed(2)} $</p>
               </div>
               <Button
                 variant="ghost"
@@ -57,7 +57,7 @@ export function SelectedSkinsSummary({ skins, onRemove, className = "" }: Select
 
         <div className="mt-4 pt-3 border-t border-[#2A2A2A] flex justify-between items-center">
           <span className="text-sm text-gray-400">Total value :</span>
-          <span className="font-bold text-[#5D5FEF]">{totalValue} $</span>
+          <span className="font-bold text-[#5D5FEF]">{totalValue.toFixed(2)} $</span>
         </div>
       </CardContent>
     </Card>

@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Transaction } from '@solana/web3.js'
+import { PublicKey, Transaction } from '@solana/web3.js'
 import { 
   getAssociatedTokenAddress, 
   createAssociatedTokenAccountInstruction, 
@@ -6,6 +6,7 @@ import {
   TOKEN_PROGRAM_ID, 
   ASSOCIATED_TOKEN_PROGRAM_ID 
 } from '@solana/spl-token'
+import { getSolanaConnection } from './solana-connection'
 
 export const USDC_MINT_MAINNET = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')
 export const USDC_MINT_DEVNET = new PublicKey('4KNxmZizMom4v1HjwjnFqYa55LFyUBshHCAKs1UGvSSj')
@@ -102,12 +103,14 @@ export function smallestUnitToUsdc(amount: number): number {
  * @returns Transaction signature
  */
 export async function sendSPLToken(
-  connection: Connection,
+  _connection: any, // Deprecated parameter - using centralized connection
   sender: any, // Privy wallet object
   recipient: PublicKey,
   amount: number,
   mint: PublicKey = getUSDCMint()
 ): Promise<string> {
+  // Use centralized connection to prevent WebSocket errors
+  const connection = getSolanaConnection()
   if (!sender?.address) {
     throw new Error('Sender wallet not connected')
   }

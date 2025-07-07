@@ -103,7 +103,7 @@ export function useAuth() {
             }
             console.log('Profil updated:', updatedProfile);
             
-            // Persist admin flag and avatar
+            // Persist admin flag, avatar, username, and steamId
             if (typeof window !== "undefined") {
               if (updatedProfile.admin) {
                 window.localStorage.setItem("admin", "true");
@@ -116,6 +116,12 @@ export function useAuth() {
               }
               if (updatedProfile.username) {
                 window.localStorage.setItem("username", updatedProfile.username);
+              }
+              if (updatedProfile.steamId) {
+                window.localStorage.setItem("steamId", updatedProfile.steamId);
+              }
+              if (updatedProfile.tradeLink) {
+                window.localStorage.setItem("tradeLink", updatedProfile.tradeLink);
               }
             }
             
@@ -184,7 +190,7 @@ export function useAuth() {
           
           console.log('Updated profile with API data:', updatedProfile);
           
-          // Persist admin flag and avatar to prevent flickering on refresh
+          // Persist admin flag, avatar, username, steamId, and tradeLink to prevent flickering on refresh
           if (typeof window !== "undefined") {
             if (updatedProfile.admin) {
               window.localStorage.setItem("admin", "true");
@@ -197,6 +203,12 @@ export function useAuth() {
             }
             if (updatedProfile.username) {
               window.localStorage.setItem("username", updatedProfile.username);
+            }
+            if (updatedProfile.steamId) {
+              window.localStorage.setItem("steamId", updatedProfile.steamId);
+            }
+            if (updatedProfile.tradeLink) {
+              window.localStorage.setItem("tradeLink", updatedProfile.tradeLink);
             }
           }
           
@@ -228,12 +240,16 @@ export function useAuth() {
     let adminFromDb = false;
     let cachedAvatar: string | null = null;
     let cachedUsername: string | null = null;
+    let cachedSteamId: string | null = null;
+    let cachedTradeLink: string | null = null;
     
     if (user && typeof window !== "undefined") {
       const adminStr = window.localStorage.getItem("admin");
       if (adminStr === "true") adminFromDb = true;
       cachedAvatar = window.localStorage.getItem("userAvatar");
       cachedUsername = window.localStorage.getItem("username");
+      cachedSteamId = window.localStorage.getItem("steamId");
+      cachedTradeLink = window.localStorage.getItem("tradeLink");
     }
 
     // User is authenticated, build profile
@@ -259,9 +275,10 @@ export function useAuth() {
       id: user?.id || "",
       email: user?.email?.address,
       wallet: solanaWallet?.address, // Prioriser uniquement Solana wallet
-      steamId: undefined,
+      steamId: cachedSteamId || undefined,
       username: cachedUsername || undefined,
       avatar: cachedAvatar || undefined,
+      tradeLink: cachedTradeLink || undefined,
       admin: adminFromDb || false,
     }
 
@@ -438,7 +455,9 @@ export function useAuth() {
       window.localStorage.removeItem('admin');
       window.localStorage.removeItem('userAvatar');
       window.localStorage.removeItem('username');
-      window.localStorage.removeItem('steamID');
+      window.localStorage.removeItem('steamId');
+      window.localStorage.removeItem('tradeLink');
+      window.localStorage.removeItem('steamID'); // Keep for backward compatibility
       
       const url = new URL(window.location.href);
       url.searchParams.delete('steam_connected');
