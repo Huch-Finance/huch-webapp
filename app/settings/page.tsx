@@ -42,7 +42,7 @@ export default function Settings() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const { profile, updateProfile, isAuthenticated, isLoading, reloadUserData } =
+  const { profile, updateProfile, isAuthenticated, isLoading, reloadUserData, getPrivyAccessToken } =
     useAuth();
   const { linkEmail, linkWallet, unlinkEmail, unlinkWallet, user, ready } =
     usePrivy();
@@ -78,11 +78,18 @@ export default function Settings() {
               console.log("Email detected, updating backend:", currentEmail);
               console.log("Email detected, updating backend:", currentEmail);
               try {
+                // Get access token for secure authentication
+                const token = await getPrivyAccessToken()
+                if (!token) {
+                  console.error("No access token available")
+                  return;
+                }
+
                 const response = await fetch("http://localhost:3333/api/user", {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
-                    "X-Privy-Id": user.id,
+                    "Authorization": `Bearer ${token}`
                   },
                   body: JSON.stringify({
                     profile: {
@@ -108,621 +115,477 @@ export default function Settings() {
               } catch (apiError) {
                 console.error("Error calling API:", apiError);
               }
-            } else if (attempts < maxAttempts) {
-              // Continuer le polling si le nombre maximum de tentatives n'est pas atteint
+            }
+
+            if (attempts < maxAttempts) {
               pollForEmailUpdate();
             } else {
-              console.log("Max attempts reached, email not detected");
-              // Recharger les données utilisateur une dernière fois
-              if (reloadUserData) {
-                reloadUserData();
-              }
-            }
-          } else if (attempts < maxAttempts) {
-            // Continuer le polling si le nombre maximum de tentatives n'est pas atteint
-            pollForEmailUpdate();
-          } else {
-            console.log("Max attempts reached, user not available");
-            // Recharger les données utilisateur une dernière fois
-            if (reloadUserData) {
-              reloadUserData();
+              console.log("Max attempts reached, stopping polling");
             }
           }
         }, pollInterval);
       };
 
-      // Démarrer le processus de polling
       pollForEmailUpdate();
     } catch (error) {
-      console.error("Error adding email:", error);
+      console.error("Error in handleAddEmail:", error);
     }
   };
 
-  // Update local states when profile changes
+  const handleRemoveEmail = async () => {
+    try {
+      await unlinkEmail();
+      setEmail("");
+      if (reloadUserData) {
+        reloadUserData();
+      }
+    } catch (error) {
+      console.error("Error removing email:", error);
+    }
+  };
+
+  const handleAddWallet = async () => {
+    try {
+      await linkWallet();
+      if (reloadUserData) {
+        reloadUserData();
+      }
+    } catch (error) {
+      console.error("Error adding wallet:", error);
+    }
+  };
+
+  const handleRemoveWallet = async () => {
+    try {
+      await unlinkWallet(walletAddress);
+      setWalletAddress("");
+      if (reloadUserData) {
+        reloadUserData();
+      }
+    } catch (error) {
+      console.error("Error removing wallet:", error);
+    }
+  };
+
+  // Update form fields when profile changes
   useEffect(() => {
     if (profile) {
-      console.log("Profile updated in useEffect:", profile);
       setSteamID(profile.steamId || "");
       setUsername(profile.username || "");
-      setEmail(profile.email || "");
-      setWalletAddress(solanaWallets?.[0]?.address || profile.wallet || "");
+      setEmail(user?.email?.address || "");
+      setWalletAddress(solanaWallets[0]?.address || "");
     }
-  }, [profile, solanaWallets]);
+  }, [profile, user, solanaWallets]);
 
-  // Check if the email has been updated in Privy
-  useEffect(() => {
-    if (user?.email?.address && user.email.address !== email) {
-      console.log(
-        "Email detected in user object but not in local state, updating...",
-        user.email.address,
-      );
-      setEmail(user.email.address);
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    setSaveSuccess(false);
+
+    try {
+      // Get access token for secure authentication
+      const token = await getPrivyAccessToken()
+      if (!token) {
+        console.error("No access token available")
+        return;
+      }
+
+      const response = await fetch("http://localhost:3333/api/user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          profile: {
+            username: username,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        setSaveSuccess(true);
+        if (reloadUserData) {
+          reloadUserData();
+        }
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        console.error("Error saving profile:", await response.text());
+      }
+    } catch (error) {
+      console.error("Error saving profile:", error);
+    } finally {
+      setIsSaving(false);
     }
-  }, [user, email]);
+  };
 
   if (isLoading) {
     return (
-      <main className="min-h-screen flex flex-col bg-gradient-to-b from-[#0f0f13] to-[#1a1a1f] relative z-10">
-        <div className="flex items-center justify-center flex-1">
+      <div className="flex flex-col min-h-screen bg-[#111] text-white">
+        <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="w-12 h-12 border-4 border-t-[#5D5FEF] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading your settings...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5D5FEF] mx-auto mb-4"></div>
+            <p>Chargement...</p>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen flex flex-col bg-gradient-to-b from-[#0f0f13] to-[#1a1a1f] relative z-10">
-        <div className="flex items-center justify-center flex-1">
-          <div className="text-center max-w-md p-6">
-            <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
+      <div className="flex flex-col min-h-screen bg-[#111] text-white">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <User className="w-16 h-16 text-[#5D5FEF] mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-4">Paramètres</h2>
             <p className="text-gray-400 mb-6">
-              You need to be logged in to access your account settings.
+              Connectez-vous pour accéder à vos paramètres
             </p>
-            <Button
-              onClick={() => (window.location.href = "/")}
-              className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white"
-            >
-              Return to Home
-            </Button>
           </div>
-        </div>
-      </main>
+        </main>
+        <Footer />
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col text-white">
-      <main className="flex-1 flex flex-col items-center justify-center">
-        <section className="pt-24 pb-16 px-4 flex-1 w-full">
-          <div className="mx-auto w-full max-w-3xl">
-            <h1 className="text-3xl font-bold mb-8 text-center">
-              Account{" "}
-              <span className="text-[#5D5FEF] neon-text">Settings</span>
-            </h1>
+    <div className="flex flex-col min-h-screen bg-[#111] text-white">
+      <Navbar />
+      <main className="flex-1">
+        <CyberpunkContainer>
+          <div className="space-y-8">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Paramètres</h1>
+              <p className="text-gray-400">
+                Gérez votre profil et vos préférences
+              </p>
+            </div>
 
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="space-y-6"
-            >
-              <TabsList className="grid grid-cols-4 w-full bg-[#1E1E1E] p-1">
-                <TabsTrigger
-                  value="profile"
-                  className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white text-xs sm:text-sm"
-                >
-                  <User size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
-                  <span className="hidden sm:inline">Profile</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="security"
-                  className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white text-xs sm:text-sm"
-                >
-                  <Shield size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
-                  <span className="hidden sm:inline">Security</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="notifications"
-                  className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white text-xs sm:text-sm"
-                >
-                  <Bell size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
-                  <span className="hidden md:inline">Notifications</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="wallet"
-                  className="data-[state=active]:bg-[#5D5FEF] data-[state=active]:text-white text-xs sm:text-sm"
-                >
-                  <Wallet size={16} className="mr-1 sm:mr-2 flex-shrink-0" />
-                  <span className="hidden sm:inline">Wallet</span>
-                </TabsTrigger>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="profile">Profil</TabsTrigger>
+                <TabsTrigger value="security">Sécurité</TabsTrigger>
+                <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                <TabsTrigger value="wallet">Wallet</TabsTrigger>
               </TabsList>
 
-              {/* Tab Content Wrapper with min-h for smooth transitions */}
-              <div className="w-full min-h-[600px] transition-all duration-300">
-                {/* Profile Tab */}
-                <TabsContent value="profile" className="space-y-6 relative">
-                  <CyberpunkContainer>
-                    {!profile?.steamId && (
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-lg">
-                        <AlertTriangle
-                          size={40}
-                          className="text-yellow-500 mb-2"
-                        />
-                        <h3 className="text-lg font-medium text-white mb-1">
-                          Steam Account Required
-                        </h3>
-                        <p className="text-sm text-gray-300 text-center max-w-xs mb-4">
-                          Connect your Steam account to complete your profile and
-                          access all features.
+              <TabsContent value="profile" className="space-y-6">
+                <Card className="border-[#2A2A2A] bg-[#1E1E1E]">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <User className="mr-2 text-[#5D5FEF]" />
+                      Informations du profil
+                    </CardTitle>
+                    <CardDescription>
+                      Gérez vos informations personnelles
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="username">Nom d'utilisateur</Label>
+                      <Input
+                        id="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="Votre nom d'utilisateur"
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="steamId">Steam ID</Label>
+                      <Input
+                        id="steamId"
+                        value={steamID}
+                        onChange={(e) => setSteamID(e.target.value)}
+                        placeholder="Votre Steam ID"
+                        className="mt-1"
+                        disabled
+                      />
+                      <p className="text-sm text-gray-400 mt-1">
+                        Connectez-vous via Steam pour lier votre compte
+                      </p>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <SteamAuthButton />
+                      <Badge
+                        className={
+                          hasSteamLinked
+                            ? "bg-green-600/20 text-green-400 border-green-600"
+                            : "bg-yellow-600/20 text-yellow-400 border-yellow-600"
+                        }
+                      >
+                        {hasSteamLinked ? "Connecté" : "Non connecté"}
+                      </Badge>
+                    </div>
+
+                    <Button
+                      onClick={handleSaveProfile}
+                      disabled={isSaving}
+                      className="w-full bg-[#5D5FEF] hover:bg-[#4A4CDF]"
+                    >
+                      {isSaving ? "Sauvegarde..." : "Sauvegarder"}
+                    </Button>
+
+                    {saveSuccess && (
+                      <div className="p-3 bg-green-600/20 border border-green-600/30 rounded-lg text-center">
+                        <p className="text-sm text-green-400">
+                          Profil mis à jour avec succès !
                         </p>
-                        <div className="scale-125">
-                          <SteamAuthButton />
-                        </div>
                       </div>
                     )}
-                    <Card className="border-[#2A2A2A] bg-[#1E1E1E]">
-                      <CardHeader>
-                        <CardTitle className="flex items-center">
-                          <User className="mr-2 text-[#5D5FEF]" />
-                          Personal Information
-                        </CardTitle>
+                  </CardContent>
+                </Card>
 
-                        <CardDescription>
-                          Update your personal details and how we can reach you
-                        </CardDescription>
-                      </CardHeader>
-
-                      <CardContent className="space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-2 mb-3">
-                          <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-[#2A2A2A] overflow-hidden">
-                              <img
-                                src={
-                                  profile?.avatar ||
-                                  "/avatars/logo-black.svg?height=100&width=100"
-                                }
-                                alt="Profile"
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="text-sm text-gray-400">
-                              {profile?.username || "Anonymous"}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="username">Username</Label>
-                            <Input
-                              id="username"
-                              placeholder="HuchFan."
-                              value={username}
-                              onChange={(e) => setUsername(e.target.value)}
-                              className="bg-[#2A2A2A] border-[#2A2A2A]"
-                              disabled={true}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              placeholder="Your email"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              className="bg-[#2A2A2A] border-[#2A2A2A]"
-                              disabled={true}
-                            />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </CyberpunkContainer>
-
-                  <CyberpunkContainer>
-                    <CardHeader className="px-0 pt-0">
-                      <CardTitle className="flex items-center">
-                        <Steam className="mr-2 text-[#5D5FEF]" />
-                        Steam Connection
-                      </CardTitle>
-                      <CardDescription>
-                        Link your Steam account to access your CS2 inventory
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="px-0 pb-0 space-y-4">
-                      {!profile?.steamId ? (
-                        <div className="p-4 bg-[#2A2A2A] rounded-lg">
-                          <div className="text-center mb-4">
-                            <h4 className="font-medium mb-2">
-                              Connect your Steam account
-                            </h4>
-                            <p className="text-sm text-gray-400 mb-4">
-                              You need to connect your Steam account to use our
-                              services. This allows us to access your CS2
-                              inventory.
-                            </p>
-                            <div className="flex justify-center">
-                              <SteamAuthButton />
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="steamid">Steam ID</Label>
-                            <div className="flex gap-2">
-                              <Input
-                                id="steamid"
-                                placeholder="Your current Steam ID : 76561198858784909 (Dornag0x)"
-                                value={steamID}
-                                disabled={true}
-                                className="bg-[#2A2A2A] border-[#2A2A2A]"
-                              />
-                              <Button
-                                variant="outline"
-                                className="border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20"
-                                onClick={() => {
-                                  if (profile?.steamId) {
-                                    window.open(
-                                      `https://steamcommunity.com/profiles/${profile.steamId}`,
-                                      "_blank",
-                                    );
-                                  }
-                                }}
-                              >
-                                <ExternalLink size={16} className="mr-2" />
-                                View Profile
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor="tradelink"
-                              className="flex items-center gap-2"
-                            >
-                              Trade Link
-                              {!profile?.tradeLink && (
-                                <Badge className="bg-yellow-600/20 text-yellow-400 border-yellow-600 text-xs">
-                                  Required
-                                </Badge>
-                              )}
-                            </Label>
-                            <div className="flex gap-2 items-center">
-                              <Input
-                                id="tradelink"
-                                placeholder="Paste your Steam trade link here"
-                                value={profile?.tradeLink ?? ""}
-                                onChange={(e) =>
-                                  updateProfile({ tradeLink: e.target.value })
-                                }
-                                className="bg-[#2A2A2A] border-[#2A2A2A] flex-1"
-                                disabled={!profile?.steamId}
-                                style={{ fontSize: "0.95rem" }}
-                              />
-                              <Button
-                                variant="outline"
-                                className="border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20"
-                                disabled={!profile?.steamId}
-                                onClick={async () => {
-                                  await updateProfile({
-                                    tradeLink: profile?.tradeLink,
-                                  });
-                                  reloadUserData();
-                                }}
-                              >
-                                Save
-                              </Button>
-                            </div>
-                            <p className="text-xs text-gray-400">
-                              Your trade link is required to receive and return
-                              CS2 items.&nbsp;
-                              <a
-                                href="https://steamcommunity.com/my/tradeoffers/privacy"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[#5D5FEF] hover:underline"
-                              >
-                                Find your trade link here
-                              </a>
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="p-3 bg-[#2A2A2A]/50 rounded-lg flex items-start gap-2">
-                        <Info
-                          size={16}
-                          className="text-[#5D5FEF] mt-0.5 flex-shrink-0"
-                        />
-                        <p className="text-xs text-gray-400">
-                          Connecting your Steam account allows us to access your
-                          CS2 inventory for collateral. We never store your Steam
-                          credentials.
+                <Card className="border-[#2A2A2A] bg-[#1E1E1E]">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Mail className="mr-2 text-[#5D5FEF]" />
+                      Email
+                    </CardTitle>
+                    <CardDescription>
+                      Gérez votre adresse email
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">
+                          {email || "Aucun email connecté"}
+                        </h4>
+                        <p className="text-sm text-gray-400">
+                          Votre adresse email
                         </p>
                       </div>
-                    </CardContent>
-                  </CyberpunkContainer>
-                </TabsContent>
-
-                {/* Security Tab */}
-                <TabsContent value="security" className="space-y-6">
-                  <Card className="border-[#2A2A2A] bg-[#1E1E1E]">
-                    <CardHeader>
-                      <CardTitle className="flex items-center">
-                        <Mail className="mr-2 text-[#5D5FEF]" />
-                        Email Authentication
-                      </CardTitle>
-                      <CardDescription>
-                        Manage your email authentication methods
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {!email && walletAddress ? (
-                        <div className="p-4 bg-yellow-600/10 border border-yellow-600/30 rounded-lg flex items-start gap-3">
-                          <AlertTriangle
-                            className="text-yellow-500 flex-shrink-0 mt-1"
-                            size={20}
-                          />
-                          <div className="flex-1">
-                            <h4 className="font-medium text-yellow-500">
-                              Email recommended
-                            </h4>
-                            <p className="text-sm text-gray-400 mb-3">
-                              We recommend adding an email to your account for
-                              better security and recovery options.
-                            </p>
-                            <Button
-                              className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                              onClick={handleAddEmail}
-                            >
-                              Add Email Now
-                            </Button>
-                          </div>
-                        </div>
+                      {email ? (
+                        <Button
+                          variant="outline"
+                          className="border-red-500 text-red-500 hover:bg-red-500/20"
+                          onClick={handleRemoveEmail}
+                        >
+                          Supprimer
+                        </Button>
                       ) : (
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-medium">
-                              {email || "No email connected"}
-                            </h4>
-                            <p className="text-sm text-gray-400">
-                              Your primary email address
-                            </p>
-                          </div>
-                          {!email ? (
-                            <Button
-                              className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white"
-                              onClick={handleAddEmail}
-                            >
-                              Connect Email
-                            </Button>
-                          ) : (
-                            <Badge className="bg-green-600/20 text-green-400 border-green-600">
-                              Verified
-                            </Badge>
-                          )}
-                        </div>
+                        <Button
+                          className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white"
+                          onClick={handleAddEmail}
+                        >
+                          Ajouter Email
+                        </Button>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                  <Card className="border-[#2A2A2A] bg-[#1E1E1E]">
-                    <CardHeader>
-                      <CardTitle className="flex items-center">
-                        <Wallet className="mr-2 text-[#5D5FEF]" />
-                        Wallet Authentication
-                      </CardTitle>
-                      <CardDescription>
-                        Connect your crypto wallet for authentication
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between">
+                <Card className="border-[#2A2A2A] bg-[#1E1E1E]">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Wallet className="mr-2 text-[#5D5FEF]" />
+                      Wallet Authentication
+                    </CardTitle>
+                    <CardDescription>
+                      Connectez votre wallet crypto pour l'authentification
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">
+                          {walletAddress
+                            ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`
+                            : "Aucun wallet connecté"}
+                        </h4>
+                        <p className="text-sm text-gray-400">
+                          Votre wallet connecté
+                        </p>
+                      </div>
+                      {walletAddress ? (
+                        <Button
+                          variant="outline"
+                          className="border-red-500 text-red-500 hover:bg-red-500/20"
+                          onClick={() => handleRemoveWallet()}
+                        >
+                          Déconnecter
+                        </Button>
+                      ) : (
+                        <Button
+                          className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white"
+                          onClick={() => handleAddWallet()}
+                        >
+                          Connecter Wallet
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="security" className="space-y-6">
+                <Card className="border-[#2A2A2A] bg-[#1E1E1E]">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Shield className="mr-2 text-[#5D5FEF]" />
+                      Sécurité
+                    </CardTitle>
+                    <CardDescription>
+                      Paramètres de sécurité de votre compte
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Authentification à deux facteurs</h4>
+                        <p className="text-sm text-gray-400">
+                          Ajoutez une couche de sécurité supplémentaire
+                        </p>
+                      </div>
+                      <Switch />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Notifications de connexion</h4>
+                        <p className="text-sm text-gray-400">
+                          Recevez une notification à chaque nouvelle connexion
+                        </p>
+                      </div>
+                      <Switch />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="notifications" className="space-y-6">
+                <Card className="border-[#2A2A2A] bg-[#1E1E1E]">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Bell className="mr-2 text-[#5D5FEF]" />
+                      Notifications
+                    </CardTitle>
+                    <CardDescription>
+                      Gérez vos préférences de notifications
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Notifications par email</h4>
+                        <p className="text-sm text-gray-400">
+                          Recevez des notifications importantes par email
+                        </p>
+                      </div>
+                      <Switch />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Notifications de prêt</h4>
+                        <p className="text-sm text-gray-400">
+                          Soyez informé des nouveaux prêts disponibles
+                        </p>
+                      </div>
+                      <Switch />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Notifications de prix</h4>
+                        <p className="text-sm text-gray-400">
+                          Recevez des alertes sur les changements de prix
+                        </p>
+                      </div>
+                      <Switch />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="wallet" className="space-y-6">
+                <CyberpunkContainer>
+                  <CardHeader className="px-0 pt-0">
+                    <CardTitle className="flex items-center">
+                      <Wallet className="mr-2 text-[#5D5FEF]" />
+                      Connexion Wallet
+                    </CardTitle>
+                    <CardDescription>
+                      Connectez votre wallet crypto pour recevoir et rembourser des prêts
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-0 pb-0 space-y-4">
+                    <div className="p-4 bg-[#2A2A2A] rounded-lg">
+                      <div className="flex items-center justify-between mb-4">
                         <div>
-                          <h4 className="font-medium">
-                            {walletAddress
-                              ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`
-                              : "No wallet connected"}
-                          </h4>
+                          <h4 className="font-medium">Wallet Connecté</h4>
                           <p className="text-sm text-gray-400">
-                            Your connected wallet
+                            Votre adresse wallet Solana actuelle
                           </p>
                         </div>
+                        <Badge
+                          className={`${
+                            walletAddress
+                              ? "bg-green-600/20 text-green-400 border-green-600"
+                              : "bg-yellow-600/20 text-yellow-400 border-yellow-600"
+                          }`}
+                        >
+                          {walletAddress ? "Connecté" : "Non Connecté"}
+                        </Badge>
+                      </div>
+
+                      {walletAddress && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-400">Adresse:</span>
+                            <span className="text-sm font-mono">
+                              {walletAddress}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-400">Réseau:</span>
+                            <span className="text-sm">Solana</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-4">
                         {walletAddress ? (
                           <Button
                             variant="outline"
-                            className="border-red-500 text-red-500 hover:bg-red-500/20"
-                            onClick={() => unlinkWallet(walletAddress)}
+                            className="w-full border-red-500 text-red-500 hover:bg-red-500/20"
+                            onClick={handleRemoveWallet}
                           >
-                            Disconnect
+                            Déconnecter Wallet
                           </Button>
                         ) : (
                           <Button
-                            className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white"
-                            onClick={() => linkWallet()}
+                            className="w-full bg-[#5D5FEF] hover:bg-[#4A4CDF]"
+                            onClick={handleAddWallet}
                           >
-                            Connect Wallet
+                            Connecter Wallet
                           </Button>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                    </div>
 
-                {/* Notifications Tab */}
-                <TabsContent value="notifications" className="space-y-6">
-                  <Card className="border-[#2A2A2A] bg-[#1E1E1E]">
-                    <CardHeader>
-                      <CardTitle className="flex items-center">
-                        <Bell className="mr-2 text-[#5D5FEF]" />
-                        Notification Preferences
-                      </CardTitle>
-                      <CardDescription>
-                        Manage how and when we contact you
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="space-y-4">
-                        <h4 className="font-medium">Email Notifications</h4>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="loan-updates" className="flex-1">
-                              Loan Updates
-                              <p className="text-sm font-normal text-gray-400">
-                                Receive updates about your active loans
-                              </p>
-                            </Label>
-                            <Switch id="loan-updates" defaultChecked />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="payment-reminders" className="flex-1">
-                              Payment Reminders
-                              <p className="text-sm font-normal text-gray-400">
-                                Get reminders before loan due dates
-                              </p>
-                            </Label>
-                            <Switch id="payment-reminders" defaultChecked />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="marketing" className="flex-1">
-                              Marketing & Promotions
-                              <p className="text-sm font-normal text-gray-400">
-                                Receive news about special offers and events
-                              </p>
-                            </Label>
-                            <Switch id="marketing" />
-                          </div>
-                        </div>
+                    <div className="p-4 bg-[#2A2A2A] rounded-lg">
+                      <div className="flex items-center mb-4">
+                        <Info className="w-5 h-5 text-blue-400 mr-2" />
+                        <h4 className="font-medium">Pourquoi connecter un wallet ?</h4>
                       </div>
-
-                      <div className="space-y-4">
-                        <h4 className="font-medium">Push Notifications</h4>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="push-loan" className="flex-1">
-                              Loan Status Changes
-                              <p className="text-sm font-normal text-gray-400">
-                                Get notified when your loan status changes
-                              </p>
-                            </Label>
-                            <Switch id="push-loan" defaultChecked />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="push-security" className="flex-1">
-                              Security Alerts
-                              <p className="text-sm font-normal text-gray-400">
-                                Receive alerts about security events
-                              </p>
-                            </Label>
-                            <Switch id="push-security" defaultChecked />
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Wallet Tab */}
-                <TabsContent value="wallet" className="space-y-6">
-                  <CyberpunkContainer>
-                    <CardHeader className="px-0 pt-0">
-                      <CardTitle className="flex items-center">
-                        <Wallet className="mr-2 text-[#5D5FEF]" />
-                        Wallet Connection
-                      </CardTitle>
-                      <CardDescription>
-                        Connect your crypto wallet to receive and repay loans
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="px-0 pb-0 space-y-4">
-                      <div className="p-4 bg-[#2A2A2A] rounded-lg">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h4 className="font-medium">Connected Wallet</h4>
-                            <p className="text-sm text-gray-400">
-                              Your current Solana wallet address
-                            </p>
-                          </div>
-                          <Badge
-                            className={`${
-                              walletAddress
-                                ? "bg-green-600/20 text-green-400 border-green-600"
-                                : "bg-yellow-600/20 text-yellow-400 border-yellow-600"
-                            }`}
-                          >
-                            {walletAddress ? "Connected" : "Not Connected"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            value={walletAddress || "No wallet connected"}
-                            className="bg-[#1E1E1E] border-[#2A2A2A] font-poppins text-sm"
-                            readOnly
-                          />
-                          {!walletAddress && (
-                            <Button
-                              className="bg-[#5D5FEF] hover:bg-[#4A4CDF] text-white"
-                              onClick={() => linkWallet()}
-                            >
-                              Connect
-                            </Button>
-                          )}
-                          {walletAddress && (
-                            <Button
-                              variant="outline"
-                              className="border-[#5D5FEF] text-[#5D5FEF] hover:bg-[#5D5FEF]/20"
-                              onClick={() =>
-                                window.open(
-                                  `https://explorer.solana.com/address/${walletAddress}`,
-                                  "_blank",
-                                )
-                              }
-                            >
-                              View
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="p-4 bg-[#2A2A2A]/50 rounded-lg mb-4">
-                        <h4 className="font-medium mb-2">Deposit Information</h4>
-                        <p className="text-sm text-gray-400">
-                          You can deposit funds to your wallet using any of the
-                          supported networks below. Deposits are typically
-                          processed within 5-10 minutes, depending on network
-                          congestion. A minimum deposit of 10 USDC is required.
-                        </p>
-                        <div className="mt-3 flex items-center gap-2 text-xs text-[#5D5FEF]">
-                          <Info size={14} />
-                          <span>
-                            Funds will be available for borrowing immediately
-                            after confirmation.
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3 bg-[#2A2A2A]/50 rounded-lg flex items-start gap-2">
-                        <Info
-                          size={16}
-                          className="text-[#5D5FEF] mt-0.5 flex-shrink-0"
-                        />
-                        <p className="text-xs text-gray-400">
-                          Your wallet is used to receive loan funds and make
-                          repayments. We support multiple networks for your
-                          convenience. All transactions are secured by blockchain
-                          technology.
-                        </p>
-                      </div>
-                    </CardContent>
-                  </CyberpunkContainer>
-                </TabsContent>
-              </div>
+                      <ul className="space-y-2 text-sm text-gray-400">
+                        <li>• Recevoir des prêts en USDC</li>
+                        <li>• Rembourser vos prêts</li>
+                        <li>• Participer aux événements exclusifs</li>
+                        <li>• Accéder aux fonctionnalités premium</li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </CyberpunkContainer>
+              </TabsContent>
             </Tabs>
           </div>
-        </section>
+        </CyberpunkContainer>
       </main>
       <Footer />
     </div>

@@ -41,6 +41,7 @@ import { LoanSummary } from "@/components/loan/loan-summary";
 import {
   LAMPORTS_PER_SOL,
   PublicKey,
+  Connection,
 } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { getUSDCBalance } from "@/lib/solana-utils";

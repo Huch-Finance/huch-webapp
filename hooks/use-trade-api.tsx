@@ -34,51 +34,30 @@ interface TradeStatusResponse {
     id: string
     userId: string
     steamId: string
+    status: string
     items: {
       assetId: string
       marketHashName: string
       iconUrl: string
       value: number
     }[]
-    createdAt: string
     totalValue: number
     comment: string
     tradeOfferId: string
     tradeOfferUrl: string
-    status: string
+    createdAt: string
     updatedAt: string
   }
-  offerDetails: {
-    offerId: string
-    state: string
-    isOurOffer: boolean
-    items: {
-      toGive: any[]
-      toReceive: {
-        assetId: string
-        name: string
-        marketHashName: string
-      }[]
-    }
-    escrowDays: number
-    confirmationMethod: number
-  }
+  status: string
 }
 
 interface CancelTradeResponse {
   success: boolean
   message: string
-  cancelDetails: boolean
-}
-
-interface TradeError {
-  error: string
-  details?: string
-  tradeStatus?: string
 }
 
 export function useTradeApi() {
-  const { profile } = useAuth()
+  const { profile, getPrivyAccessToken } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentTradeId, setCurrentTradeId] = useState<string | null>(null)
@@ -92,6 +71,13 @@ export function useTradeApi() {
       return null
     }
 
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      setError("No access token available")
+      return null
+    }
+
     setIsLoading(true)
     setError(null)
     
@@ -100,8 +86,7 @@ export function useTradeApi() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${profile.id}`,
-          "X-Privy-Id": profile.id
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           itemIds: itemId,
@@ -133,6 +118,13 @@ export function useTradeApi() {
       setError("User not authenticated")
       return null
     }
+
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      setError("No access token available")
+      return null
+    }
     
     setIsLoading(true)
     setError(null)
@@ -141,7 +133,7 @@ export function useTradeApi() {
       const response = await fetch(`${API_BASE_URL}/trade/${tradeId}/status`, {
         method: "GET",
         headers: {
-          "X-Privy-Id": profile.id
+          "Authorization": `Bearer ${token}`
         }
       })
       
@@ -167,6 +159,13 @@ export function useTradeApi() {
       setError("User not authenticated")
       return null
     }
+
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      setError("No access token available")
+      return null
+    }
     
     setIsLoading(true)
     setError(null)
@@ -175,7 +174,7 @@ export function useTradeApi() {
       const response = await fetch(`${API_BASE_URL}/trade/${tradeId}/cancel`, {
         method: "POST",
         headers: {
-          "X-Privy-Id": profile.id
+          "Authorization": `Bearer ${token}`
         }
       })
       

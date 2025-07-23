@@ -10,25 +10,41 @@ export function useAuth() {
   const [status, setStatus] = useState<AuthStatus>("loading")
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isConfigured, setIsConfigured] = useState(isPrivyConfigured)
+  const [accessToken, setAccessToken] = useState<string | null>(null)
   const isRegisteringRef = useRef(false)
   const hasLoadedUserDataRef = useRef(false)
 
-  const { ready, authenticated, user, login, logout, connectWallet, createWallet } = usePrivy()
+  const { ready, authenticated, user, login, logout, connectWallet, createWallet, getAccessToken } = usePrivy()
   const { wallets } = useWallets()
   const solanaWallets = useSolanaWallets()
   
-  // Fonction pour s'assurer qu'on a un wallet Solana
+  // Function to get access token from Privy
+  const getPrivyAccessToken = async (): Promise<string | null> => {
+    try {
+      if (!authenticated || !user) {
+        return null
+      }
+      
+      const token = await getAccessToken()
+      return token
+    } catch (error) {
+      console.error('Error getting access token:', error)
+      return null
+    }
+  }
+
+  // Function to ensure we have a Solana wallet
   const ensureSolanaWallet = async () => {
     if (!authenticated || !user) return null
     
-    // Utiliser solanaWallets directement depuis le hook Privy
+    // Use solanaWallets directly from Privy hook
     if (solanaWallets.wallets.length > 0) {
       const solanaWallet = solanaWallets.wallets[0]
       console.log('Solana wallet already exists:', solanaWallet.address)
       return solanaWallet.address
     }
     
-    // Vérifier si l'utilisateur a déjà un embedded wallet (de n'importe quel type)
+    // Check if user already has an embedded wallet (of any type)
     const hasEmbeddedWallet = wallets?.some(wallet => wallet.walletClientType === 'privy')
     if (hasEmbeddedWallet) {
       console.log('User already has an embedded wallet, cannot create another one')
@@ -37,8 +53,8 @@ export function useAuth() {
     
     console.log('No Solana wallet found, creating one...')
     try {
-      await createWallet({ walletClientType: 'privy', chainType: 'solana' })
-      // Note: le wallet sera disponible dans le prochain render via useSolanaWallets
+      await createWallet()
+      // Note: wallet will be available in next render via useSolanaWallets
       return null
     } catch (error) {
       console.error('Failed to create Solana wallet:', error)
@@ -62,15 +78,21 @@ export function useAuth() {
    */
   const registerUserInDatabase = async (userId: string, walletAddress?: string) => {
     try {
+      // Get access token for secure authentication
+      const token = await getPrivyAccessToken()
+      if (!token) {
+        console.error('No access token available for registration')
+        return
+      }
+
       const response = await fetch('http://localhost:3333/api/auth/privy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          id: userId,
-          wallet: walletAddress,
-          email: user?.email?.address || null,
+          accessToken: token
         }),
       });
 
@@ -89,10 +111,10 @@ export function useAuth() {
               ...prevProfile,
               steamId: data.user.steamId,
               tradeLink: data.user.tradeLink || prevProfile.tradeLink,
-              admin: data.user.admin ?? false, // Toujours mettre à jour admin
+              admin: data.user.admin ?? false, // Always update admin
             };
             
-            // Ajouter les informations du profil Steam si disponibles
+            // Add Steam profile information if available
             if (data.user.profile) {
               if (data.user.profile.steamName) {
                 updatedProfile.username = data.user.profile.steamName;
@@ -101,7 +123,7 @@ export function useAuth() {
                 updatedProfile.avatar = data.user.profile.steamAvatar;
               }
             }
-            console.log('Profil updated:', updatedProfile);
+            console.log('Profile updated:', updatedProfile);
             
             // Persist admin flag, avatar, username, and steamId
             if (typeof window !== "undefined") {
@@ -146,13 +168,21 @@ export function useAuth() {
     console.log('Starting reloadUserData for user:', user.id);
     
     try {
+      // Get access token for secure authentication
+      const token = await getPrivyAccessToken()
+      if (!token) {
+        console.error('No access token available for reloading data')
+        return
+      }
+
       const response = await fetch('http://localhost:3333/api/user', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': user.id
+          'Authorization': `Bearer ${token}`
         }
       });
+      
       if (!response.ok) {
         console.error('Error fetching user data:', await response.text());
         return;
@@ -231,12 +261,13 @@ export function useAuth() {
     if (!authenticated) {
       setStatus("unauthenticated")
       setProfile(null)
+      setAccessToken(null)
       hasLoadedUserDataRef.current = false;
       isRegisteringRef.current = false;
       return
     }
 
-    // Récupère les valeurs depuis le localStorage si elles existent
+    // Get cached values from localStorage if they exist
     let adminFromDb = false;
     let cachedAvatar: string | null = null;
     let cachedUsername: string | null = null;
@@ -253,19 +284,18 @@ export function useAuth() {
     }
 
     // User is authenticated, build profile
-    // Debug: afficher tous les wallets disponibles
+    // Debug: show all available wallets
     console.log('All available wallets:', wallets?.map(w => ({
       address: w.address,
-      chainType: w.chainType,
       walletClientType: w.walletClientType,
       connectorType: w.connectorType
     })))
     
-    // Utiliser directement solanaWallets depuis le hook Privy
+    // Use solanaWallets directly from Privy hook
     const solanaWallet = solanaWallets.wallets.length > 0 ? solanaWallets.wallets[0] : null
     console.log('Found Solana wallet:', solanaWallet)
     
-    // Si pas de wallet Solana, essayer d'en créer un
+    // If no Solana wallet, try to create one
     if (!solanaWallet && wallets && wallets.length > 0) {
       console.log('No Solana wallet found, will try to create one...')
       setTimeout(() => ensureSolanaWallet(), 1000)
@@ -274,7 +304,7 @@ export function useAuth() {
     const userProfile: UserProfile = {
       id: user?.id || "",
       email: user?.email?.address,
-      wallet: solanaWallet?.address, // Prioriser uniquement Solana wallet
+      wallet: solanaWallet?.address, // Prioritize only Solana wallet
       steamId: cachedSteamId || undefined,
       username: cachedUsername || undefined,
       avatar: cachedAvatar || undefined,
@@ -290,6 +320,13 @@ export function useAuth() {
       console.log('Loading user data for user:', user.id);
       isRegisteringRef.current = true;
       hasLoadedUserDataRef.current = true;
+      
+      // Get access token and store it
+      getPrivyAccessToken().then(token => {
+        if (token) {
+          setAccessToken(token)
+        }
+      })
       
       // If we have Solana wallets, register and load data  
       const solanaAddr = solanaWallets.wallets.length > 0 ? solanaWallets.wallets[0].address : null
@@ -365,13 +402,20 @@ export function useAuth() {
     if (!user) return false;
 
     try {
+      // Get access token for secure authentication
+      const token = await getPrivyAccessToken()
+      if (!token) {
+        console.error('No access token available for updating Steam ID')
+        return false
+      }
+
       // Register in the USER API
       try {
         const response = await fetch('http://localhost:3333/api/user', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Privy-Id': user.id
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             steamId,
@@ -429,12 +473,14 @@ export function useAuth() {
     return {
       status,
       profile: null,
+      accessToken: null,
       login: () =>
         alert("Authentication is not configured. Please add NEXT_PUBLIC_PRIVY_APP_ID to your environment variables."),
       logout: () => {},
       connectWallet: () => {},
       updateProfile: () => Promise.resolve(false),
       ensureSolanaWallet: () => Promise.resolve(null),
+      getPrivyAccessToken,
       isLoading: status === "loading",
       isAuthenticated: false,
     }
@@ -446,6 +492,7 @@ export function useAuth() {
     logout();
     setStatus("unauthenticated");
     setProfile(null);
+    setAccessToken(null);
     // Reset flags
     isRegisteringRef.current = false;
     hasLoadedUserDataRef.current = false;
@@ -471,6 +518,7 @@ export function useAuth() {
   return {
     status,
     profile,
+    accessToken,
     login,
     logout: handleLogout,
     connectWallet,
@@ -478,6 +526,7 @@ export function useAuth() {
     updateSteamId,
     reloadUserData,
     ensureSolanaWallet,
+    getPrivyAccessToken,
     isLoading: status === "loading",
     isAuthenticated: status === "authenticated",
   }

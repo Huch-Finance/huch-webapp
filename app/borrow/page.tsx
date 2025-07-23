@@ -148,16 +148,6 @@ export default function Home() {
 
   // Removed price update useEffect - inventory fetching is already handled in the hook
 
-  // Mock CS2 skins for example display when user is not connected
-  const mockSkins: SteamItem[] = [
-    // { id: "1", market_hash_name: "AWP | Dragon Lore", basePrice: 1500, rarity: "Covert", imageUrl: "/awp.webp", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 975, steamId: "", stickers: [] },
-    // { id: "2", market_hash_name: "Butterfly Knife | Fade", basePrice: 800, rarity: "★", imageUrl: "/karambit.webp", wear: "Minimal Wear", floatValue: 0.08, liquidationRate: 65, loanOffer: 520, steamId: "", stickers: [] },
-    // { id: "3", market_hash_name: "AK-47 | Fire Serpent", basePrice: 550, rarity: "Covert", imageUrl: "/ak47.webp", wear: "Field-Tested", floatValue: 0.18, liquidationRate: 65, loanOffer: 357.5, steamId: "", stickers: [] },
-    // { id: "4", market_hash_name: "M4A4 | Howl", basePrice: 1200, rarity: "Contraband", imageUrl: "/awp.webp", wear: "Factory New", floatValue: 0.03, liquidationRate: 65, loanOffer: 780, steamId: "", stickers: [] },
-    // { id: "5", market_hash_name: "Karambit | Doppler", basePrice: 650, rarity: "★", imageUrl: "/karambit.webp", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 422.5, steamId: "", stickers: [] },
-    // { id: "6", market_hash_name: "Glock-18 | Fade", basePrice: 300, rarity: "Covert", imageUrl: "/ak47.webp", wear: "Factory New", floatValue: 0.02, liquidationRate: 65, loanOffer: 195, steamId: "", stickers: [] }
-    { id: "1", market_hash_name: "AK-47 | Redline", basePrice: 2500, rarity: "Classified", imageUrl: "/ak47-redline.png", wear: "Factory New", floatValue: 0.01, liquidationRate: 65, loanOffer: 975, steamId: "", stickers: [] },
-  ]
   
   // Fonction pour extraire le nom et l'usure d'un skin à partir du market_hash_name
   const extractSkinInfo = (marketHashName: string) => {
@@ -325,7 +315,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col text-white">
-      <main className="flex-1 flex flex-col items-center justify-center pt-8 lg:pt-12">
+      <main className="flex-1 flex flex-col items-center justify-center pt-8 lg:  pt-12">
         <LoadingOverlay
           isLoading={isLoading} 
           message="Connecting to your wallet..."

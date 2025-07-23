@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, CreditCard, Trophy, User, LogOut, Settings, ArrowLeftRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLogin } from "@privy-io/react-auth";
 import Image from "next/image";
 
@@ -12,6 +12,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { logout, profile } = useAuth();
   const [profileHover, setProfileHover] = useState(false);
+  const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
   const { login } = useLogin();
   
   // Debug logging
@@ -120,8 +121,14 @@ export function Sidebar() {
                 <div
                   key={item.name}
                   className="relative"
-                  onMouseEnter={() => setProfileHover(true)}
-                  onMouseLeave={() => setProfileHover(false)}
+                  onMouseEnter={() => {
+                    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+                    setProfileHover(true);
+                  }}
+                  onMouseLeave={() => {
+                    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+                    hoverTimeout.current = setTimeout(() => setProfileHover(false), 120);
+                  }}
                 >
                   <Link
                     href={item.href}
@@ -150,7 +157,7 @@ export function Sidebar() {
                   {/* Submenu */}
                   <div
                     className={`
-                      absolute left-full top-1/2 -translate-y-1/2 ml-2 min-w-[100px] border border-white border-opacity-10 rounded-lg shadow-lg py-2 px-2 flex flex-col gap-1 transition-all duration-200 bg-slate-900 bg-opacity-40 hover:bg-opacity-70
+                      absolute left-[calc(100%-12px)] top-1/2 -translate-y-1/2 min-w-[120px] border border-white border-opacity-10 rounded-lg shadow-lg py-2 px-2 flex flex-col gap-1 transition-all duration-200 bg-slate-900 bg-opacity-40 hover:bg-opacity-70
                       ${profileHover ? "opacity-100 pointer-events-auto translate-x-0" : "opacity-0 pointer-events-none -translate-x-2"}
                     `}
                     style={{
@@ -158,8 +165,6 @@ export function Sidebar() {
                       backdropFilter: "blur(2px)",
                       WebkitBackdropFilter: "blur(2px)",
                     }}
-                    onMouseEnter={() => setProfileHover(true)}
-                    onMouseLeave={() => setProfileHover(false)}
                   >
                     {/* Grain texture overlay */}
                     <div

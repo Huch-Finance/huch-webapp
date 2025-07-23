@@ -23,7 +23,7 @@ interface TransactionResult {
 export function useSPLTransactions() {
   const { wallets } = useSolanaWallets()
   const { signTransaction } = useSignTransaction()
-  const { profile } = useAuth()
+  const { profile, getPrivyAccessToken } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -78,12 +78,9 @@ export function useSPLTransactions() {
   }
 
   /**
-   * Send USDC to vault for borrowing
+   * Deposit USDC to vault for loan collateral
    */
-  const depositToVault = async (
-    vaultAddress: string,
-    amount: number
-  ): Promise<TransactionResult> => {
+  const depositToVault = async (amount: number): Promise<TransactionResult> => {
     if (!wallets[0]) {
       const error = "No wallet connected"
       setError(error)
@@ -95,15 +92,16 @@ export function useSPLTransactions() {
     setError(null)
 
     try {
-      const vault = new PublicKey(vaultAddress)
+      // For now, just send USDC to a test address - this should be updated with actual vault address
+      const testVaultAddress = new PublicKey("11111111111111111111111111111111") // Placeholder
       const signature = await transferUSDCToVault(
         connection,
         wallets[0],
-        vault,
+        testVaultAddress,
         amount
       )
 
-      toast.success(`Deposited ${amount} USDC to vault! Transaction: ${signature.slice(0, 8)}...`)
+      toast.success(`USDC deposited to vault! Transaction: ${signature.slice(0, 8)}...`)
       
       return { 
         success: true, 
@@ -120,19 +118,6 @@ export function useSPLTransactions() {
       }
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  /**
-   * Check transaction status
-   */
-  const checkTransactionStatus = async (signature: string) => {
-    try {
-      const status = await getTransactionStatus(connection, signature)
-      return status
-    } catch (err: any) {
-      console.error("Error checking transaction status:", err)
-      return { confirmed: false, error: err.message }
     }
   }
 
@@ -160,12 +145,18 @@ export function useSPLTransactions() {
         throw new Error('User not authenticated')
       }
 
+      // Get access token for secure authentication
+      const token = await getPrivyAccessToken()
+      if (!token) {
+        throw new Error('No access token available')
+      }
+
       // Step 1: Get transaction data from backend
       const response = await fetch('http://localhost:3333/solana/prepare-repay', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id,
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           amount,
@@ -192,7 +183,7 @@ export function useSPLTransactions() {
 
       // Step 2: Use the Anchor-built instruction from backend
       const repayInstruction = new TransactionInstruction({
-        keys: instrData.keys.map(key => ({
+        keys: instrData.keys.map((key: any) => ({
           pubkey: new PublicKey(key.pubkey),
           isSigner: key.isSigner,
           isWritable: key.isWritable
@@ -203,55 +194,42 @@ export function useSPLTransactions() {
 
       // Step 3: Build transaction with Anchor instruction
       const transaction = new Transaction()
-      console.log('Adding Anchor-built repay instruction')
       transaction.add(repayInstruction)
 
-      // Set required fields
-      console.log('Getting latest blockhash...')
-      const { blockhash } = await connection.getLatestBlockhash('confirmed')
+      // Step 4: Get latest blockhash
+      const { blockhash } = await connection.getLatestBlockhash()
       transaction.recentBlockhash = blockhash
       transaction.feePayer = userPublicKey
 
-      console.log('Transaction ready:', {
-        recentBlockhash: transaction.recentBlockhash,
-        feePayer: transaction.feePayer?.toBase58(),
-        instructions: transaction.instructions.length,
-        amount: instrData.amount,
-        instructionType: 'Anchor-built repayPartial'
-      })
+      console.log('Transaction built, signing...')
 
-      // Step 5: Sign with Privy
-      const signedTransaction = await signTransaction({
+      // Step 5: Sign and send transaction
+      const signedTx = await signTransaction({
         transaction,
-        connection,
-        uiOptions: {
-          title: "Repay Loan",
-          description: `Repaying ${amount} USDC to vault`,
-          buttonText: "Sign Transaction"
-        }
+        connection
       })
+      const signature = await connection.sendRawTransaction(signedTx.serialize())
+      
+      console.log('Transaction sent, signature:', signature)
 
-      console.log('Transaction signed successfully!')
+      // Step 6: Confirm transaction
+      const confirmation = await connection.confirmTransaction(signature, 'confirmed')
+      
+      if (confirmation.value.err) {
+        throw new Error('Transaction failed to confirm')
+      }
 
-      // Step 6: Send to network
-      const signature = await connection.sendRawTransaction(signedTransaction.serialize())
-      await connection.confirmTransaction(signature, 'confirmed')
-
-      console.log('Repay transaction confirmed:', signature)
-
-      toast.success(`Loan repaid successfully! Amount: ${amount} USDC`)
-      toast.success(`Transaction: ${signature.slice(0, 8)}...`)
-      toast.info('Smart contract updated loan state on blockchain')
+      toast.success(`Loan repayment successful! Transaction: ${signature.slice(0, 8)}...`)
       
       return { 
         success: true, 
-        signature
+        signature 
       }
     } catch (err: any) {
       const errorMessage = err.message || "Failed to repay loan"
       setError(errorMessage)
       toast.error(errorMessage)
-      console.error('Repay loan error:', err)
+      console.error("Loan repayment error:", err)
       
       return { 
         success: false, 
@@ -259,6 +237,19 @@ export function useSPLTransactions() {
       }
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  /**
+   * Check transaction status
+   */
+  const checkTransactionStatus = async (signature: string): Promise<boolean> => {
+    try {
+      const status = await getTransactionStatus(connection, signature)
+      return status.confirmed
+    } catch (error) {
+      console.error('Error checking transaction status:', error)
+      return false
     }
   }
 

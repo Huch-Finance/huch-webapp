@@ -1,81 +1,69 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useAuth } from "./use-auth"
+import { useState, useEffect, useCallback } from "react"
+import { useAuth } from "@/hooks/use-auth"
 
-export type SteamItem = {
+export interface SteamItem {
   id: string
-  market_hash_name: string
-  basePrice: number
-  floatValue: number
-  liquidationRate: number
-  loanOffer: number
-  imageUrl: string
-  steamId: string
-  stickers: any[]
-  wear?: string
-  rarity?: string
+  assetId: string
+  marketHashName: string
+  iconUrl: string
+  value: number
+  rarity: string
+  type: string
+  exterior?: string
+  statTrak?: boolean
+  tradeUpContract?: string
 }
 
-export interface SteamInventoryResponse {
+interface SteamInventoryResponse {
   inventory: SteamItem[]
-  lastUpdated: string
+  lastUpdated: string | null
   fromCache?: boolean
 }
 
-// Cache duration in milliseconds (5 minutes)
-const CACHE_DURATION = 5 * 60 * 1000;
-
 export function useSteamInventory() {
-  const { profile, isAuthenticated } = useAuth()
+  const { profile, getPrivyAccessToken } = useAuth()
   const [inventory, setInventory] = useState<SteamItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const [inventoryFetched, setInventoryFetched] = useState(false)
-  const [isFetching, setIsFetching] = useState(false)
   const [lastFetchKey, setLastFetchKey] = useState<string | null>(null)
   const [lastFetchTime, setLastFetchTime] = useState<number | null>(null)
 
-  // Function to fetch the user's Steam inventory
-  const fetchInventory = async (forceRefresh: boolean = false) => {
-    // Create a unique key for this user's inventory fetch
-    const currentFetchKey = `${profile?.id}-${profile?.steamId}`;
-    
-    // Check if cache is still valid
-    const now = Date.now();
-    const cacheValid = lastFetchTime && (now - lastFetchTime) < CACHE_DURATION;
-    
-    // Check if we're already fetching or if we've already fetched for this user within cache duration
-    if (!forceRefresh && (isFetching || (inventoryFetched && lastFetchKey === currentFetchKey && cacheValid))) {
-      console.log("Inventory cached and still valid or fetch in progress, skipping", {
-        isFetching,
-        inventoryFetched,
-        cacheValid,
-        timeSinceLastFetch: lastFetchTime ? now - lastFetchTime : 'never'
-      });
-      return;
-    }
-
-    // Check if the user is authenticated and has a steamId and tradeLink
-    if (!isAuthenticated || !profile?.steamId || !profile?.tradeLink) {
-      setError("You must be connected with Steam and have an exchange link to see your inventory")
-      setIsLoading(false);
+  const fetchInventory = async () => {
+    if (!profile?.id || !profile?.steamId) {
+      setError("User not authenticated or Steam ID not linked")
       return
     }
 
-    //console.log("Start fetching inventory for", profile.steamId);
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      setError("No access token available")
+      return
+    }
+
+    const currentFetchKey = `${profile.id}-${profile.steamId}`
+    
+    // Prevent duplicate requests
+    if (isFetching || (lastFetchKey === currentFetchKey && lastFetchTime && Date.now() - lastFetchTime < 5000)) {
+      console.log("Skipping fetch - already fetching or recent fetch")
+      return
+    }
+
     setIsFetching(true)
-    setIsLoading(true)
     setError(null)
 
     try {
-      console.log("API call to /api/inventory with Privy ID:", profile.id);
+      console.log("API call to /api/inventory with secure token authentication");
       const response = await fetch('http://localhost:3333/api/inventory', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -117,81 +105,68 @@ export function useSteamInventory() {
     }
   }
 
-  // Function to fetch inventory when the profile is loaded and the user has a steamId and tradeLink
-  useEffect(() => {
-    const currentFetchKey = `${profile?.id}-${profile?.steamId}`;
-    
-    if (isAuthenticated && profile?.steamId && profile?.tradeLink) {
-      // Only fetch if we haven't fetched for this specific user yet
-      if (!inventoryFetched || lastFetchKey !== currentFetchKey) {
-        fetchInventory();
-      }
-    } else {
-      setInventory([]);
-      setLastUpdated(null);
-      setIsLoading(false);
-      setInventoryFetched(false);
-      setIsFetching(false);
-      setLastFetchKey(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, profile?.steamId, profile?.tradeLink])
-
-  const forceRefreshInventory = async() => {
-    if (!isAuthenticated || !profile?.id) {
-      setError("You must be connected with Steam and have an exchange link to see your inventory")
-      setIsLoading(false);
+  const refreshInventory = useCallback(async () => {
+    if (!profile?.id || !profile?.steamId) {
+      setError("User not authenticated or Steam ID not linked")
       return
     }
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try{
-      console.log('Refreshing inventory for user:', profile.id);
-      const response = await fetch('http://localhost:3333/api/user/inventory/refresh', {
-        method: 'POST',
+
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      setError("No access token available")
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      console.log("Forcing refresh of inventory with secure token authentication");
+      const response = await fetch('http://localhost:3333/api/inventory?refresh=true', {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id
+          'Authorization': `Bearer ${token}`
         }
       })
-      
+
       if (!response.ok) {
-        const errorData = await response.json();
-        
-        if (response.status === 429) {
-          // Rate limited
-          console.log('Inventory refresh rate limited:', errorData.retryAfter);
-          setError(`Please wait ${errorData.retryAfter} seconds before refreshing again`);
-          return;
-        }
-        
-        throw new Error(errorData.error || `Error refreshing inventory`)
+        throw new Error(`Error refreshing inventory: ${await response.text()}`)
       }
+
+      const data: SteamInventoryResponse = await response.json()
+      console.log("Refresh API response:", data);
       
-      // Refresh successful, now fetch the updated inventory with force refresh
-      await fetchInventory(true);
+      const inventoryItems: SteamItem[] = Array.isArray(data.inventory) ? data.inventory : [];
+      
+      console.log("Inventory refreshed successfully:", inventoryItems.length, "skins");
+
+      setInventory(inventoryItems)
+      setLastUpdated(data.lastUpdated)
+      setInventoryFetched(true);
+      setLastFetchTime(Date.now());
     } catch (error) {
       console.error("Error refreshing inventory:", error)
-      setError(error instanceof Error ? error.message : "Failed to refresh inventory")
+      const errorMessage = error instanceof Error ? error.message : "An error occurred while refreshing your inventory"
+      setError(errorMessage)
+    } finally {
       setIsLoading(false)
     }
-  };
+  }, [profile?.id, profile?.steamId, getPrivyAccessToken])
 
-  const refreshPrices = async() => {
-    // Since we removed the price refresh endpoint, just refresh the entire inventory
-    await forceRefreshInventory();
-    return true;
-  };
-  
+  useEffect(() => {
+    if (profile?.id && profile?.steamId && !inventoryFetched) {
+      fetchInventory()
+    }
+  }, [profile?.id, profile?.steamId, inventoryFetched])
+
   return {
     inventory,
     isLoading,
     error,
     lastUpdated,
-    refreshInventory: forceRefreshInventory,
-    refreshPrices,
+    refreshInventory,
     inventoryFetched
   }
 }

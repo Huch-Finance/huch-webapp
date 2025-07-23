@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/use-auth"
 export default function TradeProcessPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { profile } = useAuth()
+  const { profile, getPrivyAccessToken } = useAuth()
   
   // Récupérer les paramètres de l'URL
   const tradeId = searchParams.get('tradeId')
@@ -49,11 +49,18 @@ export default function TradeProcessPage() {
     if (!tradeId) return
     
     try {
+      // Get access token for secure authentication
+      const token = await getPrivyAccessToken()
+      if (!token) {
+        console.error("No access token available")
+        return
+      }
+
       // Utiliser l'endpoint de vérification des trades du backend
       const response = await fetch(`http://localhost:3333/api/trade/${tradeId}/status?refresh=true`, {
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile?.id || ''
+          'Authorization': `Bearer ${token}`
         }
       })
       
@@ -99,33 +106,22 @@ export default function TradeProcessPage() {
             comment: data.trade.comment
           })
         }
-      } else if (steamStatus === 'active' || steamStatus === 'sent' || steamStatus === 'pending') {
-        setTradeStatus('active')
       } else if (steamStatus === 'declined') {
         setTradeStatus('declined')
         setPollingActive(false)
-        // Clear localStorage when trade is declined
         localStorage.removeItem('activeTradeData')
-      } else if (steamStatus === 'canceled' || steamStatus === 'cancelled') {
+        console.log('Trade declined - polling stopped')
+      } else if (steamStatus === 'canceled' || steamStatus === 'expired') {
         setTradeStatus('canceled')
         setPollingActive(false)
-        // Clear localStorage when trade is canceled
         localStorage.removeItem('activeTradeData')
-      } else if (steamStatus === 'expired') {
-        setTradeStatus('canceled')
-        setPollingActive(false)
-        // Clear localStorage when trade expires
-        localStorage.removeItem('activeTradeData')
-      } else if (steamStatus === 'invaliditems' || steamStatus === 'invalid_items') {
-        setTradeStatus('error')
-        setPollingActive(false)
-        // Clear localStorage when trade has invalid items
-        localStorage.removeItem('activeTradeData')
+        console.log('Trade canceled/expired - polling stopped')
+      } else if (steamStatus === 'active') {
+        setTradeStatus('active')
+        // Continue polling for active trades
       } else {
-        // Statut inconnu ou erreur
-        console.warn('Unknown trade status:', steamStatus)
-        setTradeStatus('error')
-        setPollingActive(false)
+        // For any other status, keep polling
+        console.log('Unknown status, continuing to poll:', steamStatus)
       }
     } catch (error) {
       console.error('Error checking trade status:', error)
@@ -135,15 +131,22 @@ export default function TradeProcessPage() {
 
   // Force refresh trade status
   const forceRefresh = async () => {
-    if (!tradeId || !profile?.id) return
+    if (!tradeId) return
     
     setIsRefreshing(true)
     try {
+      // Get access token for secure authentication
+      const token = await getPrivyAccessToken()
+      if (!token) {
+        console.error("No access token available")
+        return
+      }
+
       const response = await fetch(`http://localhost:3333/api/trade/${tradeId}/resync`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id
+          'Authorization': `Bearer ${token}`
         }
       })
       
@@ -184,8 +187,8 @@ export default function TradeProcessPage() {
   
   // Enhanced polling using force refresh every second
   useEffect(() => {
-    if (!pollingActive || !tradeId || !profile?.id) {
-      console.log('Polling not active:', { pollingActive, tradeId, hasProfile: !!profile?.id })
+    if (!pollingActive || !tradeId) {
+      console.log('Polling not active:', { pollingActive, tradeId })
       return
     }
     
@@ -194,12 +197,19 @@ export default function TradeProcessPage() {
     const enhancedStatusCheck = async () => {
       setIsRefreshing(true)
       try {
+        // Get access token for secure authentication
+        const token = await getPrivyAccessToken()
+        if (!token) {
+          console.error("No access token available")
+          return
+        }
+
         // Try force refresh first
         const response = await fetch(`http://localhost:3333/api/trade/${tradeId}/resync`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Privy-Id': profile.id
+            'Authorization': `Bearer ${token}`
           }
         })
         
@@ -229,36 +239,26 @@ export default function TradeProcessPage() {
             }
           }
         }
-        
-        // Fallback to regular status check
-        await checkTradeStatus()
       } catch (error) {
-        console.error('Enhanced polling error:', error)
-        // Fallback to regular check
-        await checkTradeStatus()
+        console.error('Error in enhanced polling:', error)
       } finally {
         setIsRefreshing(false)
       }
     }
-    
-    // Check immediately
+
+    // Initial check
     enhancedStatusCheck()
     
-    // Then check every second
-    const interval = setInterval(enhancedStatusCheck, 1000)
+    // Set up polling interval
+    const interval = setInterval(enhancedStatusCheck, 2000) // Poll every 2 seconds
     
-    return () => {
-      console.log('Stopping enhanced polling for trade:', tradeId)
-      clearInterval(interval)
-    }
-  }, [pollingActive, tradeId, profile?.id])
-  
-  // Vérifier immédiatement au chargement
+    return () => clearInterval(interval)
+  }, [pollingActive, tradeId, getPrivyAccessToken])
+
+  // Initial load
   useEffect(() => {
     if (tradeId) {
       checkTradeStatus()
-      setIsLoading(false)
-    } else {
       setIsLoading(false)
     }
   }, [tradeId])
@@ -291,7 +291,7 @@ export default function TradeProcessPage() {
   }
 
   const handleGoToProfile = () => {
-    router.push('/profil')
+    router.push('/profile')
   }
   
   const handleOpenTrade = () => {
@@ -302,14 +302,21 @@ export default function TradeProcessPage() {
 
   // Handle escrow decision
   const handleEscrowDecision = async (decision: 'accept' | 'decline') => {
-    if (!tradeId || !profile?.id) return
+    if (!tradeId) return
 
     try {
+      // Get access token for secure authentication
+      const token = await getPrivyAccessToken()
+      if (!token) {
+        console.error("No access token available")
+        return
+      }
+
       const response = await fetch(`http://localhost:3333/api/trade/${tradeId}/escrow-decision`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ decision })
       })

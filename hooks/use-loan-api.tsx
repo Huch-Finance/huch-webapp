@@ -14,55 +14,11 @@ interface CreateLoanParams {
   tradeId?: string
 }
 
-// Function to calculate interest rate (same as in borrow-confirmation-modal)
-const getInterestRate = (duration: number) => {
-  const minDuration = 7;
-  const maxDuration = 35;
-  const minRate = 25;
-  const maxRate = 32;
-  
-  const rate = minRate + (maxRate - minRate) * (duration - minDuration) / (maxDuration - minDuration);
-  return Math.round(rate * 10) / 10; // Round to 1 decimal
-};
-
 interface LoanResponse {
   success: boolean
-  message: string
-  borrowId?: string
-  tradeId?: string
-  tradeUrl?: string
-}
-
-interface TradeItem {
-  assetId: string
-  marketHashName: string
-  iconUrl: string
-  value: number
-}
-
-interface TradeData {
-  id: string
-  items: TradeItem[]
-  totalValue: number
-  status: string
-  createdAt: string
-  completedAt?: string
-}
-
-interface BorrowRecord {
-  id: string
-  userId: string
-  walletAddress: string
   borrowId: string
-  vaultAddress: string
-  amount: number
-  tokenMint: string
-  status: 'pending' | 'active' | 'liquidated'
-  tradeId: string
-  tradeStatus: string
-  createdAt: string
-  updatedAt: string
-  trade?: TradeData | null
+  signature: string
+  message: string
 }
 
 interface RepayResponse {
@@ -71,8 +27,31 @@ interface RepayResponse {
   signature?: string
 }
 
+interface BorrowRecord {
+  id: string
+  userId: string
+  steamId: string
+  items: SteamItem[]
+  amount: number
+  totalAmountToRepay: number
+  duration: number
+  status: string
+  createdAt: string
+  updatedAt: string
+  tradeId?: string
+  blockchainSignature?: string
+}
+
+// Interest rate calculation based on duration
+const getInterestRate = (duration: number): number => {
+  if (duration <= 7) return 5
+  if (duration <= 14) return 8
+  if (duration <= 21) return 12
+  return 15 // 30 days
+}
+
 export function useLoanApi() {
-  const { profile } = useAuth()
+  const { profile, getPrivyAccessToken } = useAuth()
   const { repayLoan: splRepayLoan } = useSPLTransactions()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -80,6 +59,13 @@ export function useLoanApi() {
   const createLoan = async (params: CreateLoanParams): Promise<LoanResponse | null> => {
     if (!profile?.id || !profile?.steamId || !profile?.wallet) {
       setError("User not authenticated or missing required data")
+      return null
+    }
+
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      setError("No access token available")
       return null
     }
 
@@ -95,6 +81,7 @@ export function useLoanApi() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           userId: profile.id,
@@ -127,10 +114,16 @@ export function useLoanApi() {
     }
   }
 
-
   const getUserLoans = async (): Promise<BorrowRecord[] | null> => {
     if (!profile?.id) {
       setError("User not authenticated")
+      return null
+    }
+
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      setError("No access token available")
       return null
     }
 
@@ -142,7 +135,7 @@ export function useLoanApi() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -169,12 +162,19 @@ export function useLoanApi() {
       return null
     }
 
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      console.log("No access token available")
+      return null
+    }
+
     try {
       const response = await fetch(`http://localhost:3333/solana/borrow-state/${borrowId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -198,12 +198,19 @@ export function useLoanApi() {
       return null
     }
 
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      setError("No access token available")
+      return null
+    }
+
     try {
       const response = await fetch(`http://localhost:3333/solana/borrow-details/${borrowId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -260,12 +267,19 @@ export function useLoanApi() {
       return null
     }
 
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      setError("No access token available")
+      return null
+    }
+
     try {
       const response = await fetch(`http://localhost:3333/solana/loan-expiration/${borrowId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -290,6 +304,13 @@ export function useLoanApi() {
       return false
     }
 
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      setError("No access token available")
+      return false
+    }
+
     setIsLoading(true)
     setError(null)
 
@@ -298,7 +319,7 @@ export function useLoanApi() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -324,12 +345,19 @@ export function useLoanApi() {
       return false
     }
 
+    // Get access token for secure authentication
+    const token = await getPrivyAccessToken()
+    if (!token) {
+      setError("No access token available")
+      return false
+    }
+
     try {
       const response = await fetch(`http://localhost:3333/solana/check-liquidations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Privy-Id': profile.id
+          'Authorization': `Bearer ${token}`
         }
       })
 
