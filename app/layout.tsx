@@ -20,7 +20,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Huch - CS2 Skin Loans",
+  title: "Huch.",
   description: "Lend money, backed with CS2 skins. Huch.",
 };
 
@@ -31,6 +31,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+      </head>
       <body className={`${poppins.variable} font-poppins text-white relative`}>
         {/* Background image */}
         <img
