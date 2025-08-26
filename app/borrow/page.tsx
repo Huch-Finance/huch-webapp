@@ -5,7 +5,6 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ChevronDown, Filter, RotateCcw, Search, ArrowRight, LayoutGrid, List, Info, ExternalLink } from "lucide-react"
-import { BorrowConfirmationModal } from "@/components/borrow/borrow-confirmation-modal"
 import { LoadingOverlay } from "@/components/loading/loading-overlay"
 import { Footer } from "@/components/organism/footer"
 import { useAuth } from "@/hooks/use-auth"
@@ -13,27 +12,24 @@ import { SteamAuthButton } from "@/components/auth/steam-auth-button"
 import { useSteamInventory, SteamItem } from "@/hooks/use-steam-inventory"
 import { Card } from "@/components/ui/card"
 
-export default function Home() {
-  const [selectedSkin, setSelectedSkin] = useState<string | null>(null)
+interface TokenizedSkin {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  totalShares: number;
+  availableShares: number;
+  pricePerShare: number;
+}
+
+export default function TokenizationPage() {
+  const [selectedSkin, setSelectedSkin] = useState<TokenizedSkin | null>(null)
   const [skinSelectorOpen, setSkinSelectorOpen] = useState(false)
   const [gridViewActive, setGridViewActive] = useState(false)
-  const [loanPercentage, setLoanPercentage] = useState(100)
-  const [loanAmount, setLoanAmount] = useState(0)
-  const [loanDuration, setLoanDuration] = useState(7)
-  const loanDurationOptions = [7, 14, 25, 30]
+  const [sharesAmount, setSharesAmount] = useState(1)
+  const [maxShares] = useState(100) // Each skin has 100 shares total
+  const [tokenizedSkins, setTokenizedSkins] = useState<TokenizedSkin[]>([])
   
-  // Fonction pour calculer le taux d'intérêt en fonction de la durée
-  const getInterestRate = (duration: number) => {
-    // 7 jours = 25%, 30 jours = 32%
-    // Interpolation linéaire : rate = 25 + (32 - 25) * (duration - 7) / (30 - 7)
-    const minDuration = 7
-    const maxDuration = 30
-    const minRate = 25
-    const maxRate = 32
-    
-    const rate = minRate + (maxRate - minRate) * (duration - minDuration) / (maxDuration - minDuration)
-    return Math.round(rate * 10) / 10 // Arrondir à 1 décimale
-  }
   const [howItWorksOpen, setHowItWorksOpen] = useState(false)
   const priceUpdateRef = useRef(false)
   
@@ -42,36 +38,15 @@ export default function Home() {
   const [savingTradeLink, setSavingTradeLink] = useState(false)
   
   // State for the borrow confirmation modal
-  const [borrowModalOpen, setBorrowModalOpen] = useState(false)
-  // State to track if a loan has been confirmed successfully
-  const [borrowSuccessful, setBorrowSuccessful] = useState(false)
+  const [tokenizeModalOpen, setTokenizeModalOpen] = useState(false)
   
-  // Gestionnaire pour la fermeture du modal de confirmation
-  const handleConfirmationOpenChange = (open: boolean) => {
-    setBorrowModalOpen(open);
-    
-    // If the modal closes, reset only if the loan was confirmed successfully
-    if (!open) {
-      // Short delay to avoid visual changes during closing
-      setTimeout(() => {
-        if (borrowSuccessful) {
-          // Do not reset selectedSkin here to allow the user to see their previous choice
-          // but reset other states if necessary
-          setLoanAmount(0);
-          setLoanDuration(7);
-          // Reset the success state for the next loan
-          setBorrowSuccessful(false);
-        }
-      }, 300);
-    }
-  }
   
   // Authentication with Privy
   const { isAuthenticated, isLoading: privyLoading, login, logout, profile, connectWallet, updateSteamId } = useAuth()
   
   // Retrieve the user's Steam inventory
   const { inventory, isLoading: inventoryLoading, error: inventoryError, lastUpdated, refreshInventory, refreshPrices, inventoryFetched } = useSteamInventory()
-  
+
   // Global loading state (Privy + user data)
   const isLoading = privyLoading || inventoryLoading;
 
@@ -85,6 +60,20 @@ export default function Home() {
   const [filterPriceMin, setFilterPriceMin] = useState<number>(0);
   const [filterPriceMax, setFilterPriceMax] = useState<number>(10000);
   const [showFilters, setShowFilters] = useState<boolean>(false);
+
+  // Fetch tokenized skins from API
+  useEffect(() => {
+    const fetchTokenizedSkins = async () => {
+      try {
+        const response = await fetch('/api/tokenized-skins');
+        const data = await response.json();
+        setTokenizedSkins(data);
+      } catch (error) {
+        console.error('Failed to fetch tokenized skins:', error);
+      }
+    };
+    fetchTokenizedSkins();
+  }, []);
 
   // Debug logs
   useEffect(() => {
@@ -182,36 +171,55 @@ export default function Home() {
     }
   }, [isAuthenticated, inventory, inventoryFetched]);
   
-  // Calculate the loan amount based on the selected skin and chosen percentage
-  useEffect(() => {
-    if (selectedSkin) {
-      const selectedSkinData = displaySkins.find(skin => skin.id === selectedSkin);
-      if (selectedSkinData) {
-        const maxLoanAmount = selectedSkinData.loanOffer;
-        const calculatedAmount = (maxLoanAmount * loanPercentage) / 100;
-        setLoanAmount(calculatedAmount);
-      }
-    } else {
-      setLoanAmount(0);
-    }
-  }, [selectedSkin, loanPercentage, displaySkins])
 
-  const handleBorrowRequest = () => {
-    // This function is now just a placeholder.
-    // The actual loan creation is handled in the BorrowConfirmationModal
-    // after the trade is accepted.
-    setBorrowSuccessful(true);
+  const handleTokenizeRequest = async () => {
+    if (!selectedSkin) return;
+    
+    try {
+      // Update the available shares in the API
+      const response = await fetch('/api/tokenized-skins', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          skinId: selectedSkin.id,
+          sharesPurchased: sharesAmount
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to purchase shares');
+      }
+      
+      const updatedSkin = await response.json();
+      
+      // Update the local state with the new available shares
+      setTokenizedSkins(prevSkins => 
+        prevSkins.map(skin => 
+          skin.id === updatedSkin.id ? updatedSkin : skin
+        )
+      );
+      
+      // Update selected skin if it's the same one
+      if (selectedSkin.id === updatedSkin.id) {
+        setSelectedSkin(updatedSkin);
+      }
+      
+      console.log('Shares purchased successfully:', { 
+        skin: selectedSkin.name, 
+        shares: sharesAmount, 
+        totalCost: (selectedSkin.pricePerShare * sharesAmount * 1.02).toFixed(2)
+      });
+      
+      // Reset shares amount
+      setSharesAmount(1);
+      
+    } catch (error) {
+      console.error('Error purchasing shares:', error);
+    }
   };
 
-  const liveTransactions = [
-    { username: "alex_cs", amount: "$250", skin: "AWP | Dragon Lore" },
-    { username: "knife_master", amount: "$120", skin: "Butterfly Knife | Fade" },
-    { username: "pro_gamer", amount: "$85", skin: "AK-47 | Fire Serpent" },
-    { username: "headshot_queen", amount: "$190", skin: "M4A4 | Howl" },
-    { username: "trader_joe", amount: "$65", skin: "USP-S | Kill Confirmed" },
-  ]
-
-  const [currentTransaction, setCurrentTransaction] = useState(0)
 
   // Manually refresh the inventory prices
   const handleRefreshInventory = async () => {
@@ -252,13 +260,6 @@ export default function Home() {
   
   // Removed duplicate useEffect - inventory fetching is already handled in the hook
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTransaction((prev) => (prev + 1) % liveTransactions.length)
-    }, 4000)
-
-    return () => clearInterval(interval)
-  }, [liveTransactions.length])
   
   // Reusable filtering function for both views
   const filterSkins = (skin: any) => {
@@ -304,14 +305,14 @@ export default function Home() {
   ];
 
   // Si l'utilisateur est authentifié mais n'a pas connecté Steam
-  if (isAuthenticated && profile && !profile.steamId && !isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-white">
-        <h2 className="text-2xl font-bold mb-4">Connect your Steam account</h2>
-        <SteamAuthButton />
-      </div>
-    )
-  }
+  // if (isAuthenticated && profile && !profile.steamId && !isLoading) {
+  //   return (
+  //     <div className="flex flex-col items-center justify-center min-h-screen text-white">
+  //       <h2 className="text-2xl font-bold mb-4">Connect your Steam account</h2>
+  //       <SteamAuthButton />
+  //     </div>
+  //   )
+  // }
 
   return (
     <div className="min-h-screen flex flex-col text-white">
@@ -325,11 +326,12 @@ export default function Home() {
           {/* Main interface - Simple and elegant header */}
           <div className="max-w-4xl mx-auto">
             <div className="mb-8 text-center">
-              <h2 className="text-3xl font-bold text-[#E1E1F5] font-poppins">Loan Now</h2>
-              </div>
+              <h2 className="text-3xl font-bold text-[#E1E1F5] font-poppins">Buy</h2>
+              <p className="text-[#a1a1c5] text-sm mt-2">Buy shares of premium CS2 skins with HUCH tokens</p>
+            </div>
             <div className="flex flex-col md:flex-row gap-8 w-full justify-center items-stretch relative">
               {/* Card Collateralize */}
-              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md flex flex-col h-full min-h-[500px] overflow-hidden">
+              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md flex flex-col h-[450px] overflow-hidden">
                 {/* Overlay grain */}
                 <div
                   aria-hidden
@@ -339,147 +341,66 @@ export default function Home() {
                     backgroundRepeat: "repeat"
                   }}
                 />
-                <div className="text-left py-6 px-4 relative z-20">
-                  <h2 className="text-2xl font-bold font-poppins text-[#E1E1F5]">You collateralize</h2>
-                  {/* <p className="text-[#a1a1c5] text-sm mt-1">Lorem ipsum dolor</p> */}
+                <div className="text-left py-4 px-4 relative z-20">
+                  <h2 className="text-xl font-bold font-poppins text-[#E1E1F5]">Available Skins</h2>
+                  <p className="text-[#a1a1c5] text-xs mt-1">Choose a skin to buy shares of</p>
                 </div>
-                <div className="p-3 flex flex-col flex-1 relative z-20">
-                  {/* Only show skin selector if user has trade link */}
-                  {profile?.tradeLink && (
-                    <>
-                      {/* Skin selector button */}
-                      <Button
-                        className="mb-4 w-full bg-[#6366f1] hover:bg-[#5355d1] text-white font-semibold"
-                        onClick={() => setSkinSelectorOpen(true)}
+                <div className="p-4 flex flex-col flex-1 relative z-20">
+                  {/* Featured Skins - 2x2 Grid Layout */}
+                  <div className="grid grid-cols-2 gap-3 mb-4 flex-1">
+                    {tokenizedSkins.slice(0, 4).map((skin, index) => (
+                      <div 
+                        key={index}
+                        className={`aspect-square flex flex-col p-3 bg-[#161e2e] rounded-lg border cursor-pointer hover:border-[#6366f1] transition-colors ${
+                          selectedSkin?.id === skin.id ? 'border-[#6366f1] bg-[#6366f1]/10' : 'border-[#23263a]'
+                        }`}
+                        onClick={() => setSelectedSkin(skin)}
                       >
-                        {selectedSkin
-                          ? "Change skin"
-                          : "Select a skin as collateral"}
-                      </Button>
-                      {/* Skin selection display */}
-                      {selectedSkin ? (() => {
-                        const skin = displaySkins.find(s => s.id === selectedSkin)
-                        if (!skin) return null
-                        const { name, wear } = extractSkinInfo(skin.market_hash_name)
-                        return (
-                          <div className="flex items-center gap-4 p-3 bg-[#161e2e] rounded-lg border border-[#23263a] mb-4">
-                            <div className="relative w-16 h-16 overflow-hidden rounded-md flex-shrink-0 bg-[#23263a]">
-                              <Image
-                                src={skin.imageUrl}
-                                alt={name}
-                                fill
-                                className="object-contain p-1"
-                              />
-                            </div>
-                            <div className="flex flex-col flex-1 min-w-0">
-                              <span className="font-semibold text-white text-base truncate">{name}</span>
-                              <span className="text-xs text-[#a1a1c5]">{wear}</span>
-                              <span className="text-xs text-[#a1a1c5] mt-1">
-                                {skin.liquidationRate}% LTV &ndash; Max ${skin.loanOffer.toFixed(2)}
-                              </span>
-                            </div>
-                          </div>
-                        )
-                      })() : (
-                        <div className="text-center text-[#a1a1c5] text-sm mt-6 mb-4">
-                          No skin selected
+                        {/* Skin Image */}
+                        <div className="flex-1 bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-md flex items-center justify-center mb-2 relative overflow-hidden">
+                          <Image
+                            src={skin.image}
+                            alt={skin.name}
+                            fill
+                            className="object-contain p-2"
+                          />
                         </div>
-                      )}
-                    </>
-                  )}
-                  {/* Inventory list or Trade Link Form */}
-                  <div className="flex-1 overflow-y-auto max-h-[260px] custom-scrollbar">
-                    {profile?.steamId && !profile?.tradeLink ? (
-                      // Trade Link Form integrated in the inventory area
-                      <div className="h-full flex flex-col justify-center px-2">
-                        <div className="text-center space-y-4">
-                          <div className="flex flex-col items-center gap-2 mb-4">
-                            <div className="w-12 h-12 rounded-full bg-[#161e2e] flex items-center justify-center">
-                              <Info className="w-6 h-6 text-[#6366f1]" />
-                            </div>
-                            <h3 className="text-sm font-semibold text-white">Add Your Trade Link</h3>
-                            <p className="text-xs text-[#a1a1c5] max-w-[250px]">
-                              To access your CS2 inventory, please add your Steam trade link
-                            </p>
+                        
+                        {/* Skin Info */}
+                        <div className="space-y-1">
+                          <h3 className="font-semibold text-white text-xs truncate">{skin.name}</h3>
+                          <div className="flex items-center gap-1 text-[10px] text-[#a1a1c5]">
+                            <span>${skin.price}</span>
+                            <span>•</span>
+                            <span>{Math.round((skin.availableShares / skin.totalShares) * 100)}% available</span>
                           </div>
                           
-                          <div className="space-y-3">
-                            <Input
-                              placeholder="https://steamcommunity.com/tradeoffer/new/?partner=..."
-                              value={tradeLink}
-                              onChange={(e) => setTradeLink(e.target.value)}
-                              className="bg-[#161e2e] border-[#23263a] text-xs h-8"
-                            />
-                            
-                            <Button
-                              onClick={handleSaveTradeLink}
-                              disabled={!tradeLink || savingTradeLink}
-                              className="w-full bg-[#6366f1] hover:bg-[#5355d1] text-white font-medium h-8 text-xs"
-                            >
-                              {savingTradeLink ? "Saving..." : "Save Trade Link"}
-                            </Button>
-                            
-                            <a 
-                              href="https://steamcommunity.com/id/me/tradeoffers/privacy#trade_offer_access_url" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-[#a1a1c5] hover:text-[#6366f1] transition-colors"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              Find your trade link
-                            </a>
+                          {/* Progress bar */}
+                          <div className="w-full bg-[#23263a] rounded-full h-1">
+                            <div 
+                              className="bg-gradient-to-r from-[#6366f1] to-[#7f8fff] h-1 rounded-full"
+                              style={{ width: `${(skin.availableShares / skin.totalShares) * 100}%` }}
+                            ></div>
+                          </div>
+                          
+                          {/* Price per share */}
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-[10px] text-[#a1a1c5]">per share</span>
+                            <span className="text-xs font-semibold text-white">${skin.pricePerShare.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      // Normal inventory list
-                      <div className="space-y-1 w-full">
-                        {displaySkins.length === 0 ? (
-                          <div className="text-center py-4">
-                            <p className="text-sm text-[#a1a1c5]">
-                              {inventoryLoading ? "Loading inventory..." : 
-                               inventoryError ? `Error: ${inventoryError}` :
-                               "No items found in inventory"}
-                            </p>
-                          </div>
-                        ) : (
-                          displaySkins
-                            .sort((a, b) => b.basePrice - a.basePrice)
-                            .map((skin) => {
-                            const { name, wear } = extractSkinInfo(skin.market_hash_name)
-                            const rarity = skin.rarity ||
-                              (skin.market_hash_name.includes('★') ? '★' :
-                              skin.market_hash_name.includes('Covert') ? 'Covert' :
-                              skin.market_hash_name.includes('Contraband') ? 'Contraband' : '')
-                            return (
-                              <div
-                                key={skin.id}
-                                className={`flex items-center gap-3 p-2 hover:bg-[#23263a] transition-colors rounded-md cursor-pointer ${selectedSkin === skin.id ? 'bg-[#23263a] border border-[#6366f1]' : 'border border-transparent'}`}
-                                onClick={() => setSelectedSkin(skin.id)}
-                              >
-                                <div className="relative w-10 h-10 overflow-hidden rounded bg-[#161e2e]">
-                                  <Image
-                                    src={skin.imageUrl}
-                                    alt={name}
-                                    fill
-                                    className="object-contain p-1"
-                                  />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <span className="font-medium text-sm truncate">{name}</span>
-                                  <div className="flex items-center gap-1 text-xs text-[#a1a1c5]">
-                                    <span>{wear}</span>
-                                    <span>•</span>
-                                    <span>{skin.liquidationRate}% LTV</span>
-                                  </div>
-                                </div>
-                                <span className="text-xs font-medium bg-[#161e2e] px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(2)}</span>
-                              </div>
-                            )
-                          })
-                        )}
-                      </div>
-                    )}
+                    ))}
+                  </div>
+                  
+                  {/* Browse more skins */}
+                  <div>
+                    <Button
+                      className="w-full bg-[#161e2e] hover:bg-[#23263a] text-[#a1a1c5] border border-[#23263a] hover:border-[#6366f1] transition-colors py-2 text-sm"
+                      onClick={() => setSkinSelectorOpen(true)}
+                    >
+                      Browse All Skins
+                    </Button>
                   </div>
                 </div>
               </Card>
@@ -490,7 +411,7 @@ export default function Home() {
               </div>
               
               {/* Card Borrow */}
-              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md flex flex-col min-h-[500px] overflow-hidden">
+              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md flex flex-col h-[450px] overflow-hidden">
                 {/* Overlay grain */}
                 <div
                   aria-hidden
@@ -500,91 +421,130 @@ export default function Home() {
                     backgroundRepeat: "repeat"
                   }}
                 />
-                <div className="text-left py-6 px-4 relative z-20">
-                  <h2 className="text-2xl font-bold font-poppins text-[#E1E1F5]">You borrow</h2>
-                  {/* <p className="text-[#a1a1c5] text-sm mt-1">Lorem ipsum dolor sit amet</p> */}
+                <div className="text-left py-4 px-4 relative z-20">
+                  <h2 className="text-xl font-bold font-poppins text-[#E1E1F5]">Purchase Details</h2>
+                  <p className="text-[#a1a1c5] text-xs mt-1">Buy shares with HUCH tokens</p>
                 </div>
                 <div className="p-3 flex flex-col items-center flex-1 relative z-20">
-                  {/* Loan amount */}
-                  <div className="flex flex-col items-center mb-4 w-full">
-                    <span className="text-3xl font-bold mb-2">
-                      {loanAmount ? `$${loanAmount.toFixed(2)}` : "$0.00"}
-                    </span>
-                    {/* Loan percentage slider */}
-                    <input
-                      type="range"
-                      min={10}
-                      max={100}
-                      step={1}
-                      value={loanPercentage}
-                      onChange={e => setLoanPercentage(Number(e.target.value))}
-                      className="w-full accent-[#6366f1] mb-2"
-                      disabled={!selectedSkin}
-                    />
-                    <div className="flex justify-between w-full text-xs text-[#a1a1c5] mb-2">
-                      <span>10%</span>
-                      <span>100%</span>
-                    </div>
-                    <div className="flex justify-between w-full gap-2 mb-2">
-                      {[10, 25, 50, 75, 100].map(val => (
-                        <Button
-                          key={val}
-                          size="sm"
-                          variant={loanPercentage === val ? "default" : "outline"}
-                          className={`rounded-full px-3 py-1 text-xs ${loanPercentage === val ? "bg-[#6366f1] text-white" : "bg-[#23263a] text-[#a1a1c5]"}`}
-                          onClick={() => setLoanPercentage(val)}
-                          disabled={!selectedSkin}
-                        >
-                          {val}%
-                        </Button>
-                      ))}
-                    </div>
-                    <span className="text-xs text-[#a1a1c5]">USDC</span>
-                  </div>
-                  {/* Loan duration */}
-                  <div className="flex flex-col items-center mb-4 w-full">
-                    <label className="text-xs text-[#a1a1c5] mb-1">Duration</label>
-                    <div className="flex gap-2 w-full justify-center">
-                      {loanDurationOptions.map(option => (
-                        <Button
-                          key={option}
-                          size="sm"
-                          variant={loanDuration === option ? "default" : "outline"}
-                          className={`rounded-full px-3 py-1 text-xs ${loanDuration === option ? "bg-[#6366f1] text-white" : "bg-[#23263a] text-[#a1a1c5]"}`}
-                          onClick={() => setLoanDuration(option)}
-                          disabled={!selectedSkin}
-                        >
-                          {option}d
-                        </Button>
-                      ))}
-                    </div>
-                    {/* Affichage du taux d'intérêt */}
-                    <div className="mt-2 text-xs text-[#a1a1c5]">
-                      Interest rate: <span className="text-white font-medium">{getInterestRate(loanDuration)}%</span>
-                    </div>
-                  </div>
-                  {/* How it works */}
-                  <div className="mb-4 w-full text-center">
-                    <button
-                      className="text-xs text-[#a1a1c5] underline hover:text-[#6366f1] transition"
-                      onClick={() => setHowItWorksOpen(!howItWorksOpen)}
-                      type="button"
-                    >
-                      How does it work ?
-                    </button>
-                    {howItWorksOpen && (
-                      <div className="mt-2 text-xs text-[#a1a1c5] bg-[#161e2e] rounded-md p-2">
-                        Select a skin, choose your loan amount and duration, then confirm to borrow USDC. Your skin is held as collateral until you repay.
+                  {selectedSkin ? (
+                    <>
+                      {/* Selected Skin Display */}
+                      <div className="w-full mb-3">
+                        <div className="text-center">
+                          <h3 className="text-base font-semibold text-white">{selectedSkin.name}</h3>
+                          <p className="text-xs text-[#a1a1c5]">Selected for purchase</p>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  {/* Confirm button */}
+                      
+                      {/* Shares Selection */}
+                      <div className="w-full mb-3">
+                        <label className="block text-xs font-medium text-white mb-2">Number of shares</label>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-8 h-8 p-0 bg-[#161e2e] border-[#23263a] hover:bg-[#23263a]"
+                            onClick={() => setSharesAmount(Math.max(1, sharesAmount - 1))}
+                            disabled={sharesAmount <= 1}
+                          >
+                            -
+                          </Button>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="50"
+                            value={sharesAmount}
+                            onChange={(e) => setSharesAmount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                            className="flex-1 bg-[#161e2e] border-[#23263a] text-center"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-8 h-8 p-0 bg-[#161e2e] border-[#23263a] hover:bg-[#23263a]"
+                            onClick={() => setSharesAmount(Math.min(50, sharesAmount + 1))}
+                            disabled={sharesAmount >= 50}
+                          >
+                            +
+                          </Button>
+                        </div>
+                        
+                        {/* Quick select buttons */}
+                        <div className="flex gap-2 justify-center">
+                          {[1, 5, 10, 25].map(amount => (
+                            <Button
+                              key={amount}
+                              size="sm"
+                              variant={sharesAmount === amount ? "default" : "outline"}
+                              className={`px-3 py-1 text-xs ${
+                                sharesAmount === amount 
+                                  ? "bg-[#6366f1] text-white" 
+                                  : "bg-[#161e2e] border-[#23263a] text-[#a1a1c5] hover:bg-[#23263a]"
+                              }`}
+                              onClick={() => setSharesAmount(amount)}
+                            >
+                              {amount}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Cost Breakdown */}
+                      <div className="w-full bg-[#161e2e] rounded-lg p-3 space-y-2 mb-3">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#a1a1c5]">Price per share</span>
+                          <span className="text-white">${selectedSkin.pricePerShare.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#a1a1c5]">Shares × {sharesAmount}</span>
+                          <span className="text-white">${(selectedSkin.pricePerShare * sharesAmount).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#a1a1c5]">Platform fee (2%)</span>
+                          <span className="text-white">${(selectedSkin.pricePerShare * sharesAmount * 0.02).toFixed(2)}</span>
+                        </div>
+                        <div className="border-t border-[#23263a] pt-2">
+                          <div className="flex justify-between text-sm font-semibold">
+                            <span className="text-white">Total</span>
+                            <span className="text-white">${(selectedSkin.pricePerShare * sharesAmount * 1.02).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center flex-1 text-center">
+                      <div className="w-16 h-16 bg-[#161e2e] rounded-full flex items-center justify-center mb-4">
+                        <span className="text-2xl">🔍</span>
+                      </div>
+                      <h3 className="text-lg font-semibold text-white mb-2">Select a Skin</h3>
+                      <p className="text-sm text-[#a1a1c5] max-w-[200px]">
+                        Choose a CS2 skin from the left to see purchase details
+                      </p>
+                    </div>
+                  )}
+                  {/* How it works - more compact */}
+                  {selectedSkin && (
+                    <div className="mb-2 w-full text-center">
+                      <button
+                        className="text-[10px] text-[#a1a1c5] underline hover:text-[#6366f1] transition"
+                        onClick={() => setHowItWorksOpen(!howItWorksOpen)}
+                        type="button"
+                      >
+                        How does share ownership work?
+                      </button>
+                      {howItWorksOpen && (
+                        <div className="mt-1 text-[10px] text-[#a1a1c5] bg-[#161e2e] rounded-md p-2">
+                          Buy fractional ownership of premium CS2 skins. Each skin is divided into 100 shares.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* Purchase button */}
                   <Button
-                    className="w-full bg-gradient-to-r from-[#6366f1] to-[#7f8fff] text-white font-semibold text-base py-2 rounded-lg mt-auto"
-                    disabled={!selectedSkin || loanAmount <= 0}
-                    onClick={() => setBorrowModalOpen(true)}
+                    className="w-full bg-gradient-to-r from-[#6366f1] to-[#7f8fff] text-white font-semibold text-sm py-2 rounded-lg mt-auto"
+                    disabled={!selectedSkin}
+                    onClick={() => setTokenizeModalOpen(true)}
                   >
-                    Confirm and borrow now
+                    {selectedSkin ? `Buy ${sharesAmount} Share${sharesAmount !== 1 ? 's' : ''} ($${(selectedSkin.pricePerShare * sharesAmount * 1.02).toFixed(2)})` : 'Select a Skin'}
                   </Button>
                 </div>
               </Card>
@@ -597,7 +557,7 @@ export default function Home() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSkinSelectorOpen(false)}>
             <div className={`bg-blue-950/20 backdrop-blur-md border border-blue-400/30 rounded-lg shadow-lg overflow-hidden w-full max-w-[95vw] ${gridViewActive ? 'md:max-w-[800px]' : 'md:max-w-[500px]'}`} onClick={(e) => e.stopPropagation()}>
               <div className="flex justify-between items-center p-2 border-b border-blue-400/20">
-                <h3 className="text-xs font-medium">Select a skin</h3>
+                <h3 className="text-xs font-medium">Browse Premium CS2 Skins</h3>
                 <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
@@ -643,7 +603,7 @@ export default function Home() {
                     <Search className="h-3 w-3 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input 
                       type="text" 
-                      placeholder="Search skins..."
+                      placeholder="Search premium CS2 skins..."
                       className="w-full bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-md py-1 pl-7 pr-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400/40"
                       autoFocus
                       value={searchQuery}
@@ -860,17 +820,49 @@ export default function Home() {
           </div>
         )}
       </main>      
-      {/* Borrow confirmation modal */}
-      <BorrowConfirmationModal 
-        open={borrowModalOpen} 
-        onOpenChange={handleConfirmationOpenChange}
-        selectedSkin={selectedSkin}
-        displaySkins={displaySkins}
-        loanAmount={loanAmount}
-        loanDuration={loanDuration}
-        extractSkinInfo={extractSkinInfo}
-        onConfirm={handleBorrowRequest}
-      />
+      {/* Purchase confirmation modal */}
+      {tokenizeModalOpen && selectedSkin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-[#0F0F2A] border border-[#FFFFFF]/10 rounded-lg p-6 max-w-md mx-4">
+            <h3 className="text-xl font-bold text-white mb-4">Confirm Purchase</h3>
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between text-sm">
+                <span className="text-[#a1a1c5]">Skin:</span>
+                <span className="text-white">{selectedSkin.name}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#a1a1c5]">Shares:</span>
+                <span className="text-white">{sharesAmount}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#a1a1c5]">Total Cost:</span>
+                <span className="text-white">${(selectedSkin.pricePerShare * sharesAmount * 1.02).toFixed(2)}</span>
+              </div>
+              <p className="text-xs text-[#a1a1c5]">
+                You will own {((sharesAmount / 100) * 100).toFixed(1)}% of this skin and receive proportional dividends.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                className="flex-1" 
+                onClick={() => setTokenizeModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1 bg-gradient-to-r from-[#6366f1] to-[#7f8fff]"
+                onClick={() => {
+                  handleTokenizeRequest();
+                  setTokenizeModalOpen(false);
+                }}
+              >
+                Buy Shares
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     <Footer />
     </div>
   )

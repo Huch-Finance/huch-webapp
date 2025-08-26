@@ -28,19 +28,19 @@ export function Sidebar() {
       isLogo: true,
     },
     {
-      name: "Borrow",
+      name: "Buy",
       href: "/borrow",
       icon: CreditCard,
       iconSrc:
         "https://cdn.builder.io/api/v1/image/assets/TEMP/ba0d2e40a26d9aad3177c934d7697d1b490f6151?placeholderIfAbsent=true",
     },
-    {
-      name: "Ranking",
-      href: "/ranking",
-      icon: Trophy,
-      iconSrc:
-        "https://cdn.builder.io/api/v1/image/assets/TEMP/691d969a723a11d0b84423c62387278ffb806c49?placeholderIfAbsent=true",
-    },
+    // {
+    //   name: "Ranking",
+    //   href: "/ranking",
+    //   icon: Trophy,
+    //   iconSrc:
+    //     "https://cdn.builder.io/api/v1/image/assets/TEMP/691d969a723a11d0b84423c62387278ffb806c49?placeholderIfAbsent=true",
+    // },
     ...(profile?.admin
       ? [
           {

@@ -11,6 +11,7 @@ import { Footer } from "@/components/organism/footer";
 import { Toaster } from "sonner";
 import { BeamsBackground } from "@/components/bg/beams-background";
 import { ActiveTradeIndicator } from "@/components/trade/active-trade-indicator";
+import BubbleTop from "@/components/organism/bubble-top";
 
 const poppins = Poppins({
   weight: ["400", "500", "600", "700"],
@@ -47,6 +48,7 @@ export default function RootLayout({
           <Sidebar />
           <MobileMenu />
           <ActiveTradeIndicator />
+          <BubbleTop />
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
