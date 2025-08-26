@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, CreditCard, Trophy, User, LogOut, Settings, ArrowLeftRight } from "lucide-react";
+import { Home, CreditCard, Trophy, User, LogOut, Settings, ArrowLeftRight, Star, Grid } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useState, useRef } from "react";
 import { useLogin } from "@privy-io/react-auth";
@@ -28,11 +28,18 @@ export function Sidebar() {
       isLogo: true,
     },
     {
-      name: "Buy",
+      name: "Featured Skins",
       href: "/borrow",
-      icon: CreditCard,
+      icon: Star,
       iconSrc:
         "https://cdn.builder.io/api/v1/image/assets/TEMP/ba0d2e40a26d9aad3177c934d7697d1b490f6151?placeholderIfAbsent=true",
+    },
+    {
+      name: "All Skins",
+      href: "/browse-skins",
+      icon: Grid,
+      iconSrc:
+        "https://cdn.builder.io/api/v1/image/assets/TEMP/grid-icon?placeholderIfAbsent=true",
     },
     // {
     //   name: "Ranking",
@@ -244,6 +251,10 @@ export function Sidebar() {
                     />
                   ) : item.name === "Trade" ? (
                     <ArrowLeftRight className="object-contain shrink-0 w-8 h-8 text-white" />
+                  ) : item.name === "Featured Skins" ? (
+                    <Star className="object-contain shrink-0 w-8 h-8 text-white" />
+                  ) : item.name === "All Skins" ? (
+                    <Grid className="object-contain shrink-0 w-8 h-8 text-white" />
                   ) : (
                     <img
                       src={item.iconSrc}

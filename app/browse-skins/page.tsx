@@ -177,9 +177,9 @@ export default function BrowseSkinsPage() {
   const conditions = ["all", "Factory New", "Minimal Wear", "Field-Tested", "Well-Worn", "Battle-Scarred"]
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F0F2A] via-[#1a1a3a] to-[#0F0F2A] text-white">
+    <div className="min-h-screen text-white lg:ml-24">
       {/* Header */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
         <div className="flex items-center gap-4 mb-6">
           <Button
             variant="ghost"
@@ -235,7 +235,7 @@ export default function BrowseSkinsPage() {
             </div>
             
             {/* Filters */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className="bg-[#0F0F2A] border-[#23263a] text-white">
                   <SelectValue placeholder="Category" />
@@ -288,7 +288,7 @@ export default function BrowseSkinsPage() {
               </Select>
               
               {/* View Mode Toggle */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 sm:col-span-1">
                 <Button
                   variant={viewMode === "grid" ? "default" : "outline"}
                   size="sm"
@@ -319,7 +319,7 @@ export default function BrowseSkinsPage() {
         
         {/* Skins Grid/List */}
         {viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {sortedSkins.map((skin) => (
               <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer group">
                 <div className="p-4">

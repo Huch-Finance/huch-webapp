@@ -331,14 +331,14 @@ export default function TokenizationPage() {
   // }
 
   return (
-    <div className="min-h-screen flex flex-col text-white">
-      <main className="flex-1 flex flex-col items-center justify-center pt-8 lg:  pt-12">
+    <div className="h-screen flex flex-col text-white overflow-hidden">
+      <main className="flex-1 flex flex-col items-center justify-center overflow-hidden">
         <LoadingOverlay
           isLoading={isLoading} 
           message={tokenizedSkinsLoading ? "Loading featured skins..." : "Connecting to your wallet..."}
           opacity={0.7}
         />
-        <div className="container mx-auto px-4">
+        <div className="w-full h-full flex items-center justify-center lg:ml-8">
           {/* Featured Skins Component */}
           <FeaturedSkins
             tokenizedSkins={tokenizedSkins}

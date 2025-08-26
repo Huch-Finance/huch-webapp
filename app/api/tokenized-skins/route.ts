@@ -1,52 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { csCards } from '@/lib/cscards';
 
-// Simulated database for tokenized skins
-let tokenizedSkins = [
-  { 
-    id: '1',
-    name: 'AWP | Dragon Lore', 
-    price: 2500, 
-    image: '/awp.webp',
-    totalQuantity: 10,
-    availableQuantity: 10,
-    pricePerItem: 2500.00,
-    wear: 'Factory New',
-    float: 0.0234
-  },
-  { 
-    id: '2',
-    name: 'Butterfly Knife | Fade', 
-    price: 1800, 
-    image: '/btknife.png',
-    totalQuantity: 15,
-    availableQuantity: 15,
-    pricePerItem: 1800.00,
-    wear: 'Minimal Wear',
-    float: 0.1267
-  },
-  { 
-    id: '3',
-    name: 'AK-47 | Redline', 
-    price: 120, 
-    image: '/ak47-redline.png',
-    totalQuantity: 25,
-    availableQuantity: 25,
-    pricePerItem: 120.00,
-    wear: 'Field-Tested',
-    float: 0.2834
-  },
-  { 
-    id: '4',
-    name: 'M4A4 | Howl', 
-    price: 3200, 
-    image: '/M4A4.png',
-    totalQuantity: 5,
-    availableQuantity: 5,
-    pricePerItem: 3200.00,
-    wear: 'Well-Worn',
-    float: 0.4125
-  }
-];
+// Convert csCards to tokenized skins format
+let tokenizedSkins = csCards.map(card => ({
+  id: card.id,
+  name: card.name,
+  price: card.price,
+  image: card.cardImage, // Using NFT card image instead of original skin image
+  totalQuantity: card.totalQuantity,
+  availableQuantity: card.availableQuantity,
+  pricePerItem: card.price,
+  wear: card.wear,
+  float: card.float,
+  rarity: card.rarity,
+  weapon: card.weapon,
+  skin: card.skin,
+  collection: card.collection,
+  originalImage: card.originalImage // Keep original for reference
+}));
 
 // GET - Retrieve all tokenized skins
 export async function GET() {

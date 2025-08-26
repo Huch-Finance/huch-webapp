@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
+import { getTotalTVL, getTopCardsByPrice } from "@/lib/cscards"
 
 interface TokenizedSkin {
   id: string;
@@ -23,141 +24,100 @@ interface FeaturedSkinsProps {
 }
 
 export function FeaturedSkins({ tokenizedSkins, onSkinSelect, onBrowseAll, isLoading = false }: FeaturedSkinsProps) {
+  // Calculate TVL (Total Value Locked) of all skins using utility function
+  const totalTVL = getTotalTVL();
+
+  // Get top 4 best skins by price
+  const topSkins = [...tokenizedSkins]
+    .sort((a, b) => b.price - a.price)
+    .slice(0, 4);
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
-      {/* Header */}
+    <div className="w-full flex flex-col items-center justify-center">
+      {/* Header with TVL */}
       <div className="text-center mb-8">
         <h2 className="text-4xl font-bold font-poppins text-white mb-3">Featured Skins</h2>
-        <p className="text-[#a1a1c5] text-lg">Premium CS2 skins ready for purchase with HUCH tokens</p>
+        <p className="text-[#a1a1c5] text-lg mb-4">Premium CS2 skins ready for purchase with HUCH tokens</p>
+        
+        {/* TVL Display */}
+        <div className="bg-gradient-to-r from-[#6366f1]/20 to-[#7f8fff]/20 backdrop-blur-sm border border-[#6366f1]/30 rounded-2xl px-6 py-4 inline-block">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-gradient-to-r from-[#10b981] to-[#34d399] rounded-full animate-pulse"></div>
+            <span className="text-[#a1a1c5] text-sm font-medium">Huch Vault TVL:</span>
+            <span className="text-white text-xl font-bold">${totalTVL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+        </div>
       </div>
 
-      {/* Featured Skins Grid - Modern 4-column layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Featured Skins Grid - Top 4 in single row */}
+      <div className="flex justify-center gap-4 mb-8">
         {isLoading ? (
           // Loading skeleton
           Array.from({ length: 4 }).map((_, index) => (
             <div 
               key={`skeleton-${index}`}
-              className="group bg-gradient-to-br from-[#0F0F2A] to-[#1a1a3a] rounded-2xl border border-[#6366f1]/20 overflow-hidden animate-pulse"
+              className="flex flex-col items-center"
             >
-              {/* Overlay grain */}
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-0 z-10 opacity-[.03] rounded-2xl"
+              {/* Skeleton Card - Full image placeholder */}
+              <div 
+                className="relative w-[180px] h-[252px] bg-gray-600 rounded-2xl animate-pulse"
                 style={{
-                  backgroundImage: "url('/grainbg.avif')",
-                  backgroundRepeat: "repeat"
+                  aspectRatio: '750/1050'
                 }}
-              />
+              ></div>
               
-              {/* Skeleton Image Container */}
-              <div className="relative h-48 bg-gradient-to-br from-[#1a1a2e]/50 to-[#16213e]/50 flex items-center justify-center p-6 rounded-t-2xl overflow-hidden">
-                <div className="w-32 h-20 bg-gray-600 rounded-lg"></div>
-                {/* Price Badge Skeleton */}
-                <div className="absolute top-4 right-4 bg-gray-600 w-20 h-6 rounded-full"></div>
-              </div>
-              
-              {/* Skeleton Info */}
-              <div className="p-5 space-y-3 relative z-20">
-                <div className="h-6 bg-gray-600 rounded w-3/4"></div>
-                
-                {/* Details Grid Skeleton */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center p-2 bg-[#161e2e]/50 rounded-lg border border-[#6366f1]/10">
-                    <div className="h-3 bg-gray-600 rounded w-12"></div>
-                    <div className="h-3 bg-gray-600 rounded w-16"></div>
-                  </div>
-                  <div className="flex justify-between items-center p-2 bg-[#161e2e]/50 rounded-lg border border-[#6366f1]/10">
-                    <div className="h-3 bg-gray-600 rounded w-10"></div>
-                    <div className="h-3 bg-gray-600 rounded w-14"></div>
-                  </div>
-                </div>
-                
-                {/* Button Skeleton */}
-                <div className="w-full h-10 bg-gray-600 rounded-xl mt-4"></div>
-              </div>
+              {/* Button Skeleton */}
+              <div className="mt-3 w-28 h-8 bg-gradient-to-r from-gray-600/20 to-gray-600/20 backdrop-blur-sm border border-gray-600/30 rounded-2xl animate-pulse"></div>
             </div>
           ))
         ) : (
-          tokenizedSkins.slice(0, 4).map((skin, index) => (
+          topSkins.map((skin, index) => (
           <div 
             key={index}
-            className="group bg-gradient-to-br from-[#0F0F2A] to-[#1a1a3a] rounded-2xl border border-[#6366f1]/20 hover:border-[#6366f1]/60 transition-all duration-300 cursor-pointer hover:scale-105 hover:shadow-2xl hover:shadow-[#6366f1]/25 overflow-hidden"
-            onClick={() => onSkinSelect(skin)}
+            className="flex flex-col items-center"
           >
-            {/* Overlay grain */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 z-10 opacity-[.03] rounded-2xl"
+            {/* NFT Card Image - Full card is the image */}
+            <div 
+              className="relative w-[180px] h-[252px] cursor-pointer hover:scale-105 transition-all duration-300 hover:shadow-2xl hover:shadow-[#6366f1]/25 group"
+              onClick={() => onSkinSelect(skin)}
               style={{
-                backgroundImage: "url('/grainbg.avif')",
-                backgroundRepeat: "repeat"
+                aspectRatio: '750/1050'
               }}
-            />
-            
-            {/* Skin Image Container */}
-            <div className="relative h-48 bg-gradient-to-br from-[#1a1a2e]/50 to-[#16213e]/50 flex items-center justify-center p-6 rounded-t-2xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+            >
               <Image
                 src={skin.image}
                 alt={skin.name}
-                width={200}
-                height={120}
-                className="object-contain group-hover:scale-110 transition-transform duration-500 relative z-10"
+                fill
+                className="object-cover rounded-2xl group-hover:brightness-110 transition-all duration-300"
+                style={{ objectFit: 'cover' }}
               />
-              
-              {/* Price Badge */}
-              <div className="absolute top-4 right-4 bg-gradient-to-r from-[#6366f1] to-[#7f8fff] text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                ${skin.price.toFixed(2)}
-              </div>
             </div>
             
-            {/* Skin Info */}
-            <div className="p-5 space-y-3 relative z-20">
-              <h3 className="font-bold text-white text-lg leading-tight">{skin.name}</h3>
-              
-              {/* Details Grid */}
-              <div className="space-y-2 text-sm">
-                {skin.wear && (
-                  <div className="flex justify-between items-center p-2 bg-[#161e2e]/50 rounded-lg border border-[#6366f1]/10">
-                    <span className="text-[#a1a1c5]">Wear</span>
-                    <span className="text-white font-medium">{skin.wear}</span>
-                  </div>
-                )}
-                {skin.float !== undefined && (
-                  <div className="flex justify-between items-center p-2 bg-[#161e2e]/50 rounded-lg border border-[#6366f1]/10">
-                    <span className="text-[#a1a1c5]">Float</span>
-                    <span className="text-white font-medium">{skin.float.toFixed(4)}</span>
-                  </div>
-                )}
+            {/* Purchase Button - Below card - TVL style */}
+            <div 
+              className="mt-3 bg-gradient-to-r from-[#6366f1]/20 to-[#7f8fff]/20 backdrop-blur-sm border border-[#6366f1]/30 rounded-2xl px-4 py-2 cursor-pointer hover:from-[#6366f1]/30 hover:to-[#7f8fff]/30 hover:border-[#6366f1]/50 transition-all duration-200"
+              onClick={() => onSkinSelect(skin)}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 bg-gradient-to-r from-[#6366f1] to-[#7f8fff] rounded-full"></div>
+                <span className="text-white text-sm font-medium">Purchase Now</span>
               </div>
-              
-              {/* Purchase Button */}
-              <Button
-                className="w-full bg-gradient-to-r from-[#6366f1] to-[#7f8fff] hover:from-[#5855eb] hover:to-[#6d28d9] text-white font-semibold py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 mt-4"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSkinSelect(skin);
-                }}
-              >
-                Purchase Now
-              </Button>
             </div>
           </div>
         )))}
       </div>
       
-      {/* Browse All Button */}
+      {/* Browse All Button - TVL style */}
       <div className="text-center">
-        <Button
-          className="bg-gradient-to-r from-[#6366f1] to-[#7f8fff] hover:from-[#5855eb] hover:to-[#6d28d9] text-white font-bold border-none transition-all duration-300 px-12 py-4 text-xl rounded-2xl shadow-2xl hover:shadow-[#6366f1]/50 hover:scale-105 transform relative overflow-hidden group"
+        <div 
+          className="bg-gradient-to-r from-[#6366f1]/20 to-[#7f8fff]/20 backdrop-blur-sm border border-[#6366f1]/30 rounded-2xl px-8 py-4 cursor-pointer hover:from-[#6366f1]/30 hover:to-[#7f8fff]/30 hover:border-[#6366f1]/50 transition-all duration-300 inline-block hover:scale-105"
           onClick={onBrowseAll}
         >
-          {/* Shimmer effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-          <span className="relative z-10">Browse All Skins</span>
-        </Button>
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-3 h-3 bg-gradient-to-r from-[#6366f1] to-[#7f8fff] rounded-full"></div>
+            <span className="text-white text-xl font-bold">Browse All Skins</span>
+          </div>
+        </div>
       </div>
     </div>
   )
