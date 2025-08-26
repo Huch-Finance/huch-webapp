@@ -39,85 +39,173 @@ import { getUSDCBalance } from "@/lib/solana-utils";
 import { getSolanaConnection } from "@/lib/solana-connection";
 import Image from "next/image";
 
-interface OwnedSkinShare {
+interface OwnedSkinItem {
   id: string;
   skinName: string;
   skinImage: string;
-  totalShares: number;
-  ownedShares: number;
   purchasePrice: number;
   currentPrice: number;
   purchaseDate: string;
   profitLoss: number;
   profitLossPercentage: number;
+  wear?: string;
+  float?: number;
 }
 
 export default function Profile() {
   const [solBalance, setSolBalance] = useState<number>(0);
   const [splBalance, setSplBalance] = useState<number>(0);
-  const [ownedShares, setOwnedShares] = useState<OwnedSkinShare[]>([]);
+  const [ownedItems, setOwnedItems] = useState<OwnedSkinItem[]>([]);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
-  const [shareFilter, setShareFilter] = useState<'all' | 'profit' | 'loss'>('all');
+  const [itemFilter, setItemFilter] = useState<'all' | 'profit' | 'loss'>('all');
   
   const { profile, isAuthenticated, isLoading } = useAuth();
   const { wallets } = useSolanaWallets();
   const { wallets: allWallets } = useWallets();
 
-  // Mock data for owned skin shares
+  // Mock data for owned skin items - individual items with identical cards for multiple quantities
   useEffect(() => {
     // In a real app, this would fetch from an API
-    setOwnedShares([
+    setOwnedItems([
+      // AWP Dragon Lore - 2 identical items
       {
-        id: '1',
+        id: '1a',
         skinName: 'AWP | Dragon Lore',
         skinImage: '/awp.webp',
-        totalShares: 100,
-        ownedShares: 15,
-        purchasePrice: 375, // 15 shares * $25
-        currentPrice: 412.50, // 15 shares * $27.50
-        purchaseDate: '2024-01-15',
-        profitLoss: 37.50,
-        profitLossPercentage: 10
+        purchasePrice: 2500,
+        currentPrice: 2750,
+        purchaseDate: '2024-01-14',
+        profitLoss: 250,
+        profitLossPercentage: 10,
+        wear: 'Factory New',
+        float: 0.0234
       },
       {
-        id: '2',
+        id: '1b',
+        skinName: 'AWP | Dragon Lore',
+        skinImage: '/awp.webp',
+        purchasePrice: 2500,
+        currentPrice: 2750,
+        purchaseDate: '2024-01-19',
+        profitLoss: 250,
+        profitLossPercentage: 10,
+        wear: 'Factory New',
+        float: 0.0234
+      },
+      // Butterfly Knife Fade - 3 identical items
+      {
+        id: '2a',
         skinName: 'Butterfly Knife | Fade',
         skinImage: '/btknife.png',
-        totalShares: 100,
-        ownedShares: 25,
-        purchasePrice: 450, // 25 shares * $18
-        currentPrice: 425, // 25 shares * $17
-        purchaseDate: '2024-01-20',
-        profitLoss: -25,
-        profitLossPercentage: -5.56
+        purchasePrice: 1800,
+        currentPrice: 1700,
+        purchaseDate: '2024-01-19',
+        profitLoss: -100,
+        profitLossPercentage: -5.56,
+        wear: 'Minimal Wear',
+        float: 0.1267
       },
       {
-        id: '3',
+        id: '2b',
+        skinName: 'Butterfly Knife | Fade',
+        skinImage: '/btknife.png',
+        purchasePrice: 1800,
+        currentPrice: 1700,
+        purchaseDate: '2024-01-20',
+        profitLoss: -100,
+        profitLossPercentage: -5.56,
+        wear: 'Minimal Wear',
+        float: 0.1267
+      },
+      {
+        id: '2c',
+        skinName: 'Butterfly Knife | Fade',
+        skinImage: '/btknife.png',
+        purchasePrice: 1800,
+        currentPrice: 1700,
+        purchaseDate: '2024-01-21',
+        profitLoss: -100,
+        profitLossPercentage: -5.56,
+        wear: 'Minimal Wear',
+        float: 0.1267
+      },
+      // AK-47 Redline - 5 identical items
+      {
+        id: '3a',
         skinName: 'AK-47 | Redline',
         skinImage: '/ak47-redline.png',
-        totalShares: 100,
-        ownedShares: 50,
-        purchasePrice: 60, // 50 shares * $1.20
-        currentPrice: 75, // 50 shares * $1.50
-        purchaseDate: '2024-02-01',
-        profitLoss: 15,
-        profitLossPercentage: 25
+        purchasePrice: 120,
+        currentPrice: 150,
+        purchaseDate: '2024-01-31',
+        profitLoss: 30,
+        profitLossPercentage: 25,
+        wear: 'Field-Tested',
+        float: 0.2834
       },
       {
-        id: '4',
+        id: '3b',
+        skinName: 'AK-47 | Redline',
+        skinImage: '/ak47-redline.png',
+        purchasePrice: 120,
+        currentPrice: 150,
+        purchaseDate: '2024-02-01',
+        profitLoss: 30,
+        profitLossPercentage: 25,
+        wear: 'Field-Tested',
+        float: 0.2834
+      },
+      {
+        id: '3c',
+        skinName: 'AK-47 | Redline',
+        skinImage: '/ak47-redline.png',
+        purchasePrice: 120,
+        currentPrice: 150,
+        purchaseDate: '2024-02-01',
+        profitLoss: 30,
+        profitLossPercentage: 25,
+        wear: 'Field-Tested',
+        float: 0.2834
+      },
+      {
+        id: '3d',
+        skinName: 'AK-47 | Redline',
+        skinImage: '/ak47-redline.png',
+        purchasePrice: 120,
+        currentPrice: 150,
+        purchaseDate: '2024-02-02',
+        profitLoss: 30,
+        profitLossPercentage: 25,
+        wear: 'Field-Tested',
+        float: 0.2834
+      },
+      {
+        id: '3e',
+        skinName: 'AK-47 | Redline',
+        skinImage: '/ak47-redline.png',
+        purchasePrice: 120,
+        currentPrice: 150,
+        purchaseDate: '2024-02-02',
+        profitLoss: 30,
+        profitLossPercentage: 25,
+        wear: 'Field-Tested',
+        float: 0.2834
+      },
+      // M4A4 Howl - 1 item
+      {
+        id: '4a',
         skinName: 'M4A4 | Howl',
         skinImage: '/M4A4.png',
-        totalShares: 100,
-        ownedShares: 10,
-        purchasePrice: 320, // 10 shares * $32
-        currentPrice: 350, // 10 shares * $35
-        purchaseDate: '2024-02-05',
-        profitLoss: 30,
-        profitLossPercentage: 9.375
+        purchasePrice: 3200,
+        currentPrice: 3500,
+        purchaseDate: '2024-02-04',
+        profitLoss: 300,
+        profitLossPercentage: 9.375,
+        wear: 'Well-Worn',
+        float: 0.4125
       }
     ]);
   }, []);
@@ -204,24 +292,24 @@ export default function Profile() {
   };
 
   const getTotalPortfolioValue = () => {
-    return ownedShares.reduce((sum, share) => sum + share.currentPrice, 0);
+    return ownedItems.reduce((sum, item) => sum + item.currentPrice, 0);
   };
 
   const getTotalProfitLoss = () => {
-    return ownedShares.reduce((sum, share) => sum + share.profitLoss, 0);
+    return ownedItems.reduce((sum, item) => sum + item.profitLoss, 0);
   };
 
   const getTotalProfitLossPercentage = () => {
-    const totalPurchase = ownedShares.reduce((sum, share) => sum + share.purchasePrice, 0);
-    const totalCurrent = ownedShares.reduce((sum, share) => sum + share.currentPrice, 0);
+    const totalPurchase = ownedItems.reduce((sum, item) => sum + item.purchasePrice, 0);
+    const totalCurrent = ownedItems.reduce((sum, item) => sum + item.currentPrice, 0);
     if (totalPurchase === 0) return 0;
     return ((totalCurrent - totalPurchase) / totalPurchase) * 100;
   };
 
-  const filteredShares = ownedShares.filter(share => {
-    if (shareFilter === 'all') return true;
-    if (shareFilter === 'profit') return share.profitLoss > 0;
-    if (shareFilter === 'loss') return share.profitLoss < 0;
+  const filteredItems = ownedItems.filter(item => {
+    if (itemFilter === 'all') return true;
+    if (itemFilter === 'profit') return item.profitLoss > 0;
+    if (itemFilter === 'loss') return item.profitLoss < 0;
     return true;
   });
 
@@ -330,7 +418,7 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {/* Owned Skin Shares Section */}
+        {/* Owned Skin Items Section */}
         <Card className="relative bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden">
           <div
             aria-hidden
@@ -345,27 +433,27 @@ export default function Profile() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <CardTitle className="text-xl font-bold text-white font-poppins flex items-center gap-2">
                 <Package size={20} />
-                Owned Skin Shares
+                Owned Skin Items
               </CardTitle>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { key: 'all', label: 'All', count: ownedShares.length },
-                  { key: 'profit', label: 'Profit', count: ownedShares.filter(s => s.profitLoss > 0).length },
-                  { key: 'loss', label: 'Loss', count: ownedShares.filter(s => s.profitLoss < 0).length },
+                  { key: 'all', label: 'All', count: ownedItems.length },
+                  { key: 'profit', label: 'Profit', count: ownedItems.filter(s => s.profitLoss > 0).length },
+                  { key: 'loss', label: 'Loss', count: ownedItems.filter(s => s.profitLoss < 0).length },
                 ].map((filter) => (
                   <button
                     key={filter.key}
                     className={`relative px-3 py-1.5 rounded-lg text-sm font-medium border backdrop-blur-md transition-all duration-300 hover:scale-105 font-poppins ${
-                      shareFilter === filter.key
+                      itemFilter === filter.key
                         ? 'bg-white/15 border-white/30 text-white shadow-lg'
                         : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-gray-300 hover:text-white'
                     }`}
-                    onClick={() => setShareFilter(filter.key as any)}
+                    onClick={() => setItemFilter(filter.key as any)}
                   >
                     <span className="relative z-10">{filter.label}</span>
                     {filter.count > 0 && (
                       <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-poppins ${
-                        shareFilter === filter.key
+                        itemFilter === filter.key
                           ? 'bg-white/20 text-white'
                           : 'bg-white/10 text-gray-400'
                       }`}>
@@ -379,59 +467,59 @@ export default function Profile() {
           </CardHeader>
           
           <CardContent>
-            {filteredShares.length === 0 ? (
+            {filteredItems.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
-                No skin shares found
+                No skin items found
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredShares.map((share) => (
-                  <Card key={share.id} className="bg-[#18181b] border-[#2a2a2a] overflow-hidden hover:border-[#6366f1] transition-colors">
+                {filteredItems.map((item) => (
+                  <Card key={item.id} className="bg-[#18181b] border-[#2a2a2a] overflow-hidden hover:border-[#6366f1] transition-colors">
                     <CardContent className="p-4">
                       <div className="flex gap-4">
                         <div className="relative w-20 h-20 bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-lg overflow-hidden flex-shrink-0">
                           <Image
-                            src={share.skinImage}
-                            alt={share.skinName}
+                            src={item.skinImage}
+                            alt={item.skinName}
                             fill
                             className="object-contain p-2"
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-white text-sm truncate">{share.skinName}</h3>
+                          <h3 className="font-semibold text-white text-sm truncate">{item.skinName}</h3>
                           <div className="mt-1 space-y-1">
                             <div className="flex justify-between text-xs">
-                              <span className="text-gray-400">Shares owned:</span>
-                              <span className="text-white">{share.ownedShares}/{share.totalShares}</span>
-                            </div>
-                            <div className="flex justify-between text-xs">
                               <span className="text-gray-400">Purchase price:</span>
-                              <span className="text-white">${share.purchasePrice.toFixed(2)}</span>
+                              <span className="text-white">${item.purchasePrice.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-xs">
                               <span className="text-gray-400">Current value:</span>
-                              <span className="text-white">${share.currentPrice.toFixed(2)}</span>
+                              <span className="text-white">${item.currentPrice.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-xs">
                               <span className="text-gray-400">P&L:</span>
-                              <span className={share.profitLoss >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                {share.profitLoss >= 0 ? '+' : ''}${Math.abs(share.profitLoss).toFixed(2)} ({share.profitLossPercentage >= 0 ? '+' : ''}{share.profitLossPercentage.toFixed(2)}%)
+                              <span className={item.profitLoss >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                {item.profitLoss >= 0 ? '+' : ''}${Math.abs(item.profitLoss).toFixed(2)} ({item.profitLossPercentage >= 0 ? '+' : ''}{item.profitLossPercentage.toFixed(2)}%)
                               </span>
                             </div>
-                          </div>
-                          <div className="mt-2 flex items-center gap-1">
-                            <div className="w-full bg-[#23263a] rounded-full h-1.5">
-                              <div 
-                                className="bg-gradient-to-r from-[#6366f1] to-[#7f8fff] h-1.5 rounded-full"
-                                style={{ width: `${(share.ownedShares / share.totalShares) * 100}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-[10px] text-gray-400">{((share.ownedShares / share.totalShares) * 100).toFixed(0)}%</span>
+                            {/* Wear and Float Information */}
+                            {item.wear && (
+                              <div className="flex justify-between text-xs">
+                                <span className="text-gray-400">Wear:</span>
+                                <span className="text-white">{item.wear}</span>
+                              </div>
+                            )}
+                            {item.float !== undefined && (
+                              <div className="flex justify-between text-xs">
+                                <span className="text-gray-400">Float:</span>
+                                <span className="text-white">{item.float.toFixed(4)}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                       <div className="mt-3 flex justify-between items-center">
-                        <span className="text-[10px] text-gray-500">Purchased {new Date(share.purchaseDate).toLocaleDateString()}</span>
+                        <span className="text-[10px] text-gray-500">Purchased {new Date(item.purchaseDate).toLocaleDateString()}</span>
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline" className="h-6 text-xs px-2 border-gray-600 hover:border-white">
                             Sell

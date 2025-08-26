@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ChevronDown, Filter, RotateCcw, Search, ArrowRight, LayoutGrid, List, Info, ExternalLink } from "lucide-react"
@@ -11,24 +12,29 @@ import { useAuth } from "@/hooks/use-auth"
 import { SteamAuthButton } from "@/components/auth/steam-auth-button"
 import { useSteamInventory, SteamItem } from "@/hooks/use-steam-inventory"
 import { Card } from "@/components/ui/card"
+import { FeaturedSkins } from "@/components/borrow/featured-skins"
+import { PurchaseDetails } from "@/components/borrow/purchase-details"
 
 interface TokenizedSkin {
   id: string;
   name: string;
   price: number;
   image: string;
-  totalShares: number;
-  availableShares: number;
-  pricePerShare: number;
+  totalQuantity: number;
+  availableQuantity: number;
+  pricePerItem: number;
+  wear?: string;
+  float?: number;
 }
 
 export default function TokenizationPage() {
+  const router = useRouter()
   const [selectedSkin, setSelectedSkin] = useState<TokenizedSkin | null>(null)
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false)
   const [skinSelectorOpen, setSkinSelectorOpen] = useState(false)
   const [gridViewActive, setGridViewActive] = useState(false)
-  const [sharesAmount, setSharesAmount] = useState(1)
-  const [maxShares] = useState(100) // Each skin has 100 shares total
   const [tokenizedSkins, setTokenizedSkins] = useState<TokenizedSkin[]>([])
+  const [tokenizedSkinsLoading, setTokenizedSkinsLoading] = useState(true)
   
   const [howItWorksOpen, setHowItWorksOpen] = useState(false)
   const priceUpdateRef = useRef(false)
@@ -45,10 +51,10 @@ export default function TokenizationPage() {
   const { isAuthenticated, isLoading: privyLoading, login, logout, profile, connectWallet, updateSteamId } = useAuth()
   
   // Retrieve the user's Steam inventory
-  const { inventory, isLoading: inventoryLoading, error: inventoryError, lastUpdated, refreshInventory, refreshPrices, inventoryFetched } = useSteamInventory()
+  const { inventory, isLoading: inventoryLoading, error: inventoryError, lastUpdated, refreshInventory, inventoryFetched } = useSteamInventory()
 
-  // Global loading state (Privy + user data)
-  const isLoading = privyLoading || inventoryLoading;
+  // Global loading state (Privy + user data + tokenized skins)
+  const isLoading = privyLoading || inventoryLoading || tokenizedSkinsLoading;
 
   // Initialise displaySkins à []
   const [displaySkins, setDisplaySkins] = useState<SteamItem[]>([]);
@@ -65,11 +71,14 @@ export default function TokenizationPage() {
   useEffect(() => {
     const fetchTokenizedSkins = async () => {
       try {
+        setTokenizedSkinsLoading(true);
         const response = await fetch('/api/tokenized-skins');
         const data = await response.json();
         setTokenizedSkins(data);
       } catch (error) {
         console.error('Failed to fetch tokenized skins:', error);
+      } finally {
+        setTokenizedSkinsLoading(false);
       }
     };
     fetchTokenizedSkins();
@@ -90,7 +99,7 @@ export default function TokenizationPage() {
       inventoryData: inventory,
       filterPriceMin,
       filterPriceMax,
-      "items with price < 50": inventory?.filter(item => item.basePrice < 50).length || 0
+      "items with price < 50": inventory?.filter(item => item.value < 50).length || 0
     });
   }, [privyLoading, inventoryLoading, isAuthenticated, inventoryFetched, inventory, displaySkins, profile?.steamId, profile?.tradeLink, inventoryError, filterPriceMin, filterPriceMax]);
   
@@ -176,25 +185,41 @@ export default function TokenizationPage() {
     if (!selectedSkin) return;
     
     try {
-      // Update the available shares in the API
+      // Purchase the item via API
       const response = await fetch('/api/tokenized-skins', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          skinId: selectedSkin.id,
+          totalCost: selectedSkin.price * 1.02
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to purchase item');
+      }
+      
+      // Update the available quantity in the API
+      const updateResponse = await fetch('/api/tokenized-skins', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           skinId: selectedSkin.id,
-          sharesPurchased: sharesAmount
+          quantityPurchased: 1
         })
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to purchase shares');
+      if (!updateResponse.ok) {
+        throw new Error('Failed to update inventory');
       }
       
-      const updatedSkin = await response.json();
+      const updatedSkin = await updateResponse.json();
       
-      // Update the local state with the new available shares
+      // Update the local state with the new available quantity
       setTokenizedSkins(prevSkins => 
         prevSkins.map(skin => 
           skin.id === updatedSkin.id ? updatedSkin : skin
@@ -206,17 +231,13 @@ export default function TokenizationPage() {
         setSelectedSkin(updatedSkin);
       }
       
-      console.log('Shares purchased successfully:', { 
-        skin: selectedSkin.name, 
-        shares: sharesAmount, 
-        totalCost: (selectedSkin.pricePerShare * sharesAmount * 1.02).toFixed(2)
+      console.log('Item purchased successfully:', { 
+        skin: selectedSkin.name,
+        totalCost: (selectedSkin.price * 1.02).toFixed(2)
       });
       
-      // Reset shares amount
-      setSharesAmount(1);
-      
     } catch (error) {
-      console.error('Error purchasing shares:', error);
+      console.error('Error purchasing item:', error);
     }
   };
 
@@ -224,12 +245,8 @@ export default function TokenizationPage() {
   // Manually refresh the inventory prices
   const handleRefreshInventory = async () => {
     console.log("Manual price refresh");
-    const success = await refreshPrices();
-    if (success) {
-      console.log("Prices refreshed successfully");
-    } else {
-      console.log("Price refresh failed or rate limited");
-    }
+    await refreshInventory();
+    console.log("Inventory refresh completed");
   };
   
   // Handle trade link save
@@ -260,24 +277,23 @@ export default function TokenizationPage() {
   
   // Removed duplicate useEffect - inventory fetching is already handled in the hook
 
-  
   // Reusable filtering function for both views
   const filterSkins = (skin: any) => {
     // Filter by name
-    const nameMatch = skin.market_hash_name.toLowerCase().includes(searchQuery.toLowerCase());
+    const nameMatch = skin.marketHashName.toLowerCase().includes(searchQuery.toLowerCase());
     
     // Filter by rarity
     const rarityMatch = filterRarity === 'all' ? true : 
-      skin.market_hash_name.includes(filterRarity);
+      skin.marketHashName.includes(filterRarity);
     
     // Filter by wear
-    const { wear } = extractSkinInfo(skin.market_hash_name);
+    const { wear } = extractSkinInfo(skin.marketHashName);
     const wearMap = { 'Factory New': 'FN', 'Minimal Wear': 'MW', 'Field-Tested': 'FT', 'Well-Worn': 'WW', 'Battle-Scarred': 'BS' };
     const wearMatch = filterWear === 'all' ? true : 
       wear === filterWear;
     
     // Filter by price
-    const priceMatch = skin.basePrice >= filterPriceMin && skin.basePrice <= filterPriceMax;
+    const priceMatch = skin.value >= filterPriceMin && skin.value <= filterPriceMax;
     
     return nameMatch && rarityMatch && wearMatch && priceMatch;
   };
@@ -319,237 +335,31 @@ export default function TokenizationPage() {
       <main className="flex-1 flex flex-col items-center justify-center pt-8 lg:  pt-12">
         <LoadingOverlay
           isLoading={isLoading} 
-          message="Connecting to your wallet..."
+          message={tokenizedSkinsLoading ? "Loading featured skins..." : "Connecting to your wallet..."}
           opacity={0.7}
         />
         <div className="container mx-auto px-4">
-          {/* Main interface - Simple and elegant header */}
-          <div className="max-w-4xl mx-auto">
-            <div className="mb-8 text-center">
-              <h2 className="text-3xl font-bold text-[#E1E1F5] font-poppins">Buy</h2>
-              <p className="text-[#a1a1c5] text-sm mt-2">Buy shares of premium CS2 skins with HUCH tokens</p>
-            </div>
-            <div className="flex flex-col md:flex-row gap-8 w-full justify-center items-stretch relative">
-              {/* Card Collateralize */}
-              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md flex flex-col h-[450px] overflow-hidden">
-                {/* Overlay grain */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
-                  style={{
-                    backgroundImage: "url('/grainbg.avif')",
-                    backgroundRepeat: "repeat"
-                  }}
-                />
-                <div className="text-left py-4 px-4 relative z-20">
-                  <h2 className="text-xl font-bold font-poppins text-[#E1E1F5]">Available Skins</h2>
-                  <p className="text-[#a1a1c5] text-xs mt-1">Choose a skin to buy shares of</p>
-                </div>
-                <div className="p-4 flex flex-col flex-1 relative z-20">
-                  {/* Featured Skins - 2x2 Grid Layout */}
-                  <div className="grid grid-cols-2 gap-3 mb-4 flex-1">
-                    {tokenizedSkins.slice(0, 4).map((skin, index) => (
-                      <div 
-                        key={index}
-                        className={`aspect-square flex flex-col p-3 bg-[#161e2e] rounded-lg border cursor-pointer hover:border-[#6366f1] transition-colors ${
-                          selectedSkin?.id === skin.id ? 'border-[#6366f1] bg-[#6366f1]/10' : 'border-[#23263a]'
-                        }`}
-                        onClick={() => setSelectedSkin(skin)}
-                      >
-                        {/* Skin Image */}
-                        <div className="flex-1 bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-md flex items-center justify-center mb-2 relative overflow-hidden">
-                          <Image
-                            src={skin.image}
-                            alt={skin.name}
-                            fill
-                            className="object-contain p-2"
-                          />
-                        </div>
-                        
-                        {/* Skin Info */}
-                        <div className="space-y-1">
-                          <h3 className="font-semibold text-white text-xs truncate">{skin.name}</h3>
-                          <div className="flex items-center gap-1 text-[10px] text-[#a1a1c5]">
-                            <span>${skin.price}</span>
-                            <span>•</span>
-                            <span>{Math.round((skin.availableShares / skin.totalShares) * 100)}% available</span>
-                          </div>
-                          
-                          {/* Progress bar */}
-                          <div className="w-full bg-[#23263a] rounded-full h-1">
-                            <div 
-                              className="bg-gradient-to-r from-[#6366f1] to-[#7f8fff] h-1 rounded-full"
-                              style={{ width: `${(skin.availableShares / skin.totalShares) * 100}%` }}
-                            ></div>
-                          </div>
-                          
-                          {/* Price per share */}
-                          <div className="flex justify-between items-center mt-1">
-                            <span className="text-[10px] text-[#a1a1c5]">per share</span>
-                            <span className="text-xs font-semibold text-white">${skin.pricePerShare.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Browse more skins */}
-                  <div>
-                    <Button
-                      className="w-full bg-[#161e2e] hover:bg-[#23263a] text-[#a1a1c5] border border-[#23263a] hover:border-[#6366f1] transition-colors py-2 text-sm"
-                      onClick={() => setSkinSelectorOpen(true)}
-                    >
-                      Browse All Skins
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-              
-              {/* Arrow image au centre */}
-              <div className="hidden md:flex items-center justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-                <img src="/arrow.png" alt="arrow" className="w-12 h-12" />
-              </div>
-              
-              {/* Card Borrow */}
-              <Card className="relative flex-1 bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md flex flex-col h-[450px] overflow-hidden">
-                {/* Overlay grain */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 z-10 opacity-[.05]"
-                  style={{
-                    backgroundImage: "url('/grainbg.avif')",
-                    backgroundRepeat: "repeat"
-                  }}
-                />
-                <div className="text-left py-4 px-4 relative z-20">
-                  <h2 className="text-xl font-bold font-poppins text-[#E1E1F5]">Purchase Details</h2>
-                  <p className="text-[#a1a1c5] text-xs mt-1">Buy shares with HUCH tokens</p>
-                </div>
-                <div className="p-3 flex flex-col items-center flex-1 relative z-20">
-                  {selectedSkin ? (
-                    <>
-                      {/* Selected Skin Display */}
-                      <div className="w-full mb-3">
-                        <div className="text-center">
-                          <h3 className="text-base font-semibold text-white">{selectedSkin.name}</h3>
-                          <p className="text-xs text-[#a1a1c5]">Selected for purchase</p>
-                        </div>
-                      </div>
-                      
-                      {/* Shares Selection */}
-                      <div className="w-full mb-3">
-                        <label className="block text-xs font-medium text-white mb-2">Number of shares</label>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-8 h-8 p-0 bg-[#161e2e] border-[#23263a] hover:bg-[#23263a]"
-                            onClick={() => setSharesAmount(Math.max(1, sharesAmount - 1))}
-                            disabled={sharesAmount <= 1}
-                          >
-                            -
-                          </Button>
-                          <Input
-                            type="number"
-                            min="1"
-                            max="50"
-                            value={sharesAmount}
-                            onChange={(e) => setSharesAmount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-                            className="flex-1 bg-[#161e2e] border-[#23263a] text-center"
-                          />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-8 h-8 p-0 bg-[#161e2e] border-[#23263a] hover:bg-[#23263a]"
-                            onClick={() => setSharesAmount(Math.min(50, sharesAmount + 1))}
-                            disabled={sharesAmount >= 50}
-                          >
-                            +
-                          </Button>
-                        </div>
-                        
-                        {/* Quick select buttons */}
-                        <div className="flex gap-2 justify-center">
-                          {[1, 5, 10, 25].map(amount => (
-                            <Button
-                              key={amount}
-                              size="sm"
-                              variant={sharesAmount === amount ? "default" : "outline"}
-                              className={`px-3 py-1 text-xs ${
-                                sharesAmount === amount 
-                                  ? "bg-[#6366f1] text-white" 
-                                  : "bg-[#161e2e] border-[#23263a] text-[#a1a1c5] hover:bg-[#23263a]"
-                              }`}
-                              onClick={() => setSharesAmount(amount)}
-                            >
-                              {amount}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      {/* Cost Breakdown */}
-                      <div className="w-full bg-[#161e2e] rounded-lg p-3 space-y-2 mb-3">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-[#a1a1c5]">Price per share</span>
-                          <span className="text-white">${selectedSkin.pricePerShare.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-[#a1a1c5]">Shares × {sharesAmount}</span>
-                          <span className="text-white">${(selectedSkin.pricePerShare * sharesAmount).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-[#a1a1c5]">Platform fee (2%)</span>
-                          <span className="text-white">${(selectedSkin.pricePerShare * sharesAmount * 0.02).toFixed(2)}</span>
-                        </div>
-                        <div className="border-t border-[#23263a] pt-2">
-                          <div className="flex justify-between text-sm font-semibold">
-                            <span className="text-white">Total</span>
-                            <span className="text-white">${(selectedSkin.pricePerShare * sharesAmount * 1.02).toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center flex-1 text-center">
-                      <div className="w-16 h-16 bg-[#161e2e] rounded-full flex items-center justify-center mb-4">
-                        <span className="text-2xl">🔍</span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-white mb-2">Select a Skin</h3>
-                      <p className="text-sm text-[#a1a1c5] max-w-[200px]">
-                        Choose a CS2 skin from the left to see purchase details
-                      </p>
-                    </div>
-                  )}
-                  {/* How it works - more compact */}
-                  {selectedSkin && (
-                    <div className="mb-2 w-full text-center">
-                      <button
-                        className="text-[10px] text-[#a1a1c5] underline hover:text-[#6366f1] transition"
-                        onClick={() => setHowItWorksOpen(!howItWorksOpen)}
-                        type="button"
-                      >
-                        How does share ownership work?
-                      </button>
-                      {howItWorksOpen && (
-                        <div className="mt-1 text-[10px] text-[#a1a1c5] bg-[#161e2e] rounded-md p-2">
-                          Buy fractional ownership of premium CS2 skins. Each skin is divided into 100 shares.
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {/* Purchase button */}
-                  <Button
-                    className="w-full bg-gradient-to-r from-[#6366f1] to-[#7f8fff] text-white font-semibold text-sm py-2 rounded-lg mt-auto"
-                    disabled={!selectedSkin}
-                    onClick={() => setTokenizeModalOpen(true)}
-                  >
-                    {selectedSkin ? `Buy ${sharesAmount} Share${sharesAmount !== 1 ? 's' : ''} ($${(selectedSkin.pricePerShare * sharesAmount * 1.02).toFixed(2)})` : 'Select a Skin'}
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          </div>
+          {/* Featured Skins Component */}
+          <FeaturedSkins
+            tokenizedSkins={tokenizedSkins}
+            onSkinSelect={(skin) => {
+              setSelectedSkin(skin);
+              setPurchaseModalOpen(true);
+            }}
+            onBrowseAll={() => router.push('/browse-skins')}
+            isLoading={tokenizedSkinsLoading}
+          />
+
+          {/* Purchase Details Modal */}
+          <PurchaseDetails
+            selectedSkin={selectedSkin}
+            onPurchase={() => {
+              setTokenizeModalOpen(true);
+              setPurchaseModalOpen(false);
+            }}
+            isOpen={purchaseModalOpen}
+            onClose={() => setPurchaseModalOpen(false)}
+          />
         </div>
         
         {/* Skin selector modal */}
@@ -695,7 +505,7 @@ export default function TokenizationPage() {
                   </div>
                 )}
               </div>
-              <div className="p-2 max-h-[500px] overflow-y-auto custom-scrollbar">
+              <div className="p-2">
                 {/* Message si aucun skin ne correspond aux critères */}
                 {displaySkins.filter(filterSkins).length === 0 && (
                   <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
@@ -710,29 +520,42 @@ export default function TokenizationPage() {
                   <div className="space-y-1 w-full">
                     {displaySkins
                       .filter(filterSkins)
-                      .sort((a, b) => b.basePrice - a.basePrice)
+                      .sort((a, b) => b.value - a.value)
                       .map((skin) => {
                         // Extract the name and wear of the skin
-                        const { name, wear } = extractSkinInfo(skin.market_hash_name)
+                        const { name, wear } = extractSkinInfo(skin.marketHashName)
                         
                         // Determine rarity (for color)
                         const rarity = skin.rarity || 
-                          (skin.market_hash_name.includes('★') ? '★' : 
-                          skin.market_hash_name.includes('Covert') ? 'Covert' : 
-                          skin.market_hash_name.includes('Contraband') ? 'Contraband' : '')
+                          (skin.marketHashName.includes('★') ? '★' : 
+                          skin.marketHashName.includes('Covert') ? 'Covert' : 
+                          skin.marketHashName.includes('Contraband') ? 'Contraband' : '')
                         
                         return (
                           <div 
                             key={skin.id} 
-                            className={`flex items-center gap-4 p-3 hover:bg-blue-950/30 backdrop-blur-sm transition-colors rounded-md cursor-pointer ${selectedSkin === skin.id ? 'bg-blue-950/30 border border-blue-400/40' : 'border border-transparent'}`}
+                            className={`flex items-center gap-4 p-3 hover:bg-blue-950/30 backdrop-blur-sm transition-colors rounded-md cursor-pointer ${selectedSkin?.id === skin.id ? 'bg-blue-950/30 border border-blue-400/40' : 'border border-transparent'}`}
                             onClick={() => {
-                              setSelectedSkin(skin.id);
+                              // Convert SteamItem to TokenizedSkin format
+                              const { wear } = extractSkinInfo(skin.marketHashName)
+                              const tokenizedSkin: TokenizedSkin = {
+                                id: skin.id,
+                                name: skin.marketHashName,
+                                price: skin.value,
+                                image: skin.iconUrl,
+                                totalQuantity: 100,
+                                availableQuantity: 50,
+                                pricePerItem: skin.value,
+                                wear: wear || undefined,
+                                float: skin.floatValue || undefined
+                              };
+                              setSelectedSkin(tokenizedSkin);
                               setSkinSelectorOpen(false);
                             }}
                           >
                             <div className="relative w-16 h-16 overflow-hidden rounded-md flex-shrink-0 bg-blue-950/30 backdrop-blur-sm">
                               <Image
-                                src={skin.imageUrl}
+                                src={skin.iconUrl}
                                 alt={name}
                                 fill
                                 className="object-contain p-1 hover:scale-105 transition-transform"
@@ -741,7 +564,7 @@ export default function TokenizationPage() {
                             <div className="flex-grow min-w-0">
                               <div className="flex justify-between items-start">
                                 <h4 className="text-sm font-medium truncate">{name}</h4>
-                                <span className="text-xs font-medium bg-blue-950/30 backdrop-blur-sm px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(2)}</span>
+                                <span className="text-xs font-medium bg-blue-950/30 backdrop-blur-sm px-2 py-0.5 rounded-full">${skin.value.toFixed(2)}</span>
                               </div>
                               <div className="flex items-center gap-1 mt-1.5">
                                 <span className="text-[10px] text-gray-400">{rarity || 'Normal'}</span>
@@ -760,29 +583,42 @@ export default function TokenizationPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {displaySkins
                       .filter(filterSkins)
-                      .sort((a, b) => b.basePrice - a.basePrice)
+                      .sort((a, b) => b.value - a.value)
                       .map((skin) => {
                         // Extract the name and wear of the skin
-                        const { name, wear } = extractSkinInfo(skin.market_hash_name)
+                        const { name, wear } = extractSkinInfo(skin.marketHashName)
                         
                         // Determine rarity (for color)
                         const rarity = skin.rarity || 
-                          (skin.market_hash_name.includes('★') ? '★' : 
-                          skin.market_hash_name.includes('Covert') ? 'Covert' : 
-                          skin.market_hash_name.includes('Contraband') ? 'Contraband' : '')
+                          (skin.marketHashName.includes('★') ? '★' : 
+                          skin.marketHashName.includes('Covert') ? 'Covert' : 
+                          skin.marketHashName.includes('Contraband') ? 'Contraband' : '')
                         
                         return (
                           <div 
                             key={skin.id} 
-                            className={`flex flex-col p-3 hover:bg-blue-950/30 backdrop-blur-sm transition-colors rounded-md cursor-pointer border border-transparent ${selectedSkin === skin.id ? 'bg-blue-950/30 border-blue-400/40' : ''}`}
+                            className={`flex flex-col p-3 hover:bg-blue-950/30 backdrop-blur-sm transition-colors rounded-md cursor-pointer border border-transparent ${selectedSkin?.id === skin.id ? 'bg-blue-950/30 border-blue-400/40' : ''}`}
                             onClick={() => {
-                              setSelectedSkin(skin.id);
+                              // Convert SteamItem to TokenizedSkin format
+                              const { wear } = extractSkinInfo(skin.marketHashName)
+                              const tokenizedSkin: TokenizedSkin = {
+                                id: skin.id,
+                                name: skin.marketHashName,
+                                price: skin.value,
+                                image: skin.iconUrl,
+                                totalQuantity: 100,
+                                availableQuantity: 50,
+                                pricePerItem: skin.value,
+                                wear: wear || undefined,
+                                float: skin.floatValue || undefined
+                              };
+                              setSelectedSkin(tokenizedSkin);
                               setSkinSelectorOpen(false);
                             }}
                           >
                             <div className="relative w-full h-32 overflow-hidden rounded-md flex-shrink-0 mb-2 bg-blue-950/30 backdrop-blur-sm group-hover:scale-105 transition-transform">
                               <Image
-                                src={skin.imageUrl}
+                                src={skin.iconUrl}
                                 alt={name}
                                 fill
                                 className="object-contain p-2 hover:scale-110 transition-transform"
@@ -807,7 +643,7 @@ export default function TokenizationPage() {
                                   <span className="text-[10px] text-gray-400">•</span>
                                   <span className="text-[10px] text-gray-400">{wear}</span>
                                 </div>
-                                <span className="text-xs font-medium bg-blue-950/30 backdrop-blur-sm px-2 py-0.5 rounded-full">${skin.basePrice.toFixed(2)}</span>
+                                <span className="text-xs font-medium bg-blue-950/30 backdrop-blur-sm px-2 py-0.5 rounded-full">${skin.value.toFixed(2)}</span>
                               </div>
                             </div>
                           </div>
@@ -831,15 +667,11 @@ export default function TokenizationPage() {
                 <span className="text-white">{selectedSkin.name}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[#a1a1c5]">Shares:</span>
-                <span className="text-white">{sharesAmount}</span>
-              </div>
-              <div className="flex justify-between text-sm">
                 <span className="text-[#a1a1c5]">Total Cost:</span>
-                <span className="text-white">${(selectedSkin.pricePerShare * sharesAmount * 1.02).toFixed(2)}</span>
+                <span className="text-white">${(selectedSkin.price * 1.02).toFixed(2)}</span>
               </div>
               <p className="text-xs text-[#a1a1c5]">
-                You will own {((sharesAmount / 100) * 100).toFixed(1)}% of this skin and receive proportional dividends.
+                You will own this skin item.
               </p>
             </div>
             <div className="flex gap-3">
@@ -857,7 +689,7 @@ export default function TokenizationPage() {
                   setTokenizeModalOpen(false);
                 }}
               >
-                Buy Shares
+                Buy Item
               </Button>
             </div>
           </div>
