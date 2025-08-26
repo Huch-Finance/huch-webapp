@@ -85,7 +85,7 @@ export function useAuth() {
         return
       }
 
-      const response = await fetch('http://localhost:3333/api/auth/privy', {
+      const response = await fetch('/api/auth/privy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,7 +175,7 @@ export function useAuth() {
         return
       }
 
-      const response = await fetch('http://localhost:3333/api/user', {
+      const response = await fetch('/api/user', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -411,7 +411,7 @@ export function useAuth() {
 
       // Register in the USER API
       try {
-        const response = await fetch('http://localhost:3333/api/user', {
+        const response = await fetch('/api/user', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
