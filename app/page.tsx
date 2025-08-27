@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, TrendingDown, DollarSign, Wallet, ShoppingCart, Tag } from "lucide-react";
+import { DollarSign, Wallet, ShoppingCart, Tag } from "lucide-react";
 import Image from "next/image";
 import { useSolanaWallets } from "@privy-io/react-auth/solana";
 import { Connection, PublicKey } from "@solana/web3.js";
@@ -186,12 +185,9 @@ const mockData = {
 };
 
 export default function Home() {
-  const [pnlPeriod, setPnlPeriod] = useState<"24h" | "week" | "month">("24h");
   const [usdcBalance, setUsdcBalance] = useState<number>(0);
   const [ownedItems, setOwnedItems] = useState<OwnedSkinItem[]>([]);
   const { wallets } = useSolanaWallets();
-  
-  const currentPnl = mockData.pnl[pnlPeriod];
 
   // Portfolio calculation functions from profile page
   const getTotalPortfolioValue = () => {
@@ -242,8 +238,8 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#0f0f23] via-[#1a1a2e] to-[#16213e] p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <main className="min-h-screen p-6 flex items-center justify-center">
+      <div className="max-w-7xl w-full space-y-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -260,7 +256,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
           {/* USDC Balance */}
           <Card className="bg-gradient-to-br from-[#1a1b3a]/80 to-[#2d1b69]/80 border-[#6366f1]/20">
@@ -283,43 +279,6 @@ export default function Home() {
             <CardContent>
               <div className="text-2xl font-bold text-white">${getTotalPortfolioValue().toFixed(2)}</div>
               <p className="text-xs text-[#a1a1c5] mt-1">Total skin value</p>
-            </CardContent>
-          </Card>
-
-          {/* P&L */}
-          <Card className="bg-gradient-to-br from-[#1a1b3a]/80 to-[#2d1b69]/80 border-[#6366f1]/20">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#a1a1c5]">P&L ({pnlPeriod})</CardTitle>
-              {currentPnl.value >= 0 ? (
-                <TrendingUp className="h-4 w-4 text-[#10b981]" />
-              ) : (
-                <TrendingDown className="h-4 w-4 text-[#ef4444]" />
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${
-                 getTotalProfitLoss() >= 0 ? 'text-[#10b981]' : 'text-[#ef4444]'
-               }`}>
-                 {getTotalProfitLoss() >= 0 ? '+' : ''}${getTotalProfitLoss().toFixed(2)}
-               </div>
-               <div className="flex items-center gap-2 mt-1">
-                 <Badge variant={getTotalProfitLoss() >= 0 ? "default" : "destructive"} className="text-xs">
-                   {getTotalProfitLoss() >= 0 ? '+' : ''}{getTotalProfitLossPercentage().toFixed(2)}%
-                 </Badge>
-                <div className="flex gap-1">
-                  {(['24h', 'week', 'month'] as const).map((period) => (
-                    <Button
-                      key={period}
-                      variant={pnlPeriod === period ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setPnlPeriod(period)}
-                      className="h-6 px-2 text-xs"
-                    >
-                      {period}
-                    </Button>
-                  ))}
-                </div>
-              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -425,27 +384,7 @@ export default function Home() {
           </Card>
         </motion.div>
 
-        {/* Market Chart Placeholder */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          <Card className="bg-gradient-to-br from-[#1a1b3a]/80 to-[#2d1b69]/80 border-[#6366f1]/20">
-            <CardHeader>
-              <CardTitle className="text-white">Portfolio Value Chart</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 flex items-center justify-center border-2 border-dashed border-[#6366f1]/30 rounded-lg">
-                <div className="text-center">
-                  <TrendingUp className="h-12 w-12 text-[#6366f1] mx-auto mb-2" />
-                  <p className="text-[#a1a1c5]">Portfolio value chart will be implemented here</p>
-                  <p className="text-[#a1a1c5] text-sm">Showing historical performance of your skin portfolio</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+
       </div>
     </main>
   );

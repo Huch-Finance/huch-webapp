@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
@@ -333,8 +334,14 @@ export default function BrowseSkinsPage() {
         {/* Skins Grid/List */}
         {viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-            {sortedSkins.map((skin) => (
-              <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer group" onClick={() => handleSkinSelect(skin)}>
+            {sortedSkins.map((skin, index) => (
+              <motion.div
+                key={skin.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+              >
+                <Card className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer group" onClick={() => handleSkinSelect(skin)}>
                 <div className="p-4">
                   {/* Skin Image */}
                   <div 
@@ -427,14 +434,21 @@ export default function BrowseSkinsPage() {
                       Buy Item
                     </Button>
                   </div>
-                </div>
-              </Card>
+                  </div>
+                </Card>
+              </motion.div>
             ))}
           </div>
         ) : (
           <div className="space-y-4">
-            {sortedSkins.map((skin) => (
-              <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer" onClick={() => handleSkinSelect(skin)}>
+            {sortedSkins.map((skin, index) => (
+              <motion.div
+                key={skin.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.05 }}
+              >
+                <Card className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer" onClick={() => handleSkinSelect(skin)}>
                 <div className="p-4">
                   <div className="flex items-center gap-4">
                     {/* Skin Image */}
@@ -529,9 +543,10 @@ export default function BrowseSkinsPage() {
                         </div>
                       </div>
                     </div>
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </motion.div>
             ))}
           </div>
         )}
