@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Filter, Grid, List, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { PurchaseDetails } from "@/components/borrow/purchase-details"
+import { PurchaseDetailsModal } from "@/components/borrow/purchase-details-modal"
 
 interface TokenizedSkin {
   id: string;
@@ -165,11 +165,24 @@ export default function BrowseSkinsPage() {
     setIsPurchaseModalOpen(true)
   }
   
-  const handlePurchase = () => {
+  const handlePurchase = (skin: { id: string; name: string; price: number; image: string; wear?: string; float?: number; }) => {
     // Handle purchase logic here
-    console.log('Purchasing skin:', selectedSkin)
+    console.log('Purchasing skin:', skin)
     setIsPurchaseModalOpen(false)
     setSelectedSkin(null)
+  }
+  
+  // Convert skin to modal format
+  const convertSkinForModal = (skin: TokenizedSkin | null) => {
+    if (!skin) return null;
+    return {
+      id: skin.id,
+      name: skin.name,
+      price: skin.price,
+      image: skin.image,
+      wear: skin.wear,
+      float: skin.float
+    };
   }
   
   const categories = ["all", "Rifle", "Sniper Rifle", "Knife", "Gloves", "Pistol"]
@@ -321,15 +334,60 @@ export default function BrowseSkinsPage() {
         {viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {sortedSkins.map((skin) => (
-              <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer group">
+              <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer group" onClick={() => handleSkinSelect(skin)}>
                 <div className="p-4">
                   {/* Skin Image */}
-                  <div className="aspect-square bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-lg flex items-center justify-center mb-4 relative overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-lg flex items-center justify-center mb-4 relative overflow-hidden group"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSkinSelect(skin);
+                    }}
+                    style={{
+                      aspectRatio: '750/1050',
+                      transformStyle: 'preserve-3d',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = e.clientX - rect.left;
+                      const y = e.clientY - rect.top;
+                      const centerX = rect.width / 2;
+                      const centerY = rect.height / 2;
+                      const rotateX = (y - centerY) / 10;
+                      const rotateY = (centerX - x) / 10;
+                      e.currentTarget.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+                      e.currentTarget.style.boxShadow = '0 25px 50px -12px rgba(99, 102, 241, 0.25)';
+                    }}
+                    onMouseMove={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = e.clientX - rect.left;
+                      const y = e.clientY - rect.top;
+                      const centerX = rect.width / 2;
+                      const centerY = rect.height / 2;
+                      const rotateX = (y - centerY) / 10;
+                      const rotateY = (centerX - x) / 10;
+                      e.currentTarget.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
                     <Image
-                      src={skin.image}
+                      src="/cscards.png"
                       alt={skin.name}
                       fill
-                      className="object-contain p-4 group-hover:scale-110 transition-transform"
+                      className="object-contain rounded-lg group-hover:brightness-110 transition-all duration-300"
+                      style={{ objectFit: 'contain' }}
+                    />
+                    {/* Shine overlay */}
+                    <div 
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none group-hover:animate-shine"
+                      style={{
+                        background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%)',
+                        transform: 'translateX(-100%)'
+                      }}
                     />
                   </div>
                   
@@ -350,24 +408,21 @@ export default function BrowseSkinsPage() {
                         <span className="text-white font-semibold">${skin.price.toFixed(2)}</span>
                       </div>
                       
-                      {/* Wear and Float Information */}
+                      {/* Wear Information */}
                       {skin.wear && (
                         <div className="flex justify-between items-center p-2 bg-[#161e2e]/50 rounded-lg border border-[#6366f1]/10">
                           <span className="text-[#a1a1c5] text-xs">Wear</span>
                           <span className="text-white font-medium text-xs">{skin.wear}</span>
                         </div>
                       )}
-                      {skin.float !== undefined && (
-                        <div className="flex justify-between items-center p-2 bg-[#161e2e]/50 rounded-lg border border-[#6366f1]/10">
-                          <span className="text-[#a1a1c5] text-xs">Float</span>
-                          <span className="text-white font-medium text-xs">{skin.float.toFixed(4)}</span>
-                        </div>
-                      )}
                     </div>
                     
                     <Button 
                       className="w-full bg-gradient-to-r from-[#6366f1] to-[#7f8fff] hover:from-[#5855eb] hover:to-[#6366f1] text-white"
-                      onClick={() => handleSkinSelect(skin)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSkinSelect(skin);
+                      }}
                     >
                       Buy Item
                     </Button>
@@ -379,16 +434,61 @@ export default function BrowseSkinsPage() {
         ) : (
           <div className="space-y-4">
             {sortedSkins.map((skin) => (
-              <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer">
+              <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer" onClick={() => handleSkinSelect(skin)}>
                 <div className="p-4">
                   <div className="flex items-center gap-4">
                     {/* Skin Image */}
-                    <div className="w-20 h-20 bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-lg flex items-center justify-center relative overflow-hidden flex-shrink-0">
+                    <div 
+                      className="w-20 bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-lg flex items-center justify-center relative overflow-hidden flex-shrink-0 group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSkinSelect(skin);
+                      }}
+                      style={{
+                        aspectRatio: '750/1050',
+                        transformStyle: 'preserve-3d',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        const centerX = rect.width / 2;
+                        const centerY = rect.height / 2;
+                        const rotateX = (y - centerY) / 10;
+                        const rotateY = (centerX - x) / 10;
+                        e.currentTarget.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+                        e.currentTarget.style.boxShadow = '0 25px 50px -12px rgba(99, 102, 241, 0.25)';
+                      }}
+                      onMouseMove={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        const centerX = rect.width / 2;
+                        const centerY = rect.height / 2;
+                        const rotateX = (y - centerY) / 10;
+                        const rotateY = (centerX - x) / 10;
+                        e.currentTarget.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
                       <Image
-                        src={skin.image}
+                        src="/cscards.png"
                         alt={skin.name}
                         fill
-                        className="object-contain p-2"
+                        className="object-contain rounded-lg group-hover:brightness-110 transition-all duration-300"
+                        style={{ objectFit: 'contain' }}
+                      />
+                      {/* Shine overlay */}
+                      <div 
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none group-hover:animate-shine"
+                        style={{
+                          background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%)',
+                          transform: 'translateX(-100%)'
+                        }}
                       />
                     </div>
                     
@@ -402,18 +502,12 @@ export default function BrowseSkinsPage() {
                             <Badge variant="outline" className="text-xs">{skin.rarity}</Badge>
                           </div>
                           
-                          {/* Wear and Float Information */}
+                          {/* Wear Information */}
                           <div className="flex gap-4 mb-3">
                             {skin.wear && (
                               <div className="flex items-center gap-2">
                                 <span className="text-[#a1a1c5] text-xs">Wear:</span>
                                 <span className="text-white font-medium text-xs">{skin.wear}</span>
-                              </div>
-                            )}
-                            {skin.float !== undefined && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-[#a1a1c5] text-xs">Float:</span>
-                                <span className="text-white font-medium text-xs">{skin.float.toFixed(4)}</span>
                               </div>
                             )}
                           </div>
@@ -425,7 +519,10 @@ export default function BrowseSkinsPage() {
                           </div>
                           <Button 
                             className="bg-gradient-to-r from-[#6366f1] to-[#7f8fff] hover:from-[#5855eb] hover:to-[#6366f1] text-white"
-                            onClick={() => handleSkinSelect(skin)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSkinSelect(skin);
+                            }}
                           >
                             Buy Item
                           </Button>
@@ -449,8 +546,8 @@ export default function BrowseSkinsPage() {
       </div>
       
       {/* Purchase Details Modal */}
-      <PurchaseDetails
-        selectedSkin={selectedSkin}
+      <PurchaseDetailsModal
+        skin={convertSkinForModal(selectedSkin)}
         isOpen={isPurchaseModalOpen}
         onClose={() => {
           setIsPurchaseModalOpen(false)
