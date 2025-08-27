@@ -1,17 +1,16 @@
 "use client"
 
+import { useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { getTotalTVL, getTopCardsByPrice } from "@/lib/cscards"
+import { PurchaseDetailsModal } from "./purchase-details-modal"
 
 interface TokenizedSkin {
   id: string;
   name: string;
   price: number;
   image: string;
-  totalQuantity: number;
-  availableQuantity: number;
-  pricePerItem: number;
   wear?: string;
   float?: number;
 }
@@ -24,6 +23,10 @@ interface FeaturedSkinsProps {
 }
 
 export function FeaturedSkins({ tokenizedSkins, onSkinSelect, onBrowseAll, isLoading = false }: FeaturedSkinsProps) {
+  // Modal state
+  const [selectedSkin, setSelectedSkin] = useState<TokenizedSkin | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   // Calculate TVL (Total Value Locked) of all skins using utility function
   const totalTVL = getTotalTVL();
 
@@ -31,6 +34,24 @@ export function FeaturedSkins({ tokenizedSkins, onSkinSelect, onBrowseAll, isLoa
   const topSkins = [...tokenizedSkins]
     .sort((a, b) => b.price - a.price)
     .slice(0, 4);
+
+  // Handle skin selection
+  const handleSkinClick = (skin: TokenizedSkin) => {
+    setSelectedSkin(skin);
+    setIsModalOpen(true);
+  };
+
+  // Handle purchase
+  const handlePurchase = (skin: TokenizedSkin) => {
+    onSkinSelect(skin);
+    setIsModalOpen(false);
+  };
+
+  // Handle modal close
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedSkin(null);
+  };
 
   return (
     <div className="w-full flex flex-col items-center justify-center">
@@ -78,10 +99,37 @@ export function FeaturedSkins({ tokenizedSkins, onSkinSelect, onBrowseAll, isLoa
           >
             {/* NFT Card Image - Full card is the image */}
             <div 
-              className="relative w-[180px] h-[252px] cursor-pointer hover:scale-105 transition-all duration-300 hover:shadow-2xl hover:shadow-[#6366f1]/25 group"
-              onClick={() => onSkinSelect(skin)}
+              className="relative w-[180px] h-[252px] cursor-pointer group overflow-hidden rounded-2xl"
+              onClick={() => handleSkinClick(skin)}
               style={{
-                aspectRatio: '750/1050'
+                aspectRatio: '750/1050',
+                transformStyle: 'preserve-3d',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = (y - centerY) / 10;
+                const rotateY = (centerX - x) / 10;
+                e.currentTarget.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+                e.currentTarget.style.boxShadow = '0 25px 50px -12px rgba(99, 102, 241, 0.25)';
+              }}
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = (y - centerY) / 10;
+                const rotateY = (centerX - x) / 10;
+                e.currentTarget.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
               }}
             >
               <Image
@@ -91,12 +139,20 @@ export function FeaturedSkins({ tokenizedSkins, onSkinSelect, onBrowseAll, isLoa
                 className="object-cover rounded-2xl group-hover:brightness-110 transition-all duration-300"
                 style={{ objectFit: 'cover' }}
               />
+              {/* Shine overlay */}
+              <div 
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none group-hover:animate-shine"
+                style={{
+                  background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%)',
+                  transform: 'translateX(-100%)'
+                }}
+              />
             </div>
             
             {/* Purchase Button - Below card - TVL style */}
             <div 
               className="mt-3 bg-gradient-to-r from-[#6366f1]/20 to-[#7f8fff]/20 backdrop-blur-sm border border-[#6366f1]/30 rounded-2xl px-4 py-2 cursor-pointer hover:from-[#6366f1]/30 hover:to-[#7f8fff]/30 hover:border-[#6366f1]/50 transition-all duration-200"
-              onClick={() => onSkinSelect(skin)}
+              onClick={() => handleSkinClick(skin)}
             >
               <div className="flex items-center justify-center gap-2">
                 <div className="w-2 h-2 bg-gradient-to-r from-[#6366f1] to-[#7f8fff] rounded-full"></div>
@@ -119,6 +175,14 @@ export function FeaturedSkins({ tokenizedSkins, onSkinSelect, onBrowseAll, isLoa
           </div>
         </div>
       </div>
+
+      {/* Purchase Details Modal */}
+      <PurchaseDetailsModal
+        skin={selectedSkin}
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onPurchase={handlePurchase}
+      />
     </div>
   )
 }
