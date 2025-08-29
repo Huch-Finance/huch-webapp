@@ -51,7 +51,7 @@ export function useHuchOracle() {
   const [tokenInfo, setTokenInfo] = useState<HuchTokenInfo | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
 
   const clearError = useCallback(() => {
     setError(null)
@@ -85,9 +85,10 @@ export function useHuchOracle() {
     try {
       setError(null)
       
-      const address = walletAddress || user?.wallet?.address
+      // Priority order: provided address > profile.wallet > user.wallet?.address
+      const address = walletAddress || profile?.wallet || user?.wallet?.address
       if (!address) {
-        console.log('No wallet address available')
+        console.log('No wallet address available for balance check')
         return null
       }
 
@@ -129,7 +130,7 @@ export function useHuchOracle() {
       
       return null
     }
-  }, [user])
+  }, [user, profile])
 
   // Get HUCH token information
   const fetchTokenInfo = useCallback(async (): Promise<HuchTokenInfo | null> => {
@@ -253,12 +254,13 @@ export function useHuchOracle() {
     return () => clearInterval(interval)
   }, [fetchPrice])
 
-  // Auto-fetch balance when user wallet changes
+  // Auto-fetch balance when wallet changes
   useEffect(() => {
-    if (user?.wallet?.address) {
+    const walletAddress = profile?.wallet || user?.wallet?.address
+    if (walletAddress) {
       fetchBalance()
     }
-  }, [user?.wallet?.address, fetchBalance])
+  }, [profile?.wallet, user?.wallet?.address, fetchBalance])
 
   // Format HUCH amount for display
   const formatHuchAmount = useCallback((amount: number): string => {

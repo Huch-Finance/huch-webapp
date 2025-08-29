@@ -27,6 +27,7 @@ interface TokenizedSkin {
   category: string;
   rarity: string;
   condition: string;
+  collection?: string;
   wear?: string;
   float?: number;
 }
@@ -83,6 +84,15 @@ export default function BrowseSkinsPage() {
         }
 
         const data = await response.json()
+        console.log('API Response:', data)
+        console.log('Listings found:', data.listings?.length || 0)
+        
+        // Debug first listing structure
+        if (data.listings && data.listings.length > 0) {
+          console.log('First listing structure:', data.listings[0])
+          console.log('First listing metadata:', data.listings[0].metadata)
+          console.log('First listing attributes:', data.listings[0].metadata?.attributes)
+        }
         
         // Transform the marketplace data to match our TokenizedSkin interface
         const transformedSkins: TokenizedSkin[] = data.listings.map((listing: any) => {
@@ -102,6 +112,7 @@ export default function BrowseSkinsPage() {
           const wearAttr = attributes.find((attr: any) => attr.trait_type?.toLowerCase() === 'wear' || attr.trait_type?.toLowerCase() === 'condition')
           const floatAttr = attributes.find((attr: any) => attr.trait_type?.toLowerCase() === 'float')
           const rarityAttr = attributes.find((attr: any) => attr.trait_type?.toLowerCase() === 'rarity')
+          const collectionAttr = attributes.find((attr: any) => attr.trait_type?.toLowerCase() === 'collection')
           
           // Parse name to extract weapon and skin if not in attributes
           let weapon = weaponAttr?.value || ''
@@ -141,11 +152,20 @@ export default function BrowseSkinsPage() {
             category: category,
             rarity: rarityAttr?.value || 'Unknown',
             condition: wearAttr?.value || 'Unknown',
+            collection: collectionAttr?.value || listing.collection || undefined,
             wear: wearAttr?.value,
             float: floatAttr ? parseFloat(floatAttr.value) : undefined,
           }
         })
         
+        console.log('Transformed skins:', transformedSkins.length)
+        
+        // Debug collection data
+        const skinsWithCollection = transformedSkins.filter(skin => skin.collection)
+        console.log('Skins with collection data:', skinsWithCollection.length)
+        if (skinsWithCollection.length > 0) {
+          console.log('Sample skin with collection:', skinsWithCollection[0])
+        }
         setAllSkins(transformedSkins)
       } catch (error) {
         console.error('Error fetching marketplace NFTs:', error)
@@ -188,55 +208,14 @@ export default function BrowseSkinsPage() {
     setSelectedSkin(skin)
     setIsPurchaseModalOpen(true)
   }
-  
-  const handlePurchase = async (skin: { id: string; name: string; price: number; image: string; wear?: string; float?: number; }) => {
-    try {
-      if (!profile?.id || !profile?.wallet?.address) {
-        alert('Please login and connect your wallet to purchase skins')
-        return
-      }
 
-      // Get vault info to determine seller address
-      const vaultInfo = await getVaultInfo()
-      if (!vaultInfo) {
-        throw new Error('Unable to get marketplace vault information')
-      }
-
-      console.log('Purchasing NFT with escrow system:', {
-        nftMintAddress: skin.id,
-        sellerAddress: vaultInfo.vaultAddress,
-        buyerAddress: profile.wallet.address
-      })
-
-      // Purchase using escrow system with HUCH tokens
-      const result = await purchaseNFT({
-        nftMintAddress: skin.id,
-        sellerAddress: vaultInfo.vaultAddress,
-        buyerAddress: profile.wallet.address
-      })
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to purchase NFT')
-      }
-
-      console.log('Purchase successful:', result)
-      
-      // Calculate HUCH amount using real price
-      const huchAmount = await convertUsdToHuch(skin.price) || (skin.price * 10) // Fallback to 10x
-
-      // Show success message
-      alert(`Successfully purchased ${skin.name} for ${formatHuchAmount(huchAmount)} HUCH tokens!`)
-      
-      // Refresh the marketplace
-      window.location.reload()
-    } catch (error) {
-      console.error('Purchase error:', error)
-      alert(`Failed to purchase: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    } finally {
-      setIsPurchaseModalOpen(false)
-      setSelectedSkin(null)
-    }
+  // Handle purchase action
+  const handlePurchase = async (skin: TokenizedSkin) => {
+    console.log('Purchase initiated for skin:', skin)
+    // The actual purchase logic is handled in the PurchaseDetailsModal
+    // This function is just a callback interface
   }
+  
   
   // Convert skin to modal format
   const convertSkinForModal = (skin: TokenizedSkin | null) => {
@@ -261,41 +240,12 @@ export default function BrowseSkinsPage() {
       <div className="flex-1 flex flex-col items-center">
         <div className="w-full max-w-7xl px-4 py-6">
         
-        {/* Balance and Portfolio Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        {/* Portfolio Section */}
+        <div className="flex justify-center mb-6">
           <Card className="bg-[#161e2e] border-[#23263a] p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[#a1a1c5] text-sm">HUCH Balance</p>
-                <p className="text-2xl font-bold text-white">{formatHuchAmount(realHuchBalance)} HUCH</p>
-                <p className="text-sm text-[#a1a1c5]">{formatUsdAmount(realHuchValue)}</p>
-                {huchPrice && (
-                  <p className="text-xs text-[#7c7c8f]">
-                    1 HUCH = ${huchPrice.priceUsd.toFixed(4)}
-                  </p>
-                )}
-              </div>
-              <div className="w-12 h-12 bg-[#000] rounded-full flex items-center justify-center">
-                <Image
-                  src="/logo.svg"
-                  alt="Huch Logo"
-                  width={24}
-                  height={24}
-                  className="object-contain"
-                />
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="bg-[#161e2e] border-[#23263a] p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[#a1a1c5] text-sm">Portfolio Value</p>
-                <p className="text-2xl font-bold text-white">${portfolioValue.toFixed(2)}</p>
-              </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-[#10b981] to-[#34d399] rounded-full flex items-center justify-center">
-                <span className="text-white font-bold">₽</span>
-              </div>
+            <div>
+              <p className="text-[#a1a1c5] text-sm">Portfolio Value</p>
+              <p className="text-2xl font-bold text-white">${portfolioValue.toFixed(2)}</p>
             </div>
           </Card>
         </div>
@@ -333,8 +283,14 @@ export default function BrowseSkinsPage() {
                 <SelectTrigger className="bg-[#0F0F2A] border-[#23263a] text-white">
                   <SelectValue placeholder="Rarity" />
                 </SelectTrigger>
-            {sortedSkins.map((skin) => (
-              <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer group" onClick={() => handleSkinSelect(skin)}>
+                <SelectContent className="bg-[#0F0F2A] border-[#23263a]">
+                  {rarities.map(rarity => (
+                    <SelectItem key={rarity} value={rarity} className="text-white hover:bg-[#23263a]">
+                      {rarity === "all" ? "All Rarities" : rarity}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               
               <Select value={selectedCondition} onValueChange={setSelectedCondition}>
                 <SelectTrigger className="bg-[#0F0F2A] border-[#23263a] text-white">
@@ -427,14 +383,9 @@ export default function BrowseSkinsPage() {
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {sortedSkins.map((skin, index) => (
-                </div>
-              </Card>
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-              >
-                <Card className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer group" onClick={() => handleSkinSelect(skin)}>
-            {sortedSkins.map((skin) => (
-              <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer" onClick={() => handleSkinSelect(skin)}>
+              <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer group" onClick={() => handleSkinSelect(skin)}>
+                  <div 
+                    className="relative w-full h-64 rounded-lg overflow-hidden bg-gradient-to-br from-[#1a1a2e] to-[#16213e] p-4"
                     style={{
                       aspectRatio: '750/1050',
                       transformStyle: 'preserve-3d',
@@ -488,9 +439,14 @@ export default function BrowseSkinsPage() {
                   <div className="space-y-3">
                     <div>
                       <h3 className="font-semibold text-white text-sm mb-1">{skin.name}</h3>
-                      <div className="flex gap-2 mb-2">
+                      <div className="flex flex-wrap gap-1 mb-2">
                         <Badge variant="secondary" className="text-xs">{skin.category}</Badge>
                         <Badge variant="outline" className="text-xs">{skin.rarity}</Badge>
+                        {skin.collection && (
+                          <Badge variant="default" className="text-xs bg-[#6366f1]/20 text-[#6366f1] border-[#6366f1]/30">
+                            {skin.collection}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     
@@ -520,20 +476,13 @@ export default function BrowseSkinsPage() {
                       Buy Item
                     </Button>
                   </div>
-                  </div>
                 </Card>
-              </motion.div>
             ))}
           </div>
         ) : (
           <div className="space-y-4">
             {sortedSkins.map((skin, index) => (
-              <motion.div
-                  </div>
-                </div>
-              </Card>
-              >
-                <Card className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer" onClick={() => handleSkinSelect(skin)}>
+                <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer" onClick={() => handleSkinSelect(skin)}>
                 <div className="p-4">
                   <div className="flex items-center gap-4">
                     {/* Skin Image */}
@@ -597,9 +546,14 @@ export default function BrowseSkinsPage() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h3 className="font-semibold text-white text-lg mb-1">{skin.name}</h3>
-                          <div className="flex gap-2 mb-3">
+                          <div className="flex flex-wrap gap-2 mb-3">
                             <Badge variant="secondary" className="text-xs">{skin.category}</Badge>
                             <Badge variant="outline" className="text-xs">{skin.rarity}</Badge>
+                            {skin.collection && (
+                              <Badge variant="default" className="text-xs bg-[#6366f1]/20 text-[#6366f1] border-[#6366f1]/30">
+                                {skin.collection}
+                              </Badge>
+                            )}
                           </div>
                           
                           {/* Wear Information */}
@@ -632,7 +586,6 @@ export default function BrowseSkinsPage() {
                     </div>
                   </div>
                 </Card>
-              </motion.div>
             ))}
           </div>
         )}

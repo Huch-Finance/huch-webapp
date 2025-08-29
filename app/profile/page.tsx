@@ -251,7 +251,7 @@ export default function Profile() {
                       className="object-contain"
                     /> */}
                     <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white font-poppins">
-                        {huchBalance ? parseFloat(formatHuchAmount(huchBalance.balance)).toFixed(4) : parseFloat('45.321312312412421321').toFixed(4)} HUCH
+                        {huchBalance ? formatHuchAmount(huchBalance.balance) : formatHuchAmount(0)} HUCH
                     </div>
                   </div>
                   {/* <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">
@@ -268,7 +268,7 @@ export default function Profile() {
                   <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">Portfolio Value</div>
                 </div>
                 <div className="text-center font-poppins">
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold font-poppins text-blue-400">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bo  ld font-poppins text-blue-400">
                     {nfts.length}
                   </div>
                   <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">NFTs Owned</div>

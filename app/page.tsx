@@ -8,7 +8,7 @@ import { useSolanaWallets } from "@privy-io/react-auth/solana";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getUSDCBalanceWithFallback } from "@/lib/solana-utils";
 import { getSolanaConnection } from "@/lib/solana-connection";
-import { useHuchToken } from "@/hooks/use-huch-token";
+import { useHuchOracle } from "@/hooks/use-huch-oracle";
 import { Footer } from "@/components/organism/footer";
 
 interface OwnedSkinItem {
@@ -33,7 +33,12 @@ export default function Home() {
   const [usdcBalance, setUsdcBalance] = useState<number>(0);
   const [ownedItems, setOwnedItems] = useState<OwnedSkinItem[]>([]);
   const { wallets } = useSolanaWallets();
-  const { balance: huchBalance, totalValue: huchValue } = useHuchToken();
+  const { 
+    balance: huchBalance, 
+    price: huchPrice,
+    formatHuchAmount,
+    formatUsdAmount
+  } = useHuchOracle();
 
   // Portfolio calculation functions from profile page
   const getTotalPortfolioValue = () => {
@@ -99,29 +104,12 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          className="flex justify-center"
         >
-          {/* HUCH Token Balance */}
-          <Card className="bg-[#161e2e] border-[#23263a]">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#a1a1c5]">HUCH Token Balance</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-[#6366f1] to-[#7f8fff] rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xs">H</span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{huchBalance.toFixed(4)} HUCH</div>
-              <p className="text-xs text-[#a1a1c5] mt-1">≈ ${huchValue.toFixed(2)} USD</p>
-            </CardContent>
-          </Card>
-
           {/* Portfolio Value */}
           <Card className="bg-[#161e2e] border-[#23263a]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-[#a1a1c5]">Portfolio Value</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-[#10b981] to-[#34d399] rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xs">₽</span>
-              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">${getTotalPortfolioValue().toFixed(2)}</div>
