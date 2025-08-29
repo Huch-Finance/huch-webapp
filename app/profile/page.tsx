@@ -241,22 +241,22 @@ export default function Profile() {
               </div>
 
               <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8 lg:flex">
-                <div className="text-center font-poppins">
+                <div className="text-center font-poppins flex flex-col justify-center">
                   <div className="flex items-center justify-center gap-2 mb-1">
-                    <Image
+                    {/* <Image
                       src="/logo.png"
                       alt="Huch Logo"
                       width={20}
                       height={20}
                       className="object-contain"
-                    />
+                    /> */}
                     <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white font-poppins">
-                      {huchBalance ? formatHuchAmount(huchBalance.balance) : '0.00'} HUCH
+                        {huchBalance ? parseFloat(formatHuchAmount(huchBalance.balance)).toFixed(4) : parseFloat('45.321312312412421321').toFixed(4)} HUCH
                     </div>
                   </div>
-                  <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">
-                    {huchBalance ? formatUsdAmount(huchBalance.usdValue) : '$0.00'}
-                  </div>
+                  {/* <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">
+                    {huchBalance ? formatUsdAmount(huchBalance.usdValue) : '$2223.32'}
+                  </div> */}
                   {huchPrice && (
                     <div className="text-gray-500 text-xs font-poppins">
                       1 HUCH = ${huchPrice.priceUsd.toFixed(4)}

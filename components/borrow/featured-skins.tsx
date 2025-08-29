@@ -163,16 +163,9 @@ export function FeaturedSkins({ tokenizedSkins, onSkinSelect, onBrowseAll, isLoa
                 />
               </div>
               
-              {/* Price Display */}
-              <div className="mt-3 text-center">
-                <div className="bg-gradient-to-r from-[#10b981]/20 to-[#34d399]/20 backdrop-blur-sm border border-[#10b981]/30 rounded-xl px-3 py-1.5 inline-block">
-                  <span className="text-[#10b981] text-lg font-bold">${skin.price.toFixed(2)}</span>
-                </div>
-              </div>
-              
               {/* Purchase Button - Below card - TVL style */}
               <div 
-                className="mt-2 bg-gradient-to-r from-[#6366f1]/20 to-[#7f8fff]/20 backdrop-blur-sm border border-[#6366f1]/30 rounded-2xl px-4 py-2 cursor-pointer hover:from-[#6366f1]/30 hover:to-[#7f8fff]/30 hover:border-[#6366f1]/50 transition-all duration-200"
+                className="mt-3 bg-gradient-to-r from-[#6366f1]/20 to-[#7f8fff]/20 backdrop-blur-sm border border-[#6366f1]/30 rounded-2xl px-4 py-2 cursor-pointer hover:from-[#6366f1]/30 hover:to-[#7f8fff]/30 hover:border-[#6366f1]/50 transition-all duration-200"
                 onClick={() => handleSkinClick(skin)}
               >
                 <div className="flex items-center justify-center gap-2">

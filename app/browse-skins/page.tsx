@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
@@ -334,14 +333,8 @@ export default function BrowseSkinsPage() {
                 <SelectTrigger className="bg-[#0F0F2A] border-[#23263a] text-white">
                   <SelectValue placeholder="Rarity" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#0F0F2A] border-[#23263a]">
-                  {rarities.map(rarity => (
-                    <SelectItem key={rarity} value={rarity} className="text-white hover:bg-[#23263a]">
-                      {rarity === "all" ? "All Rarities" : rarity}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {sortedSkins.map((skin) => (
+              <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer group" onClick={() => handleSkinSelect(skin)}>
               
               <Select value={selectedCondition} onValueChange={setSelectedCondition}>
                 <SelectTrigger className="bg-[#0F0F2A] border-[#23263a] text-white">
@@ -434,21 +427,14 @@ export default function BrowseSkinsPage() {
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {sortedSkins.map((skin, index) => (
-              <motion.div
-                key={skin.id}
-                initial={{ opacity: 0, y: 20 }}
+                </div>
+              </Card>
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
               >
                 <Card className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer group" onClick={() => handleSkinSelect(skin)}>
-                <div className="p-4">
-                  {/* Skin Image */}
-                  <div 
-                    className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-lg flex items-center justify-center mb-4 relative overflow-hidden group"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSkinSelect(skin);
-                    }}
+            {sortedSkins.map((skin) => (
+              <Card key={skin.id} className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer" onClick={() => handleSkinSelect(skin)}>
                     style={{
                       aspectRatio: '750/1050',
                       transformStyle: 'preserve-3d',
@@ -543,10 +529,9 @@ export default function BrowseSkinsPage() {
           <div className="space-y-4">
             {sortedSkins.map((skin, index) => (
               <motion.div
-                key={skin.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.05 }}
+                  </div>
+                </div>
+              </Card>
               >
                 <Card className="bg-[#161e2e] border-[#23263a] hover:border-[#6366f1] transition-colors cursor-pointer" onClick={() => handleSkinSelect(skin)}>
                 <div className="p-4">

@@ -3,10 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign, Wallet, ShoppingCart, Tag } from "lucide-react";
-import Image from "next/image";
+import { DollarSign, Wallet } from "lucide-react";
 import { useSolanaWallets } from "@privy-io/react-auth/solana";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getUSDCBalanceWithFallback } from "@/lib/solana-utils";
@@ -30,17 +27,7 @@ interface OwnedSkinItem {
 // Placeholder for owned skins data
 const mockOwnedItems: OwnedSkinItem[] = [];
 
-// Placeholder for transactions data
-const mockData = {
-  pnl: {
-    "24h": { value: 0, percentage: 0 },
-    "week": { value: 0, percentage: 0 },
-    "month": { value: 0, percentage: 0 }
-  },
-  recentPurchases: [],
-  recentSales: [],
-  skinRankings: []
-};
+
 
 export default function Home() {
   const [usdcBalance, setUsdcBalance] = useState<number>(0);
@@ -123,7 +110,7 @@ export default function Home() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{huchBalance.toLocaleString()} HUCH</div>
+              <div className="text-2xl font-bold text-white">{huchBalance.toFixed(4)} HUCH</div>
               <p className="text-xs text-[#a1a1c5] mt-1">≈ ${huchValue.toFixed(2)} USD</p>
             </CardContent>
           </Card>
@@ -143,111 +130,37 @@ export default function Home() {
           </Card>
         </motion.div>
 
-        {/* Transaction History and Skin Rankings */}
+        {/* Vault Ownership Progress */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-4"
         >
-          {/* Recent Transactions */}
           <Card className="bg-[#161e2e] border-[#23263a]">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
-                Recent Activity
+                <Wallet className="h-5 w-5" />
+                Vault Ownership
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="purchases" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-[#0F0F2A] border-[#23263a]">
-                  <TabsTrigger value="purchases" className="text-white">Purchases</TabsTrigger>
-                  <TabsTrigger value="sales" className="text-white">Sales</TabsTrigger>
-                </TabsList>
-                <TabsContent value="purchases" className="space-y-3 mt-4">
-                  {mockData.recentPurchases.length === 0 ? (
-                    <p className="text-[#a1a1c5] text-center py-4">No recent purchases</p>
-                  ) : (
-                    mockData.recentPurchases.map((purchase) => (
-                    <div key={purchase.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#6366f1]/10 border border-[#6366f1]/20">
-                      <Image
-                        src={purchase.image}
-                        alt={purchase.name}
-                        width={40}
-                        height={40}
-                        className="rounded object-cover"
-                      />
-                      <div className="flex-1">
-                        <p className="text-white font-medium text-sm">{purchase.name}</p>
-                        <p className="text-[#a1a1c5] text-xs">{purchase.date}</p>
-                      </div>
-                      <div className="text-[#10b981] font-bold">${purchase.price}</div>
-                    </div>
-                  ))
-                  )}
-                </TabsContent>
-                <TabsContent value="sales" className="space-y-3 mt-4">
-                  {mockData.recentSales.length === 0 ? (
-                    <p className="text-[#a1a1c5] text-center py-4">No recent sales</p>
-                  ) : (
-                    mockData.recentSales.map((sale) => (
-                    <div key={sale.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20">
-                      <Image
-                        src={sale.image}
-                        alt={sale.name}
-                        width={40}
-                        height={40}
-                        className="rounded object-cover"
-                      />
-                      <div className="flex-1">
-                        <p className="text-white font-medium text-sm">{sale.name}</p>
-                        <p className="text-[#a1a1c5] text-xs">{sale.date}</p>
-                      </div>
-                      <div className="text-[#10b981] font-bold">${sale.price}</div>
-                    </div>
-                  ))
-                  )}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          {/* Skin Rankings */}
-          <Card className="bg-[#161e2e] border-[#23263a]">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Tag className="h-5 w-5" />
-                Top Skins by Value
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-               {ownedItems
-                 .sort((a, b) => b.currentPrice - a.currentPrice)
-                 .slice(0, 5)
-                 .map((skin, index) => (
-                 <div key={skin.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#7f8fff]/10 border border-[#7f8fff]/20">
-                   <div className="text-[#a1a1c5] font-bold text-sm w-6">#{index + 1}</div>
-                   <Image
-                     src={skin.skinImage}
-                     alt={skin.skinName}
-                     width={40}
-                     height={40}
-                     className="rounded object-cover"
-                   />
-                   <div className="flex-1">
-                     <p className="text-white font-medium text-sm">{skin.skinName}</p>
-                     <div className="flex items-center gap-2">
-                       <span className="text-[#a1a1c5] text-xs">${skin.currentPrice}</span>
-                       <Badge
-                         variant={skin.profitLoss >= 0 ? "default" : "destructive"}
-                         className="text-xs"
-                       >
-                         {skin.profitLoss >= 0 ? '+' : ''}{skin.profitLossPercentage.toFixed(1)}%
-                       </Badge>
-                     </div>
-                   </div>
-                 </div>
-               ))}
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-[#a1a1c5] text-sm">Your vault ownership</span>
+                <span className="text-white font-bold">{((getTotalPortfolioValue() / 10000) * 100).toFixed(1)}%</span>
+              </div>
+              <div className="w-full bg-[#23263a] rounded-full h-3">
+                <div 
+                  className="bg-gradient-to-r from-[#6366f1] to-[#7f8fff] h-3 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${Math.min((getTotalPortfolioValue() / 10000) * 100, 100)}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between text-xs text-[#a1a1c5]">
+                <span>0%</span>
+                <span>100%</span>
+              </div>
+              <p className="text-xs text-[#a1a1c5] mt-2">
+                Based on ${getTotalPortfolioValue().toFixed(2)} / $10,000 total vault value
+              </p>
             </CardContent>
           </Card>
         </motion.div>
