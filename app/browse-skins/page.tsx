@@ -12,6 +12,8 @@ import { Search, Filter, Grid, List, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { PurchaseDetailsModal } from "@/components/borrow/purchase-details-modal"
+import { useHuchToken } from "@/hooks/use-huch-token"
+import { Footer } from "@/components/organism/footer"
 
 interface TokenizedSkin {
   id: string;
@@ -44,97 +46,12 @@ export default function BrowseSkinsPage() {
   const [selectedSkin, setSelectedSkin] = useState<TokenizedSkin | null>(null)
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false)
   
-  // Mock data - replace with actual API call
-  const [allSkins] = useState<TokenizedSkin[]>([
-    {
-      id: "1",
-      name: "AWP | Dragon Lore",
-      price: 2500,
-      image: "/awp.webp",
-      totalQuantity: 10,
-      availableQuantity: 8,
-      pricePerItem: 2500.00,
-      category: "Sniper Rifle",
-      rarity: "Covert",
-      condition: "Field-Tested",
-      wear: "Factory New",
-      float: 0.0234
-    },
-    {
-      id: "2",
-      name: "Butterfly Knife | Fade",
-      price: 1800,
-      image: "/btknife.png",
-      totalQuantity: 15,
-      availableQuantity: 12,
-      pricePerItem: 1800.00,
-      category: "Knife",
-      rarity: "Covert",
-      condition: "Factory New",
-      wear: "Minimal Wear",
-      float: 0.1267
-    },
-    {
-      id: "3",
-      name: "AK-47 | Redline",
-      price: 120,
-      image: "/ak47-redline.png",
-      totalQuantity: 25,
-      availableQuantity: 18,
-      pricePerItem: 120.00,
-      category: "Rifle",
-      rarity: "Classified",
-      condition: "Field-Tested",
-      wear: "Field-Tested",
-      float: 0.2834
-    },
-    {
-      id: "4",
-      name: "M4A4 | Howl",
-      price: 3900,
-      image: "/M4A4.png",
-      totalQuantity: 5,
-      availableQuantity: 3,
-      pricePerItem: 3900.00,
-      category: "Rifle",
-      rarity: "Contraband",
-      condition: "Minimal Wear",
-      wear: "Well-Worn",
-      float: 0.4125
-    },
-    {
-      id: "5",
-      name: "Karambit | Doppler",
-      price: 1200,
-      image: "/karambit.webp",
-      totalQuantity: 20,
-      availableQuantity: 9,
-      pricePerItem: 1200.00,
-      category: "Knife",
-      rarity: "Covert",
-      condition: "Factory New",
-      wear: "Factory New",
-      float: 0.0098
-    },
-    {
-      id: "6",
-      name: "Sport Gloves | Pandora's Box",
-      price: 800,
-      image: "/gloves.webp",
-      totalQuantity: 12,
-      availableQuantity: 7,
-      pricePerItem: 800.00,
-      category: "Gloves",
-      rarity: "Extraordinary",
-      condition: "Well-Worn",
-      wear: "Battle-Scarred",
-      float: 0.7654
-    }
-  ])
+  // TODO: Replace with actual API call
+  const [allSkins] = useState<TokenizedSkin[]>([])
   
-  // Mock user balance data - should match profile page values
-  const [usdcBalance] = useState(0.00) // This will match the profile page's splBalance
-  const [portfolioValue] = useState(14850.00) // This should match total portfolio value from profile
+  // Get Huch token balance
+  const { balance: huchBalance, totalValue: huchValue } = useHuchToken()
+  const [portfolioValue] = useState(0) // TODO: Calculate from actual portfolio data
   
   // Filter skins based on search and filters
   const filteredSkins = allSkins.filter(skin => {
@@ -191,32 +108,21 @@ export default function BrowseSkinsPage() {
   const conditions = ["all", "Factory New", "Minimal Wear", "Field-Tested", "Well-Worn", "Battle-Scarred"]
   
   return (
-    <div className="min-h-screen text-white lg:ml-24">
-      {/* Header */}
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.back()}
-            className="text-[#a1a1c5] hover:text-white"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          <h1 className="text-3xl font-bold font-poppins text-[#E1E1F5]">Browse All Skins</h1>
-        </div>
+    <div className="min-h-screen flex flex-col text-white lg:ml-24">
+      {/* Main Content */}
+      <div className="flex-1 container mx-auto px-4 py-6 max-w-7xl">
         
         {/* Balance and Portfolio Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <Card className="bg-[#161e2e] border-[#23263a] p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[#a1a1c5] text-sm">USDC Balance</p>
-                <p className="text-2xl font-bold text-white">${usdcBalance.toFixed(2)}</p>
+                <p className="text-[#a1a1c5] text-sm">HUCH Balance</p>
+                <p className="text-2xl font-bold text-white">{huchBalance.toLocaleString()} HUCH</p>
+                <p className="text-sm text-[#a1a1c5]">≈ ${huchValue.toFixed(2)} USD</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-br from-[#6366f1] to-[#7f8fff] rounded-full flex items-center justify-center">
-                <span className="text-white font-bold">$</span>
+                <span className="text-white font-bold text-lg">H</span>
               </div>
             </div>
           </Card>
@@ -332,7 +238,17 @@ export default function BrowseSkinsPage() {
         </div>
         
         {/* Skins Grid/List */}
-        {viewMode === "grid" ? (
+        {sortedSkins.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="w-20 h-20 bg-gradient-to-br from-[#6366f1] to-[#7f8fff] rounded-full flex items-center justify-center mb-4">
+              <span className="text-white font-bold text-3xl">H</span>
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">No skins available</h3>
+            <p className="text-[#a1a1c5] text-center max-w-md">
+              No CS2 skins match your current filters. Try adjusting your search criteria or check back later for new arrivals.
+            </p>
+          </div>
+        ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {sortedSkins.map((skin, index) => (
               <motion.div
@@ -550,14 +466,6 @@ export default function BrowseSkinsPage() {
             ))}
           </div>
         )}
-        
-        {/* No results */}
-        {sortedSkins.length === 0 && (
-          <Card className="bg-[#161e2e] border-[#23263a] p-8 text-center">
-            <p className="text-[#a1a1c5] text-lg mb-2">No skins found</p>
-            <p className="text-[#a1a1c5] text-sm">Try adjusting your search or filters</p>
-          </Card>
-        )}
       </div>
       
       {/* Purchase Details Modal */}
@@ -570,6 +478,7 @@ export default function BrowseSkinsPage() {
         }}
         onPurchase={handlePurchase}
       />
+      <Footer />
     </div>
   )
 }

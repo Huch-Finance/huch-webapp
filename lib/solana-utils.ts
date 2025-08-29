@@ -18,8 +18,8 @@ export const USDC_DECIMALS = 6
 
 // Déterminer quel mint utiliser selon l'environnement
 export const getUSDCMint = () => {
-  // Utiliser ton token SPL personnalisé pour les tests
-  return YOUR_CUSTOM_TOKEN_MINT
+  // Use mainnet USDC mint
+  return USDC_MINT_MAINNET
 }
 
 // Fonction pour utiliser explicitement ton token

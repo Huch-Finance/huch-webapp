@@ -28,13 +28,6 @@ export function Sidebar() {
       isLogo: true,
     },
     {
-      name: "Featured Skins",
-      href: "/borrow",
-      icon: Star,
-      iconSrc:
-        "https://cdn.builder.io/api/v1/image/assets/TEMP/ba0d2e40a26d9aad3177c934d7697d1b490f6151?placeholderIfAbsent=true",
-    },
-    {
       name: "All Skins",
       href: "/browse-skins",
       icon: Grid,
@@ -251,8 +244,6 @@ export function Sidebar() {
                     />
                   ) : item.name === "Trade" ? (
                     <ArrowLeftRight className="object-contain shrink-0 w-8 h-8 text-white" />
-                  ) : item.name === "Featured Skins" ? (
-                    <Star className="object-contain shrink-0 w-8 h-8 text-white" />
                   ) : item.name === "All Skins" ? (
                     <Grid className="object-contain shrink-0 w-8 h-8 text-white" />
                   ) : (

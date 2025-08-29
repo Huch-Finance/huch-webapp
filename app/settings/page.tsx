@@ -796,7 +796,7 @@ export default function Settings() {
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-[#a1a1c5]">Network:</span>
-                          <span className="text-sm text-white">Solana Devnet</span>
+                          <span className="text-sm text-white">Solana Mainnet</span>
                         </div>
                       </div>
                     )}
@@ -836,7 +836,7 @@ export default function Settings() {
                       <h4 className="font-medium text-white">Why connect a wallet?</h4>
                     </div>
                     <ul className="space-y-2 text-sm text-[#a1a1c5]">
-                      <li>• Buy and sell CS2 skins with USDC</li>
+                      <li>• Buy and sell CS2 skins with HUCH tokens</li>
                       <li>• Manage your portfolio and track performance</li>
                       <li>• Access exclusive features and rewards</li>
                       <li>• Secure, decentralized transactions</li>

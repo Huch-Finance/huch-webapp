@@ -11,6 +11,8 @@ import { useSolanaWallets } from "@privy-io/react-auth/solana";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getUSDCBalance } from "@/lib/solana-utils";
 import { getSolanaConnection } from "@/lib/solana-connection";
+import { useHuchToken } from "@/hooks/use-huch-token";
+import { Footer } from "@/components/organism/footer";
 
 interface OwnedSkinItem {
   id: string;
@@ -25,169 +27,26 @@ interface OwnedSkinItem {
   float?: number;
 }
 
-// Mock data for owned skins - same as profile page
-const mockOwnedItems: OwnedSkinItem[] = [
-  {
-    id: '1a',
-    skinName: 'AWP | Dragon Lore',
-    skinImage: '/awp.webp',
-    purchasePrice: 2500,
-    currentPrice: 2750,
-    purchaseDate: '2024-01-14',
-    profitLoss: 250,
-    profitLossPercentage: 10,
-    wear: 'Factory New',
-    float: 0.0234
-  },
-  {
-    id: '1b',
-    skinName: 'AWP | Dragon Lore',
-    skinImage: '/awp.webp',
-    purchasePrice: 2500,
-    currentPrice: 2750,
-    purchaseDate: '2024-01-19',
-    profitLoss: 250,
-    profitLossPercentage: 10,
-    wear: 'Factory New',
-    float: 0.0234
-  },
-  {
-    id: '2a',
-    skinName: 'Butterfly Knife | Fade',
-    skinImage: '/btknife.png',
-    purchasePrice: 1800,
-    currentPrice: 1700,
-    purchaseDate: '2024-01-19',
-    profitLoss: -100,
-    profitLossPercentage: -5.56,
-    wear: 'Minimal Wear',
-    float: 0.1267
-  },
-  {
-    id: '2b',
-    skinName: 'Butterfly Knife | Fade',
-    skinImage: '/btknife.png',
-    purchasePrice: 1800,
-    currentPrice: 1700,
-    purchaseDate: '2024-01-20',
-    profitLoss: -100,
-    profitLossPercentage: -5.56,
-    wear: 'Minimal Wear',
-    float: 0.1267
-  },
-  {
-    id: '2c',
-    skinName: 'Butterfly Knife | Fade',
-    skinImage: '/btknife.png',
-    purchasePrice: 1800,
-    currentPrice: 1700,
-    purchaseDate: '2024-01-21',
-    profitLoss: -100,
-    profitLossPercentage: -5.56,
-    wear: 'Minimal Wear',
-    float: 0.1267
-  },
-  {
-    id: '3a',
-    skinName: 'AK-47 | Redline',
-    skinImage: '/ak47-redline.png',
-    purchasePrice: 120,
-    currentPrice: 150,
-    purchaseDate: '2024-01-31',
-    profitLoss: 30,
-    profitLossPercentage: 25,
-    wear: 'Field-Tested',
-    float: 0.2834
-  },
-  {
-    id: '3b',
-    skinName: 'AK-47 | Redline',
-    skinImage: '/ak47-redline.png',
-    purchasePrice: 120,
-    currentPrice: 150,
-    purchaseDate: '2024-02-01',
-    profitLoss: 30,
-    profitLossPercentage: 25,
-    wear: 'Field-Tested',
-    float: 0.2834
-  },
-  {
-    id: '3c',
-    skinName: 'AK-47 | Redline',
-    skinImage: '/ak47-redline.png',
-    purchasePrice: 120,
-    currentPrice: 150,
-    purchaseDate: '2024-02-02',
-    profitLoss: 30,
-    profitLossPercentage: 25,
-    wear: 'Field-Tested',
-    float: 0.2834
-  },
-  {
-    id: '3d',
-    skinName: 'AK-47 | Redline',
-    skinImage: '/ak47-redline.png',
-    purchasePrice: 120,
-    currentPrice: 150,
-    purchaseDate: '2024-02-02',
-    profitLoss: 30,
-    profitLossPercentage: 25,
-    wear: 'Field-Tested',
-    float: 0.2834
-  },
-  {
-    id: '3e',
-    skinName: 'AK-47 | Redline',
-    skinImage: '/ak47-redline.png',
-    purchasePrice: 120,
-    currentPrice: 150,
-    purchaseDate: '2024-02-02',
-    profitLoss: 30,
-    profitLossPercentage: 25,
-    wear: 'Field-Tested',
-    float: 0.2834
-  },
-  {
-    id: '4a',
-    skinName: 'M4A4 | Howl',
-    skinImage: '/M4A4.png',
-    purchasePrice: 3200,
-    currentPrice: 3500,
-    purchaseDate: '2024-02-04',
-    profitLoss: 300,
-    profitLossPercentage: 9.375,
-    wear: 'Well-Worn',
-    float: 0.4125
-  }
-];
+// Placeholder for owned skins data
+const mockOwnedItems: OwnedSkinItem[] = [];
 
-// Mock data for recent transactions
+// Placeholder for transactions data
 const mockData = {
   pnl: {
-    "24h": { value: 1250.75, percentage: 1.42 },
-    "week": { value: -890.30, percentage: -0.98 },
-    "month": { value: 4320.80, percentage: 5.06 }
+    "24h": { value: 0, percentage: 0 },
+    "week": { value: 0, percentage: 0 },
+    "month": { value: 0, percentage: 0 }
   },
-  recentPurchases: [
-    { id: 1, name: "AK-47 | Redline", price: 125.50, date: "2024-01-15", image: "/ak47-redline.png" },
-    { id: 2, name: "AWP | Dragon Lore", price: 2500.00, date: "2024-01-14", image: "/awp.webp" },
-    { id: 3, name: "Karambit | Fade", price: 1850.75, date: "2024-01-13", image: "/karambit.webp" }
-  ],
-  recentSales: [
-    { id: 1, name: "M4A4 | Howl", price: 3200.00, date: "2024-01-12", image: "/M4A4.png" },
-    { id: 2, name: "Butterfly Knife", price: 890.25, date: "2024-01-11", image: "/btknife.png" }
-  ],
-  skinRankings: [
-    { id: 1, name: "AWP | Dragon Lore", value: 2500.00, change: 2.5, image: "/awp.webp" },
-    { id: 2, name: "Karambit | Fade", value: 1850.75, change: -1.2, image: "/karambit.webp" },
-    { id: 3, name: "AK-47 | Redline", value: 125.50, change: 0.8, image: "/ak47-redline.png" }
-  ]
+  recentPurchases: [],
+  recentSales: [],
+  skinRankings: []
 };
 
 export default function Home() {
   const [usdcBalance, setUsdcBalance] = useState<number>(0);
   const [ownedItems, setOwnedItems] = useState<OwnedSkinItem[]>([]);
   const { wallets } = useSolanaWallets();
+  const { balance: huchBalance, totalValue: huchValue } = useHuchToken();
 
   // Portfolio calculation functions from profile page
   const getTotalPortfolioValue = () => {
@@ -215,7 +74,7 @@ export default function Home() {
 
       try {
         const connection = new Connection(
-          "https://api.devnet.solana.com",
+          "https://api.mainnet-beta.solana.com",
           "confirmed",
         );
         
@@ -234,12 +93,14 @@ export default function Home() {
 
   // Load owned items
   useEffect(() => {
-    setOwnedItems(mockOwnedItems);
+    // TODO: Fetch real data from API
+    setOwnedItems([]);
   }, []);
 
   return (
-    <main className="min-h-screen p-6 flex items-center justify-center">
-      <div className="max-w-7xl w-full space-y-6">
+    <div className="min-h-screen flex flex-col">
+      <main className="flex-1 p-6 flex items-center justify-center">
+        <div className="max-w-7xl w-full space-y-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -258,15 +119,15 @@ export default function Home() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
-          {/* USDC Balance */}
+          {/* HUCH Token Balance */}
           <Card className="bg-gradient-to-br from-[#1a1b3a]/80 to-[#2d1b69]/80 border-[#6366f1]/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#a1a1c5]">USDC Balance</CardTitle>
+              <CardTitle className="text-sm font-medium text-[#a1a1c5]">HUCH Token Balance</CardTitle>
               <Wallet className="h-4 w-4 text-[#6366f1]" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">${usdcBalance.toFixed(2)}</div>
-              <p className="text-xs text-[#a1a1c5] mt-1">Available for trading</p>
+              <div className="text-2xl font-bold text-white">{huchBalance.toLocaleString()} HUCH</div>
+              <p className="text-xs text-[#a1a1c5] mt-1">≈ ${huchValue.toFixed(2)} USD</p>
             </CardContent>
           </Card>
 
@@ -305,7 +166,10 @@ export default function Home() {
                   <TabsTrigger value="sales" className="text-white">Sales</TabsTrigger>
                 </TabsList>
                 <TabsContent value="purchases" className="space-y-3 mt-4">
-                  {mockData.recentPurchases.map((purchase) => (
+                  {mockData.recentPurchases.length === 0 ? (
+                    <p className="text-[#a1a1c5] text-center py-4">No recent purchases</p>
+                  ) : (
+                    mockData.recentPurchases.map((purchase) => (
                     <div key={purchase.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#6366f1]/10 border border-[#6366f1]/20">
                       <Image
                         src={purchase.image}
@@ -320,10 +184,14 @@ export default function Home() {
                       </div>
                       <div className="text-[#10b981] font-bold">${purchase.price}</div>
                     </div>
-                  ))}
+                  ))
+                  )}
                 </TabsContent>
                 <TabsContent value="sales" className="space-y-3 mt-4">
-                  {mockData.recentSales.map((sale) => (
+                  {mockData.recentSales.length === 0 ? (
+                    <p className="text-[#a1a1c5] text-center py-4">No recent sales</p>
+                  ) : (
+                    mockData.recentSales.map((sale) => (
                     <div key={sale.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20">
                       <Image
                         src={sale.image}
@@ -338,7 +206,8 @@ export default function Home() {
                       </div>
                       <div className="text-[#10b981] font-bold">${sale.price}</div>
                     </div>
-                  ))}
+                  ))
+                  )}
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -385,7 +254,9 @@ export default function Home() {
         </motion.div>
 
 
-      </div>
-    </main>
+        </div>
+      </main>
+      <Footer />
+    </div>
   );
 }

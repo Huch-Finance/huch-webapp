@@ -45,7 +45,7 @@ class SolanaConnectionManager {
     if (!this.connection) {
       // Use HTTP-only connection to avoid WebSocket issues
       this.connection = new Connection(
-        "https://api.devnet.solana.com",
+        "https://api.mainnet-beta.solana.com",
         this.connectionConfig
       )
 

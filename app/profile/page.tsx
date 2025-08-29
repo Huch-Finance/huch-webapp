@@ -37,6 +37,8 @@ import {
 } from "@solana/web3.js";
 import { getUSDCBalance } from "@/lib/solana-utils";
 import { getSolanaConnection } from "@/lib/solana-connection";
+import { useHuchToken } from "@/hooks/use-huch-token";
+import { ExternalLink } from "lucide-react";
 import Image from "next/image";
 
 interface OwnedSkinItem {
@@ -55,6 +57,7 @@ interface OwnedSkinItem {
 export default function Profile() {
   const [solBalance, setSolBalance] = useState<number>(0);
   const [splBalance, setSplBalance] = useState<number>(0);
+  const { balance: huchBalance, totalValue: huchValue, refresh: refreshHuch } = useHuchToken();
   const [ownedItems, setOwnedItems] = useState<OwnedSkinItem[]>([]);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
@@ -67,147 +70,10 @@ export default function Profile() {
   const { wallets } = useSolanaWallets();
   const { wallets: allWallets } = useWallets();
 
-  // Mock data for owned skin items - individual items with identical cards for multiple quantities
+  // Load user's owned items
   useEffect(() => {
-    // In a real app, this would fetch from an API
-    setOwnedItems([
-      // AWP Dragon Lore - 2 identical items
-      {
-        id: '1a',
-        skinName: 'AWP | Dragon Lore',
-        skinImage: '/awp.webp',
-        purchasePrice: 2500,
-        currentPrice: 2750,
-        purchaseDate: '2024-01-14',
-        profitLoss: 250,
-        profitLossPercentage: 10,
-        wear: 'Factory New',
-        float: 0.0234
-      },
-      {
-        id: '1b',
-        skinName: 'AWP | Dragon Lore',
-        skinImage: '/awp.webp',
-        purchasePrice: 2500,
-        currentPrice: 2750,
-        purchaseDate: '2024-01-19',
-        profitLoss: 250,
-        profitLossPercentage: 10,
-        wear: 'Factory New',
-        float: 0.0234
-      },
-      // Butterfly Knife Fade - 3 identical items
-      {
-        id: '2a',
-        skinName: 'Butterfly Knife | Fade',
-        skinImage: '/btknife.png',
-        purchasePrice: 1800,
-        currentPrice: 1700,
-        purchaseDate: '2024-01-19',
-        profitLoss: -100,
-        profitLossPercentage: -5.56,
-        wear: 'Minimal Wear',
-        float: 0.1267
-      },
-      {
-        id: '2b',
-        skinName: 'Butterfly Knife | Fade',
-        skinImage: '/btknife.png',
-        purchasePrice: 1800,
-        currentPrice: 1700,
-        purchaseDate: '2024-01-20',
-        profitLoss: -100,
-        profitLossPercentage: -5.56,
-        wear: 'Minimal Wear',
-        float: 0.1267
-      },
-      {
-        id: '2c',
-        skinName: 'Butterfly Knife | Fade',
-        skinImage: '/btknife.png',
-        purchasePrice: 1800,
-        currentPrice: 1700,
-        purchaseDate: '2024-01-21',
-        profitLoss: -100,
-        profitLossPercentage: -5.56,
-        wear: 'Minimal Wear',
-        float: 0.1267
-      },
-      // AK-47 Redline - 5 identical items
-      {
-        id: '3a',
-        skinName: 'AK-47 | Redline',
-        skinImage: '/ak47-redline.png',
-        purchasePrice: 120,
-        currentPrice: 150,
-        purchaseDate: '2024-01-31',
-        profitLoss: 30,
-        profitLossPercentage: 25,
-        wear: 'Field-Tested',
-        float: 0.2834
-      },
-      {
-        id: '3b',
-        skinName: 'AK-47 | Redline',
-        skinImage: '/ak47-redline.png',
-        purchasePrice: 120,
-        currentPrice: 150,
-        purchaseDate: '2024-02-01',
-        profitLoss: 30,
-        profitLossPercentage: 25,
-        wear: 'Field-Tested',
-        float: 0.2834
-      },
-      {
-        id: '3c',
-        skinName: 'AK-47 | Redline',
-        skinImage: '/ak47-redline.png',
-        purchasePrice: 120,
-        currentPrice: 150,
-        purchaseDate: '2024-02-01',
-        profitLoss: 30,
-        profitLossPercentage: 25,
-        wear: 'Field-Tested',
-        float: 0.2834
-      },
-      {
-        id: '3d',
-        skinName: 'AK-47 | Redline',
-        skinImage: '/ak47-redline.png',
-        purchasePrice: 120,
-        currentPrice: 150,
-        purchaseDate: '2024-02-02',
-        profitLoss: 30,
-        profitLossPercentage: 25,
-        wear: 'Field-Tested',
-        float: 0.2834
-      },
-      {
-        id: '3e',
-        skinName: 'AK-47 | Redline',
-        skinImage: '/ak47-redline.png',
-        purchasePrice: 120,
-        currentPrice: 150,
-        purchaseDate: '2024-02-02',
-        profitLoss: 30,
-        profitLossPercentage: 25,
-        wear: 'Field-Tested',
-        float: 0.2834
-      },
-      // M4A4 Howl - 1 item
-      {
-        id: '4a',
-        skinName: 'M4A4 | Howl',
-        skinImage: '/M4A4.png',
-        purchasePrice: 3200,
-        currentPrice: 3500,
-        purchaseDate: '2024-02-04',
-        profitLoss: 300,
-        profitLossPercentage: 9.375,
-        wear: 'Well-Worn',
-        float: 0.4125
-      }
-    ]);
+    // TODO: Fetch from API
+    setOwnedItems([]);
   }, []);
 
   useEffect(() => {
@@ -238,7 +104,7 @@ export default function Profile() {
 
       try {
         const connection = new Connection(
-          "https://api.devnet.solana.com",
+          "https://api.mainnet-beta.solana.com",
           "confirmed",
         );
         
@@ -382,8 +248,8 @@ export default function Profile() {
 
               <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8 lg:flex">
                 <div className="text-center font-poppins">
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white font-poppins">${splBalance.toFixed(2)}</div>
-                  <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">USDC Balance</div>
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white font-poppins">{huchBalance.toLocaleString()} HUCH</div>
+                  <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">≈ ${huchValue.toFixed(2)} USD</div>
                 </div>
                 <div className="text-center font-poppins">
                   <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white font-poppins">${getTotalPortfolioValue().toFixed(2)}</div>
@@ -413,6 +279,13 @@ export default function Profile() {
               >
                 <ArrowUpRight size={16} />
                 Withdraw
+              </Button>
+              <Button
+                className="bg-[#6366f1] hover:bg-[#7c7ff3] text-white flex items-center justify-center gap-2 w-full sm:w-auto font-poppins transition-all"
+                onClick={() => window.open('https://raydium.io/swap/?inputMint=sol&outputMint=B8zW7B8T7ntCiiRYw18jrFu9MBqMZVk9pP7nYyT5iBLV', '_blank')}
+              >
+                <ExternalLink size={16} />
+                Buy HUCH
               </Button>
             </div>
           </CardContent>
@@ -543,7 +416,7 @@ export default function Profile() {
             <DialogHeader>
               <DialogTitle className="text-xl font-bold font-poppins">Deposit SOL</DialogTitle>
               <DialogDescription className="text-gray-400 font-poppins">
-                Send SOL to your wallet address. Use Solana Devnet network.
+                Send SOL to your wallet address. Use Solana Mainnet network.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col items-center space-y-4 py-4">
@@ -557,7 +430,7 @@ export default function Profile() {
                     />
                   </Card>
                   <div className="text-sm text-gray-400 text-center space-y-2 font-poppins">
-                    <p>Network: Solana Devnet</p>
+                    <p>Network: Solana Mainnet</p>
                     <div className="bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 p-3 rounded-lg">
                       <p className="text-xs text-gray-500 mb-1 font-poppins">Solana Address:</p>
                       <p className="text-sm text-white font-poppins break-all">
