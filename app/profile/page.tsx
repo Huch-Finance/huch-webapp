@@ -36,7 +36,7 @@ import {
   Connection,
 } from "@solana/web3.js";
 import { getUSDCBalance } from "@/lib/solana-utils";
-import { getSolanaConnection } from "@/lib/solana-connection";
+import { getSolanaBalanceWithFallback } from "@/lib/solana-connection";
 import { useHuchToken } from "@/hooks/use-huch-token";
 import { ExternalLink } from "lucide-react";
 import Image from "next/image";
@@ -80,12 +80,18 @@ export default function Profile() {
     const fetchBalance = async () => {
       if (wallets?.[0]?.address) {
         try {
-          const connection = getSolanaConnection();
           const publicKey = new PublicKey(wallets[0].address);
-          const balance = await connection.getBalance(publicKey);
-          setSolBalance(balance / LAMPORTS_PER_SOL);
+          const balance = await getSolanaBalanceWithFallback(publicKey);
+          
+          if (balance !== null) {
+            setSolBalance(balance / LAMPORTS_PER_SOL);
+          } else {
+            console.warn("Could not fetch SOL balance from any endpoint");
+            setSolBalance(0); // Set to 0 as fallback
+          }
         } catch (error) {
           console.error("Error fetching balance:", error);
+          setSolBalance(0); // Set to 0 as fallback
         }
       }
     };

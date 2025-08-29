@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Loader2, Check, AlertCircle, ExternalLink, ArrowUpDown, RefreshCw } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 
-export default function TradeProcessPage() {
+function TradeProcessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { profile, getPrivyAccessToken } = useAuth()
@@ -599,5 +599,20 @@ export default function TradeProcessPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function TradeProcessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col text-white">
+        <main className="flex-1 flex flex-col items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#6366f1]" />
+          <p className="mt-4 text-[#a1a1c5]">Loading...</p>
+        </main>
+      </div>
+    }>
+      <TradeProcessContent />
+    </Suspense>
   )
 }

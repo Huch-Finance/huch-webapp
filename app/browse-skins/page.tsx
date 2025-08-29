@@ -110,7 +110,8 @@ export default function BrowseSkinsPage() {
   return (
     <div className="min-h-screen flex flex-col text-white lg:ml-24">
       {/* Main Content */}
-      <div className="flex-1 container mx-auto px-4 py-6 max-w-7xl">
+      <div className="flex-1 flex flex-col items-center">
+        <div className="w-full max-w-7xl px-4 py-6">
         
         {/* Balance and Portfolio Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -155,7 +156,7 @@ export default function BrowseSkinsPage() {
             </div>
             
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="flex flex-wrap gap-2 sm:grid sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 sm:gap-4">
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className="bg-[#0F0F2A] border-[#23263a] text-white">
                   <SelectValue placeholder="Category" />
@@ -208,12 +209,12 @@ export default function BrowseSkinsPage() {
               </Select>
               
               {/* View Mode Toggle */}
-              <div className="flex gap-2 sm:col-span-1">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <Button
                   variant={viewMode === "grid" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setViewMode("grid")}
-                  className="flex-1"
+                  className="flex-1 sm:flex-initial"
                 >
                   <Grid className="w-4 h-4" />
                 </Button>
@@ -221,7 +222,7 @@ export default function BrowseSkinsPage() {
                   variant={viewMode === "list" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setViewMode("list")}
-                  className="flex-1"
+                  className="flex-1 sm:flex-initial"
                 >
                   <List className="w-4 h-4" />
                 </Button>
@@ -249,7 +250,7 @@ export default function BrowseSkinsPage() {
             </p>
           </div>
         ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {sortedSkins.map((skin, index) => (
               <motion.div
                 key={skin.id}
@@ -466,6 +467,7 @@ export default function BrowseSkinsPage() {
             ))}
           </div>
         )}
+        </div>
       </div>
       
       {/* Purchase Details Modal */}

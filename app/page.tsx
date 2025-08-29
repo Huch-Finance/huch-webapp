@@ -9,7 +9,7 @@ import { DollarSign, Wallet, ShoppingCart, Tag } from "lucide-react";
 import Image from "next/image";
 import { useSolanaWallets } from "@privy-io/react-auth/solana";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { getUSDCBalance } from "@/lib/solana-utils";
+import { getUSDCBalanceWithFallback } from "@/lib/solana-utils";
 import { getSolanaConnection } from "@/lib/solana-connection";
 import { useHuchToken } from "@/hooks/use-huch-token";
 import { Footer } from "@/components/organism/footer";
@@ -73,12 +73,7 @@ export default function Home() {
       }
 
       try {
-        const connection = new Connection(
-          "https://api.mainnet-beta.solana.com",
-          "confirmed",
-        );
-        
-        const balance = await getUSDCBalance(connection, wallets[0].address);
+        const balance = await getUSDCBalanceWithFallback(wallets[0].address);
         setUsdcBalance(balance);
       } catch (error) {
         console.error("Error fetching USDC balance:", error);
@@ -99,8 +94,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <main className="flex-1 p-6 flex items-center justify-center">
-        <div className="max-w-7xl w-full space-y-6">
+      <main className="flex-1 p-4 flex items-center justify-center">
+        <div className="max-w-6xl w-full space-y-4">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -117,13 +112,15 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
           {/* HUCH Token Balance */}
-          <Card className="bg-gradient-to-br from-[#1a1b3a]/80 to-[#2d1b69]/80 border-[#6366f1]/20">
+          <Card className="bg-[#161e2e] border-[#23263a]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-[#a1a1c5]">HUCH Token Balance</CardTitle>
-              <Wallet className="h-4 w-4 text-[#6366f1]" />
+              <div className="w-8 h-8 bg-gradient-to-br from-[#6366f1] to-[#7f8fff] rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs">H</span>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{huchBalance.toLocaleString()} HUCH</div>
@@ -132,10 +129,12 @@ export default function Home() {
           </Card>
 
           {/* Portfolio Value */}
-          <Card className="bg-gradient-to-br from-[#1a1b3a]/80 to-[#2d1b69]/80 border-[#6366f1]/20">
+          <Card className="bg-[#161e2e] border-[#23263a]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-[#a1a1c5]">Portfolio Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-[#10b981]" />
+              <div className="w-8 h-8 bg-gradient-to-br from-[#10b981] to-[#34d399] rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs">₽</span>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">${getTotalPortfolioValue().toFixed(2)}</div>
@@ -149,10 +148,10 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-4"
         >
           {/* Recent Transactions */}
-          <Card className="bg-gradient-to-br from-[#1a1b3a]/80 to-[#2d1b69]/80 border-[#6366f1]/20">
+          <Card className="bg-[#161e2e] border-[#23263a]">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5" />
@@ -161,7 +160,7 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="purchases" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-[#2d1b69]/50">
+                <TabsList className="grid w-full grid-cols-2 bg-[#0F0F2A] border-[#23263a]">
                   <TabsTrigger value="purchases" className="text-white">Purchases</TabsTrigger>
                   <TabsTrigger value="sales" className="text-white">Sales</TabsTrigger>
                 </TabsList>
@@ -214,7 +213,7 @@ export default function Home() {
           </Card>
 
           {/* Skin Rankings */}
-          <Card className="bg-gradient-to-br from-[#1a1b3a]/80 to-[#2d1b69]/80 border-[#6366f1]/20">
+          <Card className="bg-[#161e2e] border-[#23263a]">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Tag className="h-5 w-5" />

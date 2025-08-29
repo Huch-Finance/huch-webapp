@@ -7,6 +7,13 @@ import { Connection, ConnectionConfig } from '@solana/web3.js'
 class SolanaConnectionManager {
   private static instance: SolanaConnectionManager
   private connection: Connection | null = null
+  private currentEndpointIndex: number = 0
+  private endpoints: string[] = [
+    "https://rpc.ankr.com/solana",
+    "https://solana-mainnet.g.alchemy.com/v2/demo",
+    "https://api.mainnet-beta.solana.com",
+    "https://solana-api.projectserum.com"
+  ]
   private connectionConfig: ConnectionConfig = {
     commitment: 'confirmed',
     // Disable WebSocket connections to prevent ws errors
@@ -43,18 +50,63 @@ class SolanaConnectionManager {
 
   getConnection(): Connection {
     if (!this.connection) {
+      // Use custom RPC URL if provided, otherwise use fallback endpoints
+      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || this.endpoints[this.currentEndpointIndex]
+      
       // Use HTTP-only connection to avoid WebSocket issues
-      this.connection = new Connection(
-        "https://api.mainnet-beta.solana.com",
-        this.connectionConfig
-      )
+      this.connection = new Connection(rpcUrl, this.connectionConfig)
 
       // Add error handling for connection issues
       this.connection.on = this.connection.on || (() => {})
       
-      console.log('Created new Solana connection (HTTP-only)')
+      console.log(`Created new Solana connection (HTTP-only) using: ${rpcUrl}`)
     }
     return this.connection
+  }
+
+  /**
+   * Try next endpoint in case of rate limiting or errors
+   */
+  private switchToNextEndpoint(): void {
+    this.currentEndpointIndex = (this.currentEndpointIndex + 1) % this.endpoints.length
+    this.connection = null
+    console.log(`Switching to next Solana endpoint: ${this.endpoints[this.currentEndpointIndex]}`)
+  }
+
+  /**
+   * Get balance with automatic fallback
+   */
+  async getBalanceWithFallback(publicKey: any): Promise<number | null> {
+    const maxRetries = this.endpoints.length
+    let lastError: any = null
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const connection = this.getConnection()
+        const balance = await connection.getBalance(publicKey)
+        console.log(`Successfully got balance on attempt ${attempt + 1}`)
+        return balance
+      } catch (error: any) {
+        lastError = error
+        console.error(`Balance fetch failed on attempt ${attempt + 1}:`, error.message)
+        
+        // If rate limited or forbidden, try next endpoint
+        if (error.message?.includes('403') || error.message?.includes('429') || error.message?.includes('Access forbidden')) {
+          console.log('Rate limited or access forbidden, switching endpoint...')
+          this.switchToNextEndpoint()
+          continue
+        }
+        
+        // For other errors, wait a bit before retry
+        if (attempt < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)))
+          this.resetConnection()
+        }
+      }
+    }
+
+    console.error('All Solana endpoints failed:', lastError?.message)
+    return null
   }
 
   /**
@@ -87,5 +139,6 @@ class SolanaConnectionManager {
 // Export singleton instance
 export const solanaConnection = SolanaConnectionManager.getInstance()
 
-// Export convenience function
+// Export convenience functions
 export const getSolanaConnection = () => solanaConnection.getConnection()
+export const getSolanaBalanceWithFallback = (publicKey: any) => solanaConnection.getBalanceWithFallback(publicKey)

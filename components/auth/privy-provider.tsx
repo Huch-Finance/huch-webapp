@@ -22,6 +22,18 @@ export function PrivyProvider({ children }: PrivyProviderProps) {
           createOnLogin: 'users-without-wallets',
       },
     },
+    supportedChains: [
+      {
+        id: 1,  // Ethereum mainnet
+        name: 'Ethereum',
+        nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
+        rpcUrls: { default: { http: ['https://eth-mainnet.g.alchemy.com/v2/demo'] } },
+        blockExplorers: { default: { name: 'Etherscan', url: 'https://etherscan.io' } },
+      },
+    ],
+    solana: {
+      cluster: 'mainnet-beta',
+    },
     appearance: {
       theme: "dark",
       accentColor: "#5D5FEF",

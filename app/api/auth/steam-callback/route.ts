@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-/*const STEAM_API_KEY = process.env.STEAM_API_KEY as string
+const STEAM_API_KEY = process.env.STEAM_API_KEY as string
 
 /**
  * Steam authentication callback handler (OpenID)
@@ -30,14 +30,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/borrow?error=invalid_steam_id', request.url))
     }
 
-   /*if (!STEAM_API_KEY) {
+    if (!STEAM_API_KEY) {
       console.error('STEAM_API_KEY environment variable is not set');
       return NextResponse.redirect(new URL('/borrow?error=steam_config_error', request.url))
-    }*/
-    //console.log('STEAM_API_KEY:', STEAM_API_KEY);
+    }
+    
     console.log('STEAM_ID:', steamID64);
     const steamProfileResponse = await fetch(
-      `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=487A7D51DCC2DD03CF5BAC9C294EC6B4&steamids=${steamID64}`
+      `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamID64}`
     )
 
     const steamProfileText = await steamProfileResponse.text()

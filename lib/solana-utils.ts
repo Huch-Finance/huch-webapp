@@ -6,25 +6,23 @@ import {
   TOKEN_PROGRAM_ID, 
   ASSOCIATED_TOKEN_PROGRAM_ID 
 } from '@solana/spl-token'
-import { getSolanaConnection } from './solana-connection'
+import { getSolanaConnection, solanaConnection } from './solana-connection'
 
 export const USDC_MINT_MAINNET = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')
-export const USDC_MINT_DEVNET = new PublicKey('4KNxmZizMom4v1HjwjnFqYa55LFyUBshHCAKs1UGvSSj')
 
-// TON TOKEN SPL PERSONNALISÉ - Remplace par l'adresse de ton token
-export const YOUR_CUSTOM_TOKEN_MINT = new PublicKey('4KNxmZizMom4v1HjwjnFqYa55LFyUBshHCAKs1UGvSSj') // Mets ton adresse ici
+// HUCH TOKEN SPL - Adresse mainnet du token HUCH
+export const HUCH_TOKEN_MINT_MAINNET = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') // Remplace par l'adresse mainnet de ton token HUCH
 
 export const USDC_DECIMALS = 6
 
-// Déterminer quel mint utiliser selon l'environnement
+// Utiliser mainnet pour toutes les opérations
 export const getUSDCMint = () => {
-  // Use mainnet USDC mint
   return USDC_MINT_MAINNET
 }
 
-// Fonction pour utiliser explicitement ton token
-export const getCustomTokenMint = () => {
-  return YOUR_CUSTOM_TOKEN_MINT
+// Fonction pour utiliser le token HUCH sur mainnet
+export const getHuchTokenMint = () => {
+  return HUCH_TOKEN_MINT_MAINNET
 }
 
 export async function ensureTokenAccount(
@@ -74,6 +72,42 @@ export async function getUSDCBalance(
     console.error('Error getting USDC balance:', error)
     return 0
   }
+}
+
+export async function getUSDCBalanceWithFallback(walletAddress: string): Promise<number> {
+  const maxRetries = 4
+  let lastError: any = null
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const connection = getSolanaConnection()
+      const wallet = new PublicKey(walletAddress)
+      const tokenAccount = await getAssociatedTokenAddress(getUSDCMint(), wallet)
+      
+      const balance = await connection.getTokenAccountBalance(tokenAccount)
+      console.log(`Successfully got USDC balance on attempt ${attempt + 1}`)
+      return Number(balance.value.uiAmount || 0)
+    } catch (error: any) {
+      lastError = error
+      console.error(`USDC balance fetch failed on attempt ${attempt + 1}:`, error.message)
+      
+      // If rate limited or forbidden, switch endpoint and try again
+      if (error.message?.includes('403') || error.message?.includes('429') || error.message?.includes('Access forbidden')) {
+        console.log('Rate limited or access forbidden, switching endpoint...')
+        solanaConnection.resetConnection()
+        continue
+      }
+      
+      // For other errors, wait a bit before retry
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)))
+        solanaConnection.resetConnection()
+      }
+    }
+  }
+
+  console.error('All Solana endpoints failed for USDC balance:', lastError?.message)
+  return 0
 }
 
 export function formatUSDC(amount: number): string {

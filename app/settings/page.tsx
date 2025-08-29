@@ -18,7 +18,6 @@ import {
   Shield,
   Bell,
   Wallet,
-  Steam,
   ExternalLink,
   Info,
   Mail,

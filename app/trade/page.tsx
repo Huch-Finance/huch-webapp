@@ -105,93 +105,95 @@ export default function TradingInterface() {
       {/* Top Header */}
       {/* Removing the entire top header section */}
 
-      <div className="flex h-[calc(100vh-0px)]">
+      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-100px)]">
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-h-0">
           {/* Chart Placeholder */}
           <div
-            className="flex-1 m-4 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-600"
+            className="flex-1 m-2 sm:m-4 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-600"
             style={{ backgroundColor: "#0a0a2e" }}
           >
-            <div className="w-full h-full min-h-[350px]">
+            <div className="w-full h-full min-h-[250px] sm:min-h-[350px]">
               <TradingViewWidget />
             </div>
           </div>
 
-          {/* Bottom Tabs */}
-          <div className="border-t border-gray-800 p-4">
+          {/* Bottom Tabs - Scrollable on mobile */}
+          <div className="border-t border-gray-800 p-2 sm:p-4">
             <Tabs defaultValue="positions" className="w-full">
-              <TabsList className="bg-gray-800 border-gray-700">
-                <TabsTrigger
-                  value="positions"
-                  className="data-[state=active]:bg-blue-600"
-                >
-                  Positions(0)
-                </TabsTrigger>
-                <TabsTrigger
-                  value="orders"
-                  className="data-[state=active]:bg-blue-600"
-                >
-                  Open Orders(0)
-                </TabsTrigger>
-                <TabsTrigger
-                  value="twap"
-                  className="data-[state=active]:bg-blue-600"
-                >
-                  TWAP
-                </TabsTrigger>
-                <TabsTrigger
-                  value="history"
-                  className="data-[state=active]:bg-blue-600"
-                >
-                  Trade History
-                </TabsTrigger>
-                <TabsTrigger
-                  value="funding"
-                  className="data-[state=active]:bg-blue-600"
-                >
-                  Funding Payments
-                </TabsTrigger>
-                <TabsTrigger
-                  value="balance"
-                  className="data-[state=active]:bg-blue-600"
-                >
-                  Balance
-                </TabsTrigger>
-              </TabsList>
+              <div className="overflow-x-auto">
+                <TabsList className="bg-gray-800 border-gray-700 flex w-max lg:w-full">
+                  <TabsTrigger
+                    value="positions"
+                    className="data-[state=active]:bg-blue-600 text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    Positions(0)
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="orders"
+                    className="data-[state=active]:bg-blue-600 text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    Open Orders(0)
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="twap"
+                    className="data-[state=active]:bg-blue-600 text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    TWAP
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="history"
+                    className="data-[state=active]:bg-blue-600 text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    Trade History
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="funding"
+                    className="data-[state=active]:bg-blue-600 text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    Funding Payments
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="balance"
+                    className="data-[state=active]:bg-blue-600 text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    Balance
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent value="positions" className="mt-4">
-                <div className="text-center text-gray-400 py-8">
+                <div className="text-center text-gray-400 py-8 text-sm">
                   No open positions
                 </div>
               </TabsContent>
 
               <TabsContent value="orders" className="mt-4">
-                <div className="text-center text-gray-400 py-8">
+                <div className="text-center text-gray-400 py-8 text-sm">
                   No open orders
                 </div>
               </TabsContent>
 
               <TabsContent value="twap" className="mt-4">
-                <div className="text-center text-gray-400 py-8">
+                <div className="text-center text-gray-400 py-8 text-sm">
                   TWAP orders
                 </div>
               </TabsContent>
 
               <TabsContent value="history" className="mt-4">
-                <div className="text-center text-gray-400 py-8">
+                <div className="text-center text-gray-400 py-8 text-sm">
                   Trade history will appear here
                 </div>
               </TabsContent>
 
               <TabsContent value="funding" className="mt-4">
-                <div className="text-center text-gray-400 py-8">
+                <div className="text-center text-gray-400 py-8 text-sm">
                   Funding payment history
                 </div>
               </TabsContent>
 
               <TabsContent value="balance" className="mt-4">
-                <div className="text-center text-gray-400 py-8">
+                <div className="text-center text-gray-400 py-8 text-sm">
                   Account balance details
                 </div>
               </TabsContent>
@@ -199,22 +201,22 @@ export default function TradingInterface() {
           </div>
         </div>
 
-        {/* Right Sidebar */}
-        <div className="w-80 border-l border-gray-800 flex flex-col">
+        {/* Right Sidebar - Full width on mobile, sidebar on desktop */}
+        <div className="w-full lg:w-80 lg:border-l border-gray-800 flex flex-col lg:max-h-none max-h-96 lg:overflow-visible overflow-y-auto">
           {/* Trading Panel */}
-          <Card className="bg-gray-800 border-gray-700 m-4 mb-2">
+          <Card className="bg-gray-800 border-gray-700 m-2 sm:m-4 mb-2">
             <CardHeader className="pb-3">
               <Tabs value={selectedTab} onValueChange={setSelectedTab}>
                 <TabsList className="grid w-full grid-cols-2 bg-gray-700">
                   <TabsTrigger
                     value="short"
-                    className="data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                    className="data-[state=active]:bg-red-600 data-[state=active]:text-white text-xs sm:text-sm"
                   >
                     Short
                   </TabsTrigger>
                   <TabsTrigger
                     value="long"
-                    className="data-[state=active]:bg-green-600 data-[state=active]:text-white"
+                    className="data-[state=active]:bg-green-600 data-[state=active]:text-white text-xs sm:text-sm"
                   >
                     Long
                   </TabsTrigger>
@@ -222,17 +224,17 @@ export default function TradingInterface() {
               </Tabs>
             </CardHeader>
 
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between text-sm">
+            <CardContent className="space-y-3 sm:space-y-4">
+              <div className="flex items-center justify-between text-xs sm:text-sm">
                 <span>Limit Order</span>
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
               </div>
 
               <div className="text-xs text-gray-400">Available: 0.00 USD</div>
 
               <div className="space-y-3">
                 <div>
-                  <Label htmlFor="price" className="text-sm text-gray-300">
+                  <Label htmlFor="price" className="text-xs sm:text-sm text-gray-300">
                     Price
                   </Label>
                   <div className="flex mt-1">
@@ -240,16 +242,16 @@ export default function TradingInterface() {
                       id="price"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
-                      className="bg-gray-700 border-gray-600 text-white rounded-r-none"
+                      className="bg-gray-700 border-gray-600 text-white rounded-r-none text-sm"
                     />
-                    <div className="bg-gray-700 border border-l-0 border-gray-600 px-3 py-2 rounded-r text-sm text-gray-300">
+                    <div className="bg-gray-700 border border-l-0 border-gray-600 px-2 sm:px-3 py-2 rounded-r text-xs sm:text-sm text-gray-300">
                       USD
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="quantity" className="text-sm text-gray-300">
+                  <Label htmlFor="quantity" className="text-xs sm:text-sm text-gray-300">
                     Quantity
                   </Label>
                   <div className="flex mt-1">
@@ -258,26 +260,26 @@ export default function TradingInterface() {
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
                       placeholder="Amount"
-                      className="bg-gray-700 border-gray-600 text-white rounded-r-none"
+                      className="bg-gray-700 border-gray-600 text-white rounded-r-none text-sm"
                     />
-                    <div className="bg-gray-700 border border-l-0 border-gray-600 px-3 py-2 rounded-r text-sm text-gray-300">
+                    <div className="bg-gray-700 border border-l-0 border-gray-600 px-2 sm:px-3 py-2 rounded-r text-xs sm:text-sm text-gray-300">
                       BTC
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="notional" className="text-sm text-gray-300">
+                  <Label htmlFor="notional" className="text-xs sm:text-sm text-gray-300">
                     Notional Total
                   </Label>
                   <div className="flex mt-1">
                     <Input
                       id="notional"
                       placeholder="USD"
-                      className="bg-gray-700 border-gray-600 text-white rounded-r-none"
+                      className="bg-gray-700 border-gray-600 text-white rounded-r-none text-sm"
                     />
-                    <div className="bg-gray-700 border border-l-0 border-gray-600 px-3 py-2 rounded-r text-sm text-gray-300">
-                      <ChevronDown className="w-4 h-4" />
+                    <div className="bg-gray-700 border border-l-0 border-gray-600 px-2 sm:px-3 py-2 rounded-r text-xs sm:text-sm text-gray-300">
+                      <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
                     </div>
                   </div>
                 </div>
@@ -293,7 +295,7 @@ export default function TradingInterface() {
                   />
                   <Label
                     htmlFor="reduce-only"
-                    className="text-sm text-gray-300"
+                    className="text-xs sm:text-sm text-gray-300"
                   >
                     Reduce only
                   </Label>
@@ -306,7 +308,7 @@ export default function TradingInterface() {
                     onCheckedChange={setTpSl}
                     className="border-gray-600"
                   />
-                  <Label htmlFor="tp-sl" className="text-sm text-gray-300">
+                  <Label htmlFor="tp-sl" className="text-xs sm:text-sm text-gray-300">
                     TP/SL
                   </Label>
                 </div>
@@ -316,7 +318,7 @@ export default function TradingInterface() {
                 Share your trade on Degen Feed (Optional)
               </div>
 
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm">
                 Connect wallet
               </Button>
 
@@ -325,7 +327,7 @@ export default function TradingInterface() {
           </Card>
 
           {/* Degen Feed */}
-          <Card className="bg-gray-800 border-gray-700 mx-4 mb-4">
+          <Card className="bg-gray-800 border-gray-700 mx-2 sm:mx-4 mb-2 sm:mb-4">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Degen Feed</CardTitle>
             </CardHeader>
