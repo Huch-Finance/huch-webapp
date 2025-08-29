@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -14,6 +15,7 @@ import {
   DollarSign,
   TrendingUp,
   Package,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Footer } from "@/components/organism/footer";
 import { useAuth } from "@/hooks/use-auth";
@@ -37,44 +39,34 @@ import {
 } from "@solana/web3.js";
 import { getUSDCBalance } from "@/lib/solana-utils";
 import { getSolanaBalanceWithFallback } from "@/lib/solana-connection";
-import { useHuchToken } from "@/hooks/use-huch-token";
+import { useHuchOracle } from "@/hooks/use-huch-oracle";
 import { ExternalLink } from "lucide-react";
 import Image from "next/image";
+import { useNFTs } from "@/hooks/use-nfts";
 
-interface OwnedSkinItem {
-  id: string;
-  skinName: string;
-  skinImage: string;
-  purchasePrice: number;
-  currentPrice: number;
-  purchaseDate: string;
-  profitLoss: number;
-  profitLossPercentage: number;
-  wear?: string;
-  float?: number;
-}
 
 export default function Profile() {
   const [solBalance, setSolBalance] = useState<number>(0);
   const [splBalance, setSplBalance] = useState<number>(0);
-  const { balance: huchBalance, totalValue: huchValue, refresh: refreshHuch } = useHuchToken();
-  const [ownedItems, setOwnedItems] = useState<OwnedSkinItem[]>([]);
+  const { 
+    balance: huchBalance, 
+    price: huchPrice,
+    fetchBalance: refreshHuchBalance,
+    formatHuchAmount,
+    formatUsdAmount
+  } = useHuchOracle();
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
-  const [itemFilter, setItemFilter] = useState<'all' | 'profit' | 'loss'>('all');
   
   const { profile, isAuthenticated, isLoading } = useAuth();
   const { wallets } = useSolanaWallets();
   const { wallets: allWallets } = useWallets();
+  const { nfts, loading: nftsLoading, error: nftsError, refetch: refetchNFTs } = useNFTs();
 
-  // Load user's owned items
-  useEffect(() => {
-    // TODO: Fetch from API
-    setOwnedItems([]);
-  }, []);
+  // NFTs are already loaded via useNFTs hook
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -100,6 +92,13 @@ export default function Profile() {
     const interval = setInterval(fetchBalance, 30000);
     return () => clearInterval(interval);
   }, [wallets]);
+
+  // Refresh HUCH balance when wallet connects
+  useEffect(() => {
+    if (wallets?.[0]?.address && refreshHuchBalance) {
+      refreshHuchBalance(wallets[0].address);
+    }
+  }, [wallets, refreshHuchBalance]);
 
   useEffect(() => {
     const fetchSplBalance = async () => {
@@ -163,27 +162,16 @@ export default function Profile() {
     setWithdrawAmount(splBalance.toFixed(2));
   };
 
+  // Portfolio calculations based on NFTs
   const getTotalPortfolioValue = () => {
-    return ownedItems.reduce((sum, item) => sum + item.currentPrice, 0);
+    return nfts.reduce((sum, nft) => {
+      const marketValue = nft.attributes?.find(attr => 
+        attr.trait_type?.toLowerCase() === 'market value' || 
+        attr.trait_type?.toLowerCase() === 'market_value'
+      );
+      return sum + (marketValue ? parseFloat(marketValue.value.toString()) : 0);
+    }, 0);
   };
-
-  const getTotalProfitLoss = () => {
-    return ownedItems.reduce((sum, item) => sum + item.profitLoss, 0);
-  };
-
-  const getTotalProfitLossPercentage = () => {
-    const totalPurchase = ownedItems.reduce((sum, item) => sum + item.purchasePrice, 0);
-    const totalCurrent = ownedItems.reduce((sum, item) => sum + item.currentPrice, 0);
-    if (totalPurchase === 0) return 0;
-    return ((totalCurrent - totalPurchase) / totalPurchase) * 100;
-  };
-
-  const filteredItems = ownedItems.filter(item => {
-    if (itemFilter === 'all') return true;
-    if (itemFilter === 'profit') return item.profitLoss > 0;
-    if (itemFilter === 'loss') return item.profitLoss < 0;
-    return true;
-  });
 
   if (!isAuthenticated) {
     return (
@@ -254,18 +242,36 @@ export default function Profile() {
 
               <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8 lg:flex">
                 <div className="text-center font-poppins">
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white font-poppins">{huchBalance.toLocaleString()} HUCH</div>
-                  <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">≈ ${huchValue.toFixed(2)} USD</div>
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <Image
+                      src="/logo.png"
+                      alt="Huch Logo"
+                      width={20}
+                      height={20}
+                      className="object-contain"
+                    />
+                    <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white font-poppins">
+                      {huchBalance ? formatHuchAmount(huchBalance.balance) : '0.00'} HUCH
+                    </div>
+                  </div>
+                  <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">
+                    {huchBalance ? formatUsdAmount(huchBalance.usdValue) : '$0.00'}
+                  </div>
+                  {huchPrice && (
+                    <div className="text-gray-500 text-xs font-poppins">
+                      1 HUCH = ${huchPrice.priceUsd.toFixed(4)}
+                    </div>
+                  )}
                 </div>
                 <div className="text-center font-poppins">
                   <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white font-poppins">${getTotalPortfolioValue().toFixed(2)}</div>
                   <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">Portfolio Value</div>
                 </div>
                 <div className="text-center font-poppins">
-                  <div className={`text-lg sm:text-xl lg:text-2xl font-bold font-poppins ${getTotalProfitLoss() >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {getTotalProfitLoss() >= 0 ? '+' : ''}{getTotalProfitLossPercentage().toFixed(2)}%
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold font-poppins text-blue-400">
+                    {nfts.length}
                   </div>
-                  <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">Total P&L</div>
+                  <div className="text-gray-400 text-xs sm:text-sm whitespace-nowrap font-poppins">NFTs Owned</div>
                 </div>
               </div>
             </div>
@@ -297,232 +303,167 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {/* Owned Skin Items Section */}
+        {/* CS2 Skins Collection */}
         <Card className="relative bg-[#0F0F2A] border-[#FFFFFF] bg-opacity-70 border-opacity-10 shadow-md rounded-lg overflow-hidden">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 z-5 opacity-[.05]"
-            style={{
-              backgroundImage: "url('/grainbg.avif')",
-              backgroundRepeat: "repeat",
-            }}
-          />
-          
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <CardTitle className="text-xl font-bold text-white font-poppins flex items-center gap-2">
-                <Package size={20} />
-                Owned Skin Items
-              </CardTitle>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { key: 'all', label: 'All', count: ownedItems.length },
-                  { key: 'profit', label: 'Profit', count: ownedItems.filter(s => s.profitLoss > 0).length },
-                  { key: 'loss', label: 'Loss', count: ownedItems.filter(s => s.profitLoss < 0).length },
-                ].map((filter) => (
-                  <button
-                    key={filter.key}
-                    className={`relative px-3 py-1.5 rounded-lg text-sm font-medium border backdrop-blur-md transition-all duration-300 hover:scale-105 font-poppins ${
-                      itemFilter === filter.key
-                        ? 'bg-white/15 border-white/30 text-white shadow-lg'
-                        : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 text-gray-300 hover:text-white'
-                    }`}
-                    onClick={() => setItemFilter(filter.key as any)}
-                  >
-                    <span className="relative z-10">{filter.label}</span>
-                    {filter.count > 0 && (
-                      <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-poppins ${
-                        itemFilter === filter.key
-                          ? 'bg-white/20 text-white'
-                          : 'bg-white/10 text-gray-400'
-                      }`}>
-                        {filter.count}
-                      </span>
-                    )}
-                  </button>
-                ))}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-5 opacity-[.05]"
+              style={{
+                backgroundImage: "url('/grainbg.avif')",
+                backgroundRepeat: "repeat",
+              }}
+            />
+            
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <CardTitle className="text-xl font-bold text-white font-poppins flex items-center gap-2">
+                  <Package size={20} />
+                  CS2 Skins Collection
+                </CardTitle>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => refetchNFTs()}
+                  disabled={nftsLoading}
+                  className="font-poppins"
+                >
+                  {nftsLoading ? 'Loading...' : 'Refresh'}
+                </Button>
               </div>
-            </div>
-          </CardHeader>
-          
-          <CardContent>
-            {filteredItems.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                No skin items found
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredItems.map((item) => (
-                  <Card key={item.id} className="bg-[#18181b] border-[#2a2a2a] overflow-hidden hover:border-[#6366f1] transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex gap-4">
-                        <div className="relative w-20 h-20 bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-lg overflow-hidden flex-shrink-0">
-                          <Image
-                            src={item.skinImage}
-                            alt={item.skinName}
-                            fill
-                            className="object-contain p-2"
-                          />
+            </CardHeader>
+            
+            <CardContent>
+              {nftsLoading ? (
+                <div className="text-center py-8 text-gray-400">
+                  Loading NFTs...
+                </div>
+              ) : nftsError ? (
+                <div className="text-center py-8 text-gray-400">
+                  {nftsError}
+                </div>
+              ) : nfts.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  No NFTs found in your collection
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {nfts.map((nft) => (
+                    <Card key={nft.id} className="bg-[#18181b] border-[#2a2a2a] overflow-hidden hover:border-[#6366f1] transition-colors">
+                      <CardContent className="p-4">
+                        <div className="aspect-square relative bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-lg overflow-hidden mb-3">
+                          {nft.image ? (
+                            <Image
+                              src={nft.image}
+                              alt={nft.name}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ImageIcon size={48} className="text-gray-600" />
+                            </div>
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-white text-sm truncate">{item.skinName}</h3>
-                          <div className="mt-1 space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span className="text-gray-400">Purchase price:</span>
-                              <span className="text-white">${item.purchasePrice.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-gray-400">Current value:</span>
-                              <span className="text-white">${item.currentPrice.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-gray-400">P&L:</span>
-                              <span className={item.profitLoss >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                {item.profitLoss >= 0 ? '+' : ''}${Math.abs(item.profitLoss).toFixed(2)} ({item.profitLossPercentage >= 0 ? '+' : ''}{item.profitLossPercentage.toFixed(2)}%)
-                              </span>
-                            </div>
-                            {/* Wear and Float Information */}
-                            {item.wear && (
-                              <div className="flex justify-between text-xs">
-                                <span className="text-gray-400">Wear:</span>
-                                <span className="text-white">{item.wear}</span>
+                        <h3 className="font-semibold text-white text-sm truncate mb-1">{nft.name}</h3>
+                        {nft.description && (
+                          <p className="text-xs text-gray-400 line-clamp-2 mb-2">{nft.description}</p>
+                        )}
+                        {nft.attributes && nft.attributes.length > 0 && (
+                          <div className="space-y-1">
+                            {nft.attributes.slice(0, 3).map((attr, index) => (
+                              <div key={index} className="flex justify-between text-xs">
+                                <span className="text-gray-500">{attr.trait_type}:</span>
+                                <span className="text-gray-300">{attr.value}</span>
                               </div>
-                            )}
-                            {item.float !== undefined && (
-                              <div className="flex justify-between text-xs">
-                                <span className="text-gray-400">Float:</span>
-                                <span className="text-white">{item.float.toFixed(4)}</span>
+                            ))}
+                            {nft.attributes.length > 3 && (
+                              <div className="text-xs text-gray-500">
+                                +{nft.attributes.length - 3} more attributes
                               </div>
                             )}
                           </div>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex justify-between items-center">
-                        <span className="text-[10px] text-gray-500">Purchased {new Date(item.purchaseDate).toLocaleDateString()}</span>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="h-6 text-xs px-2 border-gray-600 hover:border-white">
-                            Sell
-                          </Button>
-                          <Button size="sm" className="h-6 text-xs px-2 bg-[#6366f1] hover:bg-[#7f8fff]">
-                            Buy More
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Deposit Modal */}
-        <Dialog open={isDepositOpen} onOpenChange={setIsDepositOpen}>
-          <DialogContent className="sm:max-w-md bg-blue-950/20 backdrop-blur-md border-blue-400/30">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold font-poppins">Deposit SOL</DialogTitle>
-              <DialogDescription className="text-gray-400 font-poppins">
-                Send SOL to your wallet address. Use Solana Mainnet network.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col items-center space-y-4 py-4">
-              {wallets?.[0]?.address && (
-                <>
-                  <Card className="bg-white p-2 rounded-lg">
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${wallets[0].address}`}
-                      alt="Wallet QR Code"
-                      className="w-48 h-48"
-                    />
-                  </Card>
-                  <div className="text-sm text-gray-400 text-center space-y-2 font-poppins">
-                    <p>Network: Solana Mainnet</p>
-                    <div className="bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1 font-poppins">Solana Address:</p>
-                      <p className="text-sm text-white font-poppins break-all">
-                        {wallets[0].address}
-                      </p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="mt-2 h-8 text-xs font-poppins"
-                        onClick={() => {
-                          navigator.clipboard.writeText(wallets[0].address);
-                          toast.success("Address copied to clipboard!");
-                        }}
-                      >
-                        Copy Address
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Withdraw Modal */}
-        <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
-          <DialogContent className="sm:max-w-md bg-blue-950/20 backdrop-blur-md border-blue-400/30">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold font-poppins">Withdraw USDC</DialogTitle>
-              <DialogDescription className="text-gray-400 font-poppins">
-                Withdraw your USDC to any Solana address.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-4 py-4">
-              <div className="p-3 bg-blue-950/30 backdrop-blur-sm border border-blue-400/20 rounded-lg">
-                <div className="text-sm text-gray-400 font-poppins">Available Balance</div>
-                <div className="text-lg font-bold text-white font-poppins">
-                  ${splBalance.toFixed(2)} USDC
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              </div>
-              
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  max={splBalance}
-                  placeholder="Amount to withdraw (USDC)"
-                  className="w-full p-3 pr-16 rounded-lg bg-blue-950/30 backdrop-blur-sm text-white border border-blue-400/20 focus:border-blue-400/40 focus:outline-none font-poppins"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  disabled={withdrawLoading}
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 px-2 text-xs border-gray-500 text-gray-300 hover:text-white hover:border-white font-poppins"
-                  onClick={handleSetMaxWithdrawAmount}
-                  disabled={withdrawLoading}
-                >
-                  MAX
-                </Button>
-              </div>
-
-              <input
-                type="text"
-                placeholder="Destination Solana address"
-                className="w-full p-3 rounded-lg bg-blue-950/30 backdrop-blur-sm text-white border border-blue-400/20 focus:border-blue-400/40 focus:outline-none font-poppins"
-                value={withdrawAddress}
-                onChange={(e) => setWithdrawAddress(e.target.value)}
-                disabled={withdrawLoading}
-              />
-              
-              <Button
-                className="bg-blue-600/20 hover:bg-blue-600/30 backdrop-blur-md border border-blue-400/30 hover:border-blue-400/50 text-white font-bold w-full mt-2 transition-all duration-300 font-poppins"
-                onClick={handleWithdraw}
-                disabled={withdrawLoading || !withdrawAmount || !withdrawAddress}
-              >
-                {withdrawLoading ? "Processing..." : "Withdraw USDC"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </main>
+
+      {/* Deposit Modal */}
+      <Dialog open={isDepositOpen} onOpenChange={setIsDepositOpen}>
+        <DialogContent className="sm:max-w-md bg-blue-950/20 backdrop-blur-md border-blue-400/30">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold font-poppins">Deposit SOL</DialogTitle>
+            <DialogDescription className="text-gray-400 font-poppins">
+              Send SOL to your wallet address. Use Solana Mainnet network.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4 py-4">
+            {wallets?.[0]?.address && (
+              <>
+                <div className="w-48 h-48 bg-white p-2 rounded-lg">
+                  <Image
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${wallets[0].address}`}
+                    alt="Wallet QR Code"
+                    width={200}
+                    height={200}
+                    className="w-full h-full"
+                  />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-400 mb-2 font-poppins">Your Wallet Address:</p>
+                  <p className="text-xs bg-gray-800/50 p-2 rounded font-mono break-all">
+                    {wallets[0].address}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Withdraw Modal */}
+      <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
+        <DialogContent className="sm:max-w-md bg-blue-950/20 backdrop-blur-md border-blue-400/30">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold font-poppins">Withdraw USDC</DialogTitle>
+            <DialogDescription className="text-gray-400 font-poppins">
+              Withdraw USDC to an external Solana address.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Input
+              type="number"
+              placeholder="Amount to withdraw"
+              value={withdrawAmount}
+              onChange={(e) => setWithdrawAmount(e.target.value)}
+              className="bg-gray-800/50 border-gray-600 text-white font-poppins"
+              disabled={withdrawLoading}
+            />
+            <Input
+              type="text"
+              placeholder="Recipient Solana address"
+              value={withdrawAddress}
+              onChange={(e) => setWithdrawAddress(e.target.value)}
+              className="bg-gray-800/50 border-gray-600 text-white font-poppins"
+              disabled={withdrawLoading}
+            />
+            
+            <Button
+              className="bg-blue-600/20 hover:bg-blue-600/30 backdrop-blur-md border border-blue-400/30 hover:border-blue-400/50 text-white font-bold w-full mt-2 transition-all duration-300 font-poppins"
+              onClick={handleWithdraw}
+              disabled={withdrawLoading || !withdrawAmount || !withdrawAddress}
+            >
+              {withdrawLoading ? "Processing..." : "Withdraw USDC"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Footer />
     </div>
   );

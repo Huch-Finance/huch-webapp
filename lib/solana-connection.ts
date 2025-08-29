@@ -9,10 +9,10 @@ class SolanaConnectionManager {
   private connection: Connection | null = null
   private currentEndpointIndex: number = 0
   private endpoints: string[] = [
+    "https://api.mainnet-beta.solana.com",
     "https://rpc.ankr.com/solana",
     "https://solana-mainnet.g.alchemy.com/v2/demo",
-    "https://api.mainnet-beta.solana.com",
-    "https://solana-api.projectserum.com"
+    "https://solana.public-rpc.com"
   ]
   private connectionConfig: ConnectionConfig = {
     commitment: 'confirmed',
@@ -20,22 +20,7 @@ class SolanaConnectionManager {
     wsEndpoint: undefined,
     httpHeaders: {
       'Content-Type': 'application/json',
-    },
-    // Add fetch configuration for better error handling
-    fetchMiddleware: (url, options, fetch) => {
-      console.log('Solana RPC Request:', url)
-      return fetch(url, {
-        ...options,
-        timeout: 30000, // 30 second timeout
-      }).catch(error => {
-        console.error('Solana RPC Error:', error)
-        // Reset connection on persistent errors
-        if (error.message?.includes('fetch') || error.message?.includes('network')) {
-          console.log('Network error detected, will reset connection on next request')
-          this.connection = null
-        }
-        throw new Error(`Solana RPC failed: ${error.message || 'Network error'}`)
-      })
+      'User-Agent': 'HuchApp/1.0'
     }
   }
 

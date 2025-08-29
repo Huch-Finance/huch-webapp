@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useHuchOracle } from "@/hooks/use-huch-oracle"
 
 interface TokenizedSkin {
   id: string;
@@ -22,14 +23,26 @@ interface PurchaseDetailsModalProps {
 }
 
 export function PurchaseDetailsModal({ skin, isOpen, onClose, onPurchase }: PurchaseDetailsModalProps) {
+  const { convertUsdToHuch, formatHuchAmount } = useHuchOracle()
+  const [huchPrice, setHuchPrice] = useState<number | null>(null)
+
+  // Calculate HUCH price when modal opens
+  useEffect(() => {
+    if (skin && isOpen) {
+      convertUsdToHuch(skin.price).then(huchAmount => {
+        setHuchPrice(huchAmount || (skin.price * 10)) // Fallback to 10x conversion
+      })
+    }
+  }, [skin, isOpen, convertUsdToHuch])
+
   if (!skin) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl w-full h-[75vh] bg-gradient-to-br from-[#1a1b3a]/80 to-[#2d1b69]/80 border border-[#6366f1]/30 p-0 overflow-hidden">
-        <div className="flex h-full">
-          {/* Left side - Enlarged Card */}
-          <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-[#1a1b3a]/50 to-[#2d1b69]/50">
+      <DialogContent className="max-w-7xl w-full h-[90vh] border-none p-0 overflow-hidden bg-transparent shadow-none">
+        <div className="flex h-full gap-6">
+          {/* Left side - Floating Card */}
+          <div className="flex-1 flex items-center justify-center">
             <div 
               className="relative w-[400px] h-[560px] cursor-pointer group overflow-hidden rounded-3xl"
               style={{
@@ -43,7 +56,7 @@ export function PurchaseDetailsModal({ skin, isOpen, onClose, onPurchase }: Purc
                 const y = e.clientY - rect.top;
                 const centerX = rect.width / 2;
                 const centerY = rect.height / 2;
-                const rotateX = (y - centerY) / 8; // More pronounced tilt
+                const rotateX = (y - centerY) / 8;
                 const rotateY = (centerX - x) / 8;
                 e.currentTarget.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.08)`;
                 e.currentTarget.style.boxShadow = '0 35px 80px -15px rgba(99, 102, 241, 0.4)';
@@ -64,11 +77,12 @@ export function PurchaseDetailsModal({ skin, isOpen, onClose, onPurchase }: Purc
               }}
             >
               <Image
-                src="/cscards.png"
+                src={skin.image || "/cscards.png"}
                 alt={skin.name}
                 fill
                 className="object-contain rounded-3xl group-hover:brightness-115 transition-all duration-400"
                 style={{ objectFit: 'contain' }}
+                unoptimized={true}
               />
               {/* Enhanced Shine overlay */}
               <div 
@@ -84,21 +98,49 @@ export function PurchaseDetailsModal({ skin, isOpen, onClose, onPurchase }: Purc
           </div>
 
           {/* Right side - Purchase Details */}
-          <div className="flex-1 p-6 flex flex-col justify-center items-center">
+          <div className="w-[450px] p-8 flex flex-col justify-start items-center bg-gradient-to-br from-[#1a1b3a]/60 to-[#2d1b69]/60 backdrop-blur-sm rounded-2xl border border-[#6366f1]/20 overflow-y-auto">
             {/* Skin Details */}
-            <div className="text-center mb-6">
-              <h2 className="text-4xl font-bold text-white mb-4 font-poppins">{skin.name}</h2>
-              <div className="flex items-center justify-center gap-4 text-[#a1a1c5] mb-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-white mb-3 font-poppins">{skin.name}</h2>
+              <p className="text-[#a1a1c5] text-sm mb-4">NFT Mint: {skin.id.slice(0, 12)}...</p>
+              
+              {/* Detailed Attributes */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
                 {skin.wear && (
-                  <span className="bg-[#6366f1]/20 px-3 py-1 rounded-full text-sm">
-                    {skin.wear}
-                  </span>
+                  <div className="bg-[#6366f1]/10 border border-[#6366f1]/20 px-4 py-2 rounded-lg">
+                    <p className="text-[#a1a1c5] text-xs mb-1">Condition</p>
+                    <p className="text-white font-semibold">{skin.wear}</p>
+                  </div>
                 )}
                 {skin.float && (
-                  <span className="bg-[#7f8fff]/20 px-3 py-1 rounded-full text-sm">
-                    Float: {skin.float}
-                  </span>
+                  <div className="bg-[#7f8fff]/10 border border-[#7f8fff]/20 px-4 py-2 rounded-lg">
+                    <p className="text-[#a1a1c5] text-xs mb-1">Float Value</p>
+                    <p className="text-white font-semibold">{skin.float}</p>
+                  </div>
                 )}
+                <div className="bg-[#10b981]/10 border border-[#10b981]/20 px-4 py-2 rounded-lg">
+                  <p className="text-[#a1a1c5] text-xs mb-1">Rarity</p>
+                  <p className="text-white font-semibold">{(skin as any).rarity || 'Classified'}</p>
+                </div>
+                <div className="bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-4 py-2 rounded-lg">
+                  <p className="text-[#a1a1c5] text-xs mb-1">Collection</p>
+                  <p className="text-white font-semibold">CS2 Skins</p>
+                </div>
+              </div>
+
+              {/* Market Stats */}
+              <div className="bg-gradient-to-r from-[#6366f1]/5 to-[#7f8fff]/5 border border-[#6366f1]/10 rounded-lg p-4 mb-6">
+                <h3 className="text-white font-semibold mb-3">Market Statistics</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-[#a1a1c5] mb-1">Market Value</p>
+                    <p className="text-white font-bold">${skin.price.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-[#a1a1c5] mb-1">Solana Price</p>
+                    <p className="text-white font-bold">{(skin.price / 100).toFixed(2)} SOL</p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -106,7 +148,12 @@ export function PurchaseDetailsModal({ skin, isOpen, onClose, onPurchase }: Purc
             <div className="bg-gradient-to-r from-[#6366f1]/10 to-[#7f8fff]/10 backdrop-blur-sm border border-[#6366f1]/20 rounded-2xl p-4 mb-4 w-full max-w-md">
               <div className="text-center">
                 <p className="text-[#a1a1c5] text-sm mb-2">Purchase Price</p>
-                <p className="text-white text-4xl font-bold">${skin.price.toLocaleString()}</p>
+                <div className="flex items-center justify-center gap-3 mb-2">
+                  <div className="text-white text-3xl font-bold">
+                    {huchPrice ? formatHuchAmount(huchPrice) : 'Loading...'} HUCH
+                  </div>
+                </div>
+                <p className="text-[#a1a1c5] text-xs">≈ ${skin.price.toLocaleString()} USD</p>
               </div>
             </div>
 
@@ -122,14 +169,16 @@ export function PurchaseDetailsModal({ skin, isOpen, onClose, onPurchase }: Purc
             </div>
 
             {/* Purchase Button */}
-            <div className="w-full max-w-md">
+            <div className="w-full max-w-md mb-8">
               <Button
                 onClick={() => onPurchase(skin)}
                 className="w-full bg-gradient-to-r from-[#6366f1] to-[#7f8fff] hover:from-[#5855eb] hover:to-[#6366f1] text-white font-bold py-6 px-12 rounded-2xl text-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-[#6366f1]/25"
               >
                 <div className="flex items-center justify-center gap-4">
-                  <div className="w-4 h-4 bg-white rounded-full"></div>
-                  <span>Purchase for ${skin.price.toLocaleString()}</span>
+                  <div className="w-4 h-4 bg-gradient-to-r from-[#f59e0b] to-[#f97316] rounded-full"></div>
+                  <span>
+                    Purchase for {huchPrice ? formatHuchAmount(huchPrice) : 'Loading...'} HUCH
+                  </span>
                 </div>
               </Button>
             </div>

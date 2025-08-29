@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { PurchaseDetailsModal } from "@/components/borrow/purchase-details-modal"
 import { useHuchToken } from "@/hooks/use-huch-token"
+import { useEscrow } from "@/hooks/use-escrow"
+import { useHuchOracle } from "@/hooks/use-huch-oracle"
 import { Footer } from "@/components/organism/footer"
 
 interface TokenizedSkin {
@@ -33,6 +35,15 @@ interface TokenizedSkin {
 export default function BrowseSkinsPage() {
   const router = useRouter()
   const { profile } = useAuth()
+  const { purchaseNFT, getUserBalance, getVaultInfo } = useEscrow()
+  const { 
+    price: huchPrice, 
+    balance: huchBalance, 
+    fetchBalance: fetchHuchBalance,
+    convertUsdToHuch,
+    formatHuchAmount,
+    formatUsdAmount
+  } = useHuchOracle()
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("")
@@ -46,12 +57,108 @@ export default function BrowseSkinsPage() {
   const [selectedSkin, setSelectedSkin] = useState<TokenizedSkin | null>(null)
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false)
   
-  // TODO: Replace with actual API call
-  const [allSkins] = useState<TokenizedSkin[]>([])
+  const [allSkins, setAllSkins] = useState<TokenizedSkin[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   
   // Get Huch token balance
-  const { balance: huchBalance, totalValue: huchValue } = useHuchToken()
+  // Real HUCH token data from oracle
+  const realHuchBalance = huchBalance?.balance || 0
+  const realHuchValue = huchBalance?.usdValue || 0
   const [portfolioValue] = useState(0) // TODO: Calculate from actual portfolio data
+  
+  // Fetch marketplace NFTs
+  useEffect(() => {
+    const fetchMarketplaceNFTs = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333'}/api/marketplace/simple/browse`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(profile?.id && { 'X-Privy-Id': profile.id })
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch marketplace NFTs')
+        }
+
+        const data = await response.json()
+        
+        // Transform the marketplace data to match our TokenizedSkin interface
+        const transformedSkins: TokenizedSkin[] = data.listings.map((listing: any) => {
+          const metadata = listing.metadata || {}
+          const attributes = metadata.attributes || []
+          
+          // Extract market value from attributes
+          const marketValueAttr = attributes.find((attr: any) => 
+            attr.trait_type?.toLowerCase() === 'market value' || 
+            attr.trait_type?.toLowerCase() === 'market_value'
+          )
+          const marketValue = marketValueAttr ? parseFloat(marketValueAttr.value) : listing.price || 0
+          
+          // Extract other attributes
+          const weaponAttr = attributes.find((attr: any) => attr.trait_type?.toLowerCase() === 'weapon')
+          const skinAttr = attributes.find((attr: any) => attr.trait_type?.toLowerCase() === 'skin')
+          const wearAttr = attributes.find((attr: any) => attr.trait_type?.toLowerCase() === 'wear' || attr.trait_type?.toLowerCase() === 'condition')
+          const floatAttr = attributes.find((attr: any) => attr.trait_type?.toLowerCase() === 'float')
+          const rarityAttr = attributes.find((attr: any) => attr.trait_type?.toLowerCase() === 'rarity')
+          
+          // Parse name to extract weapon and skin if not in attributes
+          let weapon = weaponAttr?.value || ''
+          let skin = skinAttr?.value || ''
+          const name = metadata.name || listing.name || 'Unknown Skin'
+          
+          if (!weapon || !skin) {
+            const nameParts = name.split(' | ')
+            if (nameParts.length === 2) {
+              weapon = weapon || nameParts[0].trim()
+              skin = skin || nameParts[1].trim()
+            }
+          }
+          
+          // Map weapon to category
+          let category = 'Other'
+          if (weapon.includes('AK-47') || weapon.includes('M4A4') || weapon.includes('M4A1')) {
+            category = 'Rifle'
+          } else if (weapon.includes('AWP')) {
+            category = 'Sniper Rifle'
+          } else if (weapon.includes('Knife') || weapon.includes('Karambit') || weapon.includes('Bayonet')) {
+            category = 'Knife'
+          } else if (weapon.includes('Gloves')) {
+            category = 'Gloves'
+          } else if (weapon.includes('Desert Eagle') || weapon.includes('Glock') || weapon.includes('USP')) {
+            category = 'Pistol'
+          }
+          
+          return {
+            id: listing.nftMint || listing.id,
+            name: name,
+            price: marketValue,
+            image: metadata.image || listing.image || '/cscards.png',
+            totalQuantity: 1,
+            availableQuantity: 1,
+            pricePerItem: marketValue,
+            category: category,
+            rarity: rarityAttr?.value || 'Unknown',
+            condition: wearAttr?.value || 'Unknown',
+            wear: wearAttr?.value,
+            float: floatAttr ? parseFloat(floatAttr.value) : undefined,
+          }
+        })
+        
+        setAllSkins(transformedSkins)
+      } catch (error) {
+        console.error('Error fetching marketplace NFTs:', error)
+        // Fallback to mock data if API fails
+        setAllSkins([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchMarketplaceNFTs()
+  }, [profile?.id])
   
   // Filter skins based on search and filters
   const filteredSkins = allSkins.filter(skin => {
@@ -83,11 +190,53 @@ export default function BrowseSkinsPage() {
     setIsPurchaseModalOpen(true)
   }
   
-  const handlePurchase = (skin: { id: string; name: string; price: number; image: string; wear?: string; float?: number; }) => {
-    // Handle purchase logic here
-    console.log('Purchasing skin:', skin)
-    setIsPurchaseModalOpen(false)
-    setSelectedSkin(null)
+  const handlePurchase = async (skin: { id: string; name: string; price: number; image: string; wear?: string; float?: number; }) => {
+    try {
+      if (!profile?.id || !profile?.wallet?.address) {
+        alert('Please login and connect your wallet to purchase skins')
+        return
+      }
+
+      // Get vault info to determine seller address
+      const vaultInfo = await getVaultInfo()
+      if (!vaultInfo) {
+        throw new Error('Unable to get marketplace vault information')
+      }
+
+      console.log('Purchasing NFT with escrow system:', {
+        nftMintAddress: skin.id,
+        sellerAddress: vaultInfo.vaultAddress,
+        buyerAddress: profile.wallet.address
+      })
+
+      // Purchase using escrow system with HUCH tokens
+      const result = await purchaseNFT({
+        nftMintAddress: skin.id,
+        sellerAddress: vaultInfo.vaultAddress,
+        buyerAddress: profile.wallet.address
+      })
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to purchase NFT')
+      }
+
+      console.log('Purchase successful:', result)
+      
+      // Calculate HUCH amount using real price
+      const huchAmount = await convertUsdToHuch(skin.price) || (skin.price * 10) // Fallback to 10x
+
+      // Show success message
+      alert(`Successfully purchased ${skin.name} for ${formatHuchAmount(huchAmount)} HUCH tokens!`)
+      
+      // Refresh the marketplace
+      window.location.reload()
+    } catch (error) {
+      console.error('Purchase error:', error)
+      alert(`Failed to purchase: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsPurchaseModalOpen(false)
+      setSelectedSkin(null)
+    }
   }
   
   // Convert skin to modal format
@@ -119,11 +268,22 @@ export default function BrowseSkinsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[#a1a1c5] text-sm">HUCH Balance</p>
-                <p className="text-2xl font-bold text-white">{huchBalance.toLocaleString()} HUCH</p>
-                <p className="text-sm text-[#a1a1c5]">≈ ${huchValue.toFixed(2)} USD</p>
+                <p className="text-2xl font-bold text-white">{formatHuchAmount(realHuchBalance)} HUCH</p>
+                <p className="text-sm text-[#a1a1c5]">{formatUsdAmount(realHuchValue)}</p>
+                {huchPrice && (
+                  <p className="text-xs text-[#7c7c8f]">
+                    1 HUCH = ${huchPrice.priceUsd.toFixed(4)}
+                  </p>
+                )}
               </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-[#6366f1] to-[#7f8fff] rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-lg">H</span>
+              <div className="w-12 h-12 bg-[#000] rounded-full flex items-center justify-center">
+                <Image
+                  src="/logo.svg"
+                  alt="Huch Logo"
+                  width={24}
+                  height={24}
+                  className="object-contain"
+                />
               </div>
             </div>
           </Card>
@@ -239,10 +399,32 @@ export default function BrowseSkinsPage() {
         </div>
         
         {/* Skins Grid/List */}
-        {sortedSkins.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="w-20 h-20 bg-[#161e2e] rounded-full flex items-center justify-center mb-4 animate-pulse">
+              <Image
+                src="/logo.svg"
+                alt="Huch Logo"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">Loading marketplace...</h3>
+            <p className="text-[#a1a1c5] text-center max-w-md">
+              Fetching available CS2 skins from the blockchain
+            </p>
+          </div>
+        ) : sortedSkins.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="w-20 h-20 bg-gradient-to-br from-[#6366f1] to-[#7f8fff] rounded-full flex items-center justify-center mb-4">
-              <span className="text-white font-bold text-3xl">H</span>
+              <Image
+                src="/logo.png"
+                alt="Huch Logo"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">No skins available</h3>
             <p className="text-[#a1a1c5] text-center max-w-md">
@@ -299,11 +481,12 @@ export default function BrowseSkinsPage() {
                     }}
                   >
                     <Image
-                      src="/cscards.png"
+                      src={skin.image || '/cscards.png'}
                       alt={skin.name}
                       fill
                       className="object-contain rounded-lg group-hover:brightness-110 transition-all duration-300"
                       style={{ objectFit: 'contain' }}
+                      unoptimized={true}
                     />
                     {/* Shine overlay */}
                     <div 
@@ -407,11 +590,12 @@ export default function BrowseSkinsPage() {
                       }}
                     >
                       <Image
-                        src="/cscards.png"
+                        src={skin.image || '/cscards.png'}
                         alt={skin.name}
                         fill
                         className="object-contain rounded-lg group-hover:brightness-110 transition-all duration-300"
                         style={{ objectFit: 'contain' }}
+                        unoptimized={true}
                       />
                       {/* Shine overlay */}
                       <div 
